@@ -1,30 +1,56 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
-type IconSymbolName = keyof typeof MAPPING;
+type IconMapping = Record<string, ComponentProps<typeof MaterialIcons>['name']>;
 
 /**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
+ * SF Symbols to Material Icons mappings for CIVentral
  */
-const MAPPING = {
+const MAPPING: IconMapping = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
-} as IconMapping;
+  'shield.fill': 'shield',
+  'person.text.rectangle.fill': 'badge',
+  'heart.text.square.fill': 'volunteer-activism',
+  'cross.case.fill': 'medical-services',
+  'book.closed.fill': 'menu-book',
+  'building.2.fill': 'domain',
+  'briefcase.fill': 'work',
+  'creditcard.fill': 'payment',
+  'car.fill': 'directions-car',
+  'wrench.and.screwdriver.fill': 'build',
+  'square.grid.2x2.fill': 'grid-view',
+  'bell.fill': 'notifications',
+  'person.crop.circle.fill': 'account-circle',
+  'person.fill': 'person',
+  'magnifyingglass': 'search',
+  'exclamationmark.triangle.fill': 'warning',
+  'flame.fill': 'local-fire-department',
+  'qrcode': 'qr-code',
+  'lock.fill': 'lock',
+  'phone.fill': 'phone',
+  'envelope.fill': 'email',
+  'location.fill': 'location-on',
+  'pencil': 'edit',
+  'gearshape.fill': 'settings',
+  'help.circle.fill': 'help-outline',
+  'rectangle.portrait.and.arrow.right': 'exit-to-app',
+  'person.2.fill': 'people',
+  'fingerprint': 'fingerprint',
+  'checkmark.seal.fill': 'verified',
+  'doc.text.fill': 'assignment',
+  'eye.fill': 'visibility',
+  'eye.slash.fill': 'visibility-off',
+};
 
-/**
- * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- * This ensures a consistent look across platforms, and optimal resource usage.
- * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
- */
+export type IconSymbolName = keyof typeof MAPPING;
+
 export function IconSymbol({
   name,
   size = 24,
@@ -37,5 +63,5 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  return <MaterialIcons color={color} size={size} name={MAPPING[name] || 'help-outline'} style={style} />;
 }
