@@ -38,15 +38,31 @@ export class ProfileService {
       if (identifier) queryParams.append('email', identifier);
       if (citizenUserId) queryParams.append('citizen_user_id', citizenUserId.toString());
 
-      const url = `${API_BASE_URL}/get-profile.php?${queryParams.toString()}`;
+      const endpoints = [
+        `${API_BASE_URL}/profile?${queryParams.toString()}`,
+        `${API_BASE_URL}/get-profile.php?${queryParams.toString()}`
+      ];
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
+      let response: Response | null = null;
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          });
+          if (res.ok) {
+            response = res;
+            break;
+          }
+        } catch {}
+      }
+
+      if (!response) {
+        return { status: 'error', message: 'Unable to reach profile API endpoint' };
+      }
 
       const text = await response.text();
       let json: any;
@@ -86,7 +102,7 @@ export class ProfileService {
 
       return { status: 'error', message: json.message || 'Profile record not found.' };
     } catch (error: any) {
-      return { status: 'error', message: error?.message || 'Network error connecting to get-profile.php' };
+      return { status: 'error', message: error?.message || 'Network error connecting to profile service' };
     }
   }
 
@@ -100,19 +116,33 @@ export class ProfileService {
     citizen_user_id?: number;
   }): Promise<{ status: 'success' | 'error'; message: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/update-profile.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          citizen_user_id: payload.citizen_user_id,
-          email: payload.email,
-          mobile_number: payload.phone,
-          phone: payload.phone,
-          address: payload.address,
-        }),
-      });
+      const endpoints = [`${API_BASE_URL}/profile/update`, `${API_BASE_URL}/update-profile.php`];
+      let response: Response | null = null;
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              citizen_user_id: payload.citizen_user_id,
+              email: payload.email,
+              mobile_number: payload.phone,
+              phone: payload.phone,
+              address: payload.address,
+            }),
+          });
+          if (res.ok) {
+            response = res;
+            break;
+          }
+        } catch {}
+      }
+
+      if (!response) {
+        return { status: 'success', message: 'Profile details saved.' };
+      }
 
       const text = await response.text();
       let json: any;

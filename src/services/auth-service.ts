@@ -42,8 +42,27 @@ export class AuthService {
   }
 
   /**
+  /**
+   * Helper to attempt multiple endpoints (REST Gateway primary, legacy fallback)
+   */
+  private static async postRequest(routes: string[], body: any): Promise<Response | null> {
+    for (const route of routes) {
+      try {
+        const url = `${API_BASE_URL}${route.startsWith('/') ? route : '/' + route}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) return res;
+      } catch {}
+    }
+    return null;
+  }
+
+  /**
    * Check if account exists for email or phone number
-   * Endpoint: https://civentral.tech/api/citizen/check-account.php
+   * Endpoint: POST /auth/check-account
    */
   static async checkAccount(identifier: string): Promise<{
     exists: boolean;
@@ -57,13 +76,8 @@ export class AuthService {
         mobile_number: identifier,
       };
 
-      const response = await fetch(`${API_BASE_URL}/check-account.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await AuthService.postRequest(['/auth/check-account', '/check-account.php'], payload);
+      if (!response) return { exists: false };
 
       const text = await response.text();
       let json: any;
@@ -84,8 +98,8 @@ export class AuthService {
   }
 
   /**
-   * Citizen Login to PHP Backend API
-   * Endpoint: https://civentral.tech/api/citizen/login.php
+   * Citizen Login to REST API Gateway
+   * Endpoint: POST /auth/login
    */
   static async login(identifier: string, password: string): Promise<AuthApiResponse> {
     try {
@@ -96,13 +110,10 @@ export class AuthService {
         password: password,
       };
 
-      const response = await fetch(`${API_BASE_URL}/login.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await AuthService.postRequest(['/auth/login', '/login.php'], payload);
+      if (!response) {
+        return { status: 'error', message: 'Unable to reach backend authentication gateway.' };
+      }
 
       const text = await response.text();
       let json: any;
@@ -137,7 +148,7 @@ export class AuthService {
         return {
           status: 'success',
           message: json.message || 'Login successful.',
-          token: json.token || json.data?.token,
+          token: json.token || json.data?.token || json.session?.refresh_token,
           user: userObj,
           citizen_user_id: userId,
           email: userEmail,
@@ -158,8 +169,8 @@ export class AuthService {
   }
 
   /**
-   * Citizen Registration to PHP Backend API
-   * Endpoint: https://civentral.tech/api/citizen/register.php
+   * Citizen Registration to REST API Gateway
+   * Endpoint: POST /auth/register
    */
   static async register(userData: {
     email: string;
@@ -183,13 +194,10 @@ export class AuthService {
         password: userData.password,
       };
 
-      const response = await fetch(`${API_BASE_URL}/register.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await AuthService.postRequest(['/auth/register', '/register.php'], payload);
+      if (!response) {
+        return { status: 'error', message: 'Unable to reach backend registration gateway.' };
+      }
 
       const text = await response.text();
       let json: any;
@@ -233,8 +241,8 @@ export class AuthService {
   }
 
   /**
-   * OTP Verification to PHP Backend API
-   * Endpoint: https://civentral.tech/api/citizen/verify.php
+   * OTP Verification to REST API Gateway
+   * Endpoint: POST /auth/verify-otp
    */
   static async verifyOtp(email: string, otpCode: string): Promise<AuthApiResponse> {
     try {
@@ -245,13 +253,10 @@ export class AuthService {
         code: otpCode,
       };
 
-      const response = await fetch(`${API_BASE_URL}/verify.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await AuthService.postRequest(['/auth/verify-otp', '/verify.php', '/verify-otp.php'], payload);
+      if (!response) {
+        return { status: 'error', message: 'Unable to reach backend verification gateway.' };
+      }
 
       const text = await response.text();
       let json: any;
@@ -289,8 +294,8 @@ export class AuthService {
   }
 
   /**
-   * Change password via PHP backend API
-   * Endpoint: https://civentral.tech/api/citizen/change-password.php
+   * Change password via REST API Gateway
+   * Endpoint: POST /profile/password
    */
   static async changePassword(params: {
     citizenUserId: number;
@@ -306,13 +311,10 @@ export class AuthService {
         new_password: params.newPassword,
       };
 
-      const response = await fetch(`${API_BASE_URL}/change-password.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await AuthService.postRequest(['/profile/password', '/change-password.php'], payload);
+      if (!response) {
+        return { status: 'error', message: 'Unable to reach backend password gateway.' };
+      }
 
       const text = await response.text();
       let json: any;
@@ -340,6 +342,123 @@ export class AuthService {
       return {
         status: 'error',
         message: error?.message || 'Network error connecting to Civentral servers.',
+      };
+    }
+  }
+
+  /**
+   * Request Password Reset (Forgot Password) via REST API Gateway
+   * Endpoint: POST /auth/forgot-password
+   */
+  static async forgotPassword(email: string): Promise<AuthApiResponse> {
+    try {
+      const response = await AuthService.postRequest(['/auth/forgot-password', '/forgot-password.php'], { email });
+      if (!response) {
+        return { status: 'error', message: 'Unable to reach backend password reset gateway.' };
+      }
+
+      const text = await response.text();
+      let json: any;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        return {
+          status: 'error',
+          message: text || 'Server returned an invalid response format.',
+        };
+      }
+
+      if (json.status === 'success' || json.success === true) {
+        return {
+          status: 'success',
+          message: json.message || 'Password reset instructions sent to your email.',
+          email: json.email || email,
+        };
+      }
+
+      return {
+        status: 'error',
+        message: json.message || 'Failed to request password reset.',
+      };
+    } catch (error: any) {
+      return {
+        status: 'error',
+        message: error?.message || 'Network error connecting to Civentral servers.',
+      };
+    }
+  }
+
+  /**
+   * Complete Password Reset via REST API Gateway
+   * Endpoint: POST /auth/reset-password
+   */
+  static async resetPassword(params: { token?: string; email?: string; newPassword: string }): Promise<AuthApiResponse> {
+    try {
+      const payload = {
+        reset_token: params.token,
+        email: params.email,
+        new_password: params.newPassword,
+      };
+
+      const response = await AuthService.postRequest(['/auth/reset-password', '/reset-password.php'], payload);
+      if (!response) {
+        return { status: 'error', message: 'Unable to reach backend reset password gateway.' };
+      }
+
+      const text = await response.text();
+      let json: any;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        return {
+          status: 'error',
+          message: text || 'Server returned an invalid response format.',
+        };
+      }
+
+      if (json.status === 'success' || json.success === true) {
+        return {
+          status: 'success',
+          message: json.message || 'Password reset successfully.',
+        };
+      }
+
+      return {
+        status: 'error',
+        message: json.message || 'Failed to reset password.',
+      };
+    } catch (error: any) {
+      return {
+        status: 'error',
+        message: error?.message || 'Network error connecting to Civentral servers.',
+      };
+    }
+  }
+
+  /**
+   * Citizen Logout via REST API Gateway
+   * Endpoint: POST /auth/logout
+   */
+  static async logout(): Promise<AuthApiResponse> {
+    try {
+      const currentUser = AuthService.getCurrentUser();
+      const payload = {
+        citizen_user_id: currentUser.citizen_user_id,
+        email: currentUser.email,
+      };
+
+      await AuthService.postRequest(['/auth/logout', '/logout.php'], payload);
+
+      AuthService.clearCurrentUser();
+      return {
+        status: 'success',
+        message: 'Successfully logged out.',
+      };
+    } catch (error: any) {
+      AuthService.clearCurrentUser();
+      return {
+        status: 'success',
+        message: 'Logged out locally.',
       };
     }
   }

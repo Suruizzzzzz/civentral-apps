@@ -16,13 +16,25 @@ export class NotificationService {
    */
   static async getCivicAlerts(identifier?: string): Promise<CivicAlert[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/get-notifications.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: identifier || '' }),
-      });
+      const endpoints = [`${API_BASE_URL}/notifications`, `${API_BASE_URL}/get-notifications.php`];
+      let response: Response | null = null;
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: identifier || '' }),
+          });
+          if (res.ok) {
+            response = res;
+            break;
+          }
+        } catch {}
+      }
+
+      if (!response) return [];
 
       const text = await response.text();
       let json: any;
