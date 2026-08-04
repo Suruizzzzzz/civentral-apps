@@ -115,7 +115,7 @@ export class AuthService {
         };
       }
 
-      if (json.status === 'otp_required') {
+      if (json.status === 'otp_required' || json.status === 'verification_required' || json.verification_required === true) {
         return {
           status: 'otp_required',
           message: json.message || 'Please verify your email to complete login.',
@@ -202,7 +202,7 @@ export class AuthService {
         };
       }
 
-      if (json.status === 'otp_required' || json.status === 'success' || json.success === true) {
+      if (json.status === 'otp_required' || json.status === 'verification_required' || json.verification_required === true || json.status === 'success' || json.success === true) {
         const userId = json.citizen_user_id || json.data?.citizen_user_id;
         const userEmail = json.email || userData.email;
 
@@ -212,7 +212,7 @@ export class AuthService {
         });
 
         return {
-          status: json.status === 'otp_required' ? 'otp_required' : 'success',
+          status: (json.status === 'otp_required' || json.status === 'verification_required' || json.verification_required) ? 'otp_required' : 'success',
           message: json.message || 'Account created! Verification code sent to your email.',
           citizen_user_id: userId,
           email: userEmail,
