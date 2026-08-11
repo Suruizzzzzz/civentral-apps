@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useTheme } from '@/src/context/ThemeContext';
 
 export interface HeaderBarProps {
   subtitle?: string;
@@ -16,9 +17,14 @@ export function HeaderBar({
 }: HeaderBarProps) {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 16);
+  const { isDarkMode } = useTheme();
 
   return (
-    <View style={[styles.headerContainer, { paddingTop: topPadding }]}>
+    <View style={[
+      styles.headerContainer,
+      { paddingTop: topPadding },
+      isDarkMode && { backgroundColor: '#1C2541', borderBottomColor: '#3A506B' }
+    ]}>
       {/* Left: Logo + App Name + Subtitle */}
       <View style={styles.leftBrand}>
         <Image
@@ -27,18 +33,18 @@ export function HeaderBar({
           resizeMode="contain"
         />
         <View style={styles.textStack}>
-          <Text style={styles.brandTitle}>CIVENTRAL</Text>
-          <Text style={styles.brandSubtitle}>{subtitle}</Text>
+          <Text style={[styles.brandTitle, isDarkMode && { color: '#38BDF8' }]}>CIVENTRAL</Text>
+          <Text style={[styles.brandSubtitle, isDarkMode && { color: '#CBD5E1' }]}>{subtitle}</Text>
         </View>
       </View>
 
       {/* Right: Bell Notification with Red Badge */}
       <TouchableOpacity
-        style={styles.notificationBtn}
+        style={[styles.notificationBtn, isDarkMode && { backgroundColor: '#0B132B' }]}
         onPress={onNotificationPress}
         activeOpacity={0.7}>
-        <IconSymbol name="bell.fill" size={22} color="#176B87" />
-        {hasUnreadNotifications && <View style={styles.redBadgeDot} />}
+        <IconSymbol name="bell.fill" size={22} color={isDarkMode ? '#38BDF8' : '#176B87'} />
+        {hasUnreadNotifications && <View style={[styles.redBadgeDot, isDarkMode && { borderColor: '#1C2541' }]} />}
       </TouchableOpacity>
     </View>
   );

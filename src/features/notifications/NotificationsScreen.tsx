@@ -8,11 +8,13 @@ import {
   View,
 } from 'react-native';
 import { Badge } from '@/src/components/ui/Badge';
+import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 import { CivicAlert, NotificationService } from '@/src/services/notification-service';
 
 export function NotificationsScreen() {
   const session = AuthService.getCurrentUser();
+  const { isDarkMode } = useTheme();
 
   const [alerts, setAlerts] = useState<CivicAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,7 +81,7 @@ export function NotificationsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDarkMode && { backgroundColor: '#0B132B' }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -87,28 +89,34 @@ export function NotificationsScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#176B87" />
         }>
         <View style={styles.headerContainer}>
-          <Text style={styles.headerTitle}>Notifications & Alerts</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, isDarkMode && { color: '#F8FAFC' }]}>Notifications & Alerts</Text>
+          <Text style={[styles.headerSubtitle, isDarkMode && { color: '#94A3B8' }]}>
             Real-time municipal announcements, emergency warnings & status updates.
           </Text>
         </View>
 
         {isLoading && !isRefreshing ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" color="#176B87" />
-            <Text style={styles.loadingText}>Loading notifications...</Text>
+            <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#176B87'} />
+            <Text style={[styles.loadingText, isDarkMode && { color: '#38BDF8' }]}>Loading notifications...</Text>
           </View>
         ) : (
           <View style={styles.alertsStack}>
             {alerts.map((item) => (
-              <View key={item.id} style={[styles.alertCard, !item.isRead && styles.unreadAlertCard]}>
+              <View
+                key={item.id}
+                style={[
+                  styles.alertCard,
+                  isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+                  !item.isRead && (isDarkMode ? { backgroundColor: '#0F2942', borderColor: '#0284C7' } : styles.unreadAlertCard)
+                ]}>
                 <View style={styles.alertTopRow}>
                   <Badge label={item.category.toUpperCase()} variant={getBadgeVariant(item.category)} />
-                  <Text style={styles.timestampText}>{item.timestamp}</Text>
+                  <Text style={[styles.timestampText, isDarkMode && { color: '#94A3B8' }]}>{item.timestamp}</Text>
                 </View>
 
-                <Text style={styles.alertTitle}>{item.title}</Text>
-                <Text style={styles.alertBody}>{item.body}</Text>
+                <Text style={[styles.alertTitle, isDarkMode && { color: '#F8FAFC' }]}>{item.title}</Text>
+                <Text style={[styles.alertBody, isDarkMode && { color: '#CBD5E1' }]}>{item.body}</Text>
               </View>
             ))}
           </View>

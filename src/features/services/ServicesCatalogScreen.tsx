@@ -11,6 +11,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Badge } from '@/src/components/ui/Badge';
+import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 
 export interface ServiceCatalogItem {
@@ -103,6 +104,7 @@ const SERVICES_CATALOG: ServiceCatalogItem[] = [
 
 export function ServicesCatalogScreen() {
   const router = useRouter();
+  const { isDarkMode } = useTheme();
   const params = useLocalSearchParams<{ isGuest?: string }>();
 
   // Detect guest mode via params OR session
@@ -131,25 +133,25 @@ export function ServicesCatalogScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDarkMode && { backgroundColor: '#0B132B' }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {/* Header Title */}
         <View style={styles.headerContainer}>
-          <Text style={styles.headerTitle}>Municipal Services Directory</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, isDarkMode && { color: '#F8FAFC' }]}>Municipal Services Directory</Text>
+          <Text style={[styles.headerSubtitle, isDarkMode && { color: '#94A3B8' }]}>
             Access 50+ official Caloocan City government e-services, permits, education grants & digital clearance.
           </Text>
         </View>
 
         {/* Search Bar */}
-        <View style={styles.searchBox}>
-          <IconSymbol name="magnifyingglass" size={18} color="#64748B" />
+        <View style={[styles.searchBox, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+          <IconSymbol name="magnifyingglass" size={18} color={isDarkMode ? '#94A3B8' : '#64748B'} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, isDarkMode && { color: '#F8FAFC' }]}
             placeholder="Search municipal service, scholarship or permit..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -165,10 +167,18 @@ export function ServicesCatalogScreen() {
           {(['ALL', 'EDUCATION', 'BARANGAY', 'BUSINESS', 'TREASURY'] as const).map((cat) => (
             <TouchableOpacity
               key={cat}
-              style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
+              style={[
+                styles.categoryPill,
+                isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+                selectedCategory === cat && (isDarkMode ? { backgroundColor: '#176B87' } : styles.categoryPillActive)
+              ]}
               onPress={() => setSelectedCategory(cat)}
               activeOpacity={0.8}>
-              <Text style={[styles.categoryPillText, selectedCategory === cat && styles.categoryPillTextActive]}>
+              <Text style={[
+                styles.categoryPillText,
+                isDarkMode && { color: '#CBD5E1' },
+                selectedCategory === cat && { color: '#FFFFFF' }
+              ]}>
                 {cat === 'ALL' ? 'All Services' : cat}
               </Text>
             </TouchableOpacity>
@@ -190,12 +200,16 @@ export function ServicesCatalogScreen() {
           {filteredServices.map((service) => (
             <TouchableOpacity
               key={service.id}
-              style={[styles.serviceCard, isGuestMode && styles.serviceCardLocked]}
+              style={[
+                styles.serviceCard,
+                isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+                isGuestMode && styles.serviceCardLocked
+              ]}
               onPress={() => handleServicePress(service.route)}
               activeOpacity={0.85}>
               <View style={styles.cardHeaderRow}>
-                <View style={[styles.iconCircle, { backgroundColor: service.iconBg }]}>
-                  <IconSymbol name={service.iconName as any} size={22} color={service.iconColor} />
+                <View style={[styles.iconCircle, { backgroundColor: isDarkMode ? '#0F2942' : service.iconBg }]}>
+                  <IconSymbol name={service.iconName as any} size={22} color={isDarkMode ? '#38BDF8' : service.iconColor} />
                 </View>
                 <View style={styles.badgeRow}>
                   <Badge label={service.badgeLabel} variant={service.badgeVariant} />
@@ -207,14 +221,14 @@ export function ServicesCatalogScreen() {
                 </View>
               </View>
 
-              <Text style={styles.serviceTitle}>{service.title}</Text>
-              <Text style={styles.serviceSub}>{service.description}</Text>
+              <Text style={[styles.serviceTitle, isDarkMode && { color: '#F8FAFC' }]}>{service.title}</Text>
+              <Text style={[styles.serviceSub, isDarkMode && { color: '#CBD5E1' }]}>{service.description}</Text>
 
               <View style={styles.cardFooterRow}>
-                <Text style={[styles.launchText, isGuestMode && styles.launchTextLocked]}>
+                <Text style={[styles.launchText, isDarkMode && { color: '#38BDF8' }, isGuestMode && styles.launchTextLocked]}>
                   {isGuestMode ? 'Login Required' : 'Open E-Service'}
                 </Text>
-                <IconSymbol name={isGuestMode ? 'lock.fill' : 'chevron.right'} size={14} color={isGuestMode ? '#94A3B8' : '#176B87'} />
+                <IconSymbol name={isGuestMode ? 'lock.fill' : 'chevron.right'} size={14} color={isGuestMode ? '#94A3B8' : isDarkMode ? '#38BDF8' : '#176B87'} />
               </View>
             </TouchableOpacity>
           ))}
@@ -228,23 +242,23 @@ export function ServicesCatalogScreen() {
         animationType="slide"
         onRequestClose={() => setIsAuthGateVisible(false)}>
         <View style={styles.authGateOverlay}>
-          <View style={styles.authGateCard}>
+          <View style={[styles.authGateCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
             {/* Icon Ring */}
-            <View style={styles.authGateIconRing}>
-              <IconSymbol name="lock.shield.fill" size={34} color="#165B7E" />
+            <View style={[styles.authGateIconRing, isDarkMode && { backgroundColor: '#0F2942' }]}>
+              <IconSymbol name="lock.shield.fill" size={34} color={isDarkMode ? '#38BDF8' : '#165B7E'} />
             </View>
 
             {/* Title */}
-            <Text style={styles.authGateTitle}>Sign In Required</Text>
-            <Text style={styles.authGateSub}>
+            <Text style={[styles.authGateTitle, isDarkMode && { color: '#F8FAFC' }]}>Sign In Required</Text>
+            <Text style={[styles.authGateSub, isDarkMode && { color: '#CBD5E1' }]}>
               This municipal e-service is only accessible to registered Caloocan City citizens. Please sign in to continue.
             </Text>
 
             {/* Divider with city branding */}
             <View style={styles.authGateBrandRow}>
-              <View style={styles.authGateBrandLine} />
-              <Text style={styles.authGateBrandText}>CALOOCAN CITY GOVERNMENT</Text>
-              <View style={styles.authGateBrandLine} />
+              <View style={[styles.authGateBrandLine, isDarkMode && { backgroundColor: '#3A506B' }]} />
+              <Text style={[styles.authGateBrandText, isDarkMode && { color: '#94A3B8' }]}>CALOOCAN CITY GOVERNMENT</Text>
+              <View style={[styles.authGateBrandLine, isDarkMode && { backgroundColor: '#3A506B' }]} />
             </View>
 
             {/* Buttons */}
@@ -261,17 +275,17 @@ export function ServicesCatalogScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.authGateCancelBtn}
+                style={[styles.authGateCancelBtn, isDarkMode && { backgroundColor: '#334155', borderColor: '#475569' }]}
                 onPress={() => setIsAuthGateVisible(false)}
                 activeOpacity={0.7}>
-                <Text style={styles.authGateCancelText}>Continue Browsing as Guest</Text>
+                <Text style={[styles.authGateCancelText, isDarkMode && { color: '#F8FAFC' }]}>Continue Browsing as Guest</Text>
               </TouchableOpacity>
             </View>
 
             {/* Footer */}
             <View style={styles.authGateFooter}>
               <IconSymbol name="shield.fill" size={11} color="#94A3B8" />
-              <Text style={styles.authGateFooterText}>  Protected by Caloocan City E-Governance Portal</Text>
+              <Text style={[styles.authGateFooterText, isDarkMode && { color: '#94A3B8' }]}>  Protected by Caloocan City E-Governance Portal</Text>
             </View>
           </View>
         </View>

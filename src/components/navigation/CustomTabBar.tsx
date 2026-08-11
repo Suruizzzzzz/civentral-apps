@@ -2,14 +2,20 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useTheme } from '@/src/context/ThemeContext';
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const { isDarkMode } = useTheme();
+
   // Only display the 5 main tabs (Home, Services, SOS, Tracker, Profile)
   const validTabNames = ['index', 'services', 'sos', 'tracker', 'profile'];
   const routesToDisplay = state.routes.filter((r) => validTabNames.includes(r.name));
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }
+    ]}>
       {routesToDisplay.map((route) => {
         const { options } = descriptors[route.key];
         const isFocused = state.routes[state.index]?.key === route.key;
@@ -71,8 +77,8 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
           label = 'Profile';
         }
 
-        const activeColor = '#176B87';
-        const inactiveColor = '#94A3B8';
+        const activeColor = isDarkMode ? '#38BDF8' : '#176B87';
+        const inactiveColor = isDarkMode ? '#64748B' : '#94A3B8';
         const currentColor = isFocused ? activeColor : inactiveColor;
 
         return (

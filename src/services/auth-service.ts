@@ -12,17 +12,36 @@ export interface AuthApiResponse {
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://civentral.tech/api/citizen';
 
+function parseJsonResponse(text: string): { json: any; errorText?: string } {
+  if (!text) return { json: null, errorText: 'Empty response from server.' };
+  try {
+    return { json: JSON.parse(text) };
+  } catch {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return { json: JSON.parse(jsonMatch[0]) };
+      } catch {}
+    }
+  }
+  const cleanText = text.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+  return { json: null, errorText: cleanText || 'Server returned an invalid response format.' };
+}
+
 export class AuthService {
   private static currentUserEmail: string | null = null;
+  private static currentUserPhone: string | null = null;
   private static currentUserId: number | null = null;
   private static currentUserData: any = null;
 
-  static setCurrentUser(data: { email?: string; citizen_user_id?: number; user?: any }) {
+  static setCurrentUser(data: { email?: string; phone?: string; citizen_user_id?: number; user?: any }) {
     if (data.email) this.currentUserEmail = data.email;
+    if (data.phone) this.currentUserPhone = data.phone;
     if (data.citizen_user_id) this.currentUserId = data.citizen_user_id;
     if (data.user) {
       this.currentUserData = data.user;
       if (data.user.email) this.currentUserEmail = data.user.email;
+      if (data.user.mobile_number || data.user.phone) this.currentUserPhone = data.user.mobile_number || data.user.phone;
       if (data.user.citizen_user_id) this.currentUserId = data.user.citizen_user_id;
     }
   }
@@ -30,6 +49,7 @@ export class AuthService {
   static getCurrentUser() {
     return {
       email: this.currentUserEmail,
+      phone: this.currentUserPhone,
       citizen_user_id: this.currentUserId,
       user: this.currentUserData,
     };
@@ -41,7 +61,6 @@ export class AuthService {
     this.currentUserData = null;
   }
 
-  /**
   /**
    * Helper to attempt multiple endpoints (REST Gateway primary, legacy fallback)
    */
@@ -89,12 +108,8 @@ export class AuthService {
       if (!response) return { exists: false };
 
       const text = await response.text();
-      let json: any;
-      try {
-        json = JSON.parse(text);
-      } catch {
-        return { exists: false };
-      }
+      const { json } = parseJsonResponse(text);
+      if (!json) return { exists: false };
 
       if (json.exists === true || json.status === 'exists') {
         return { exists: true, userStatus: json.user_status, message: json.message };
@@ -125,13 +140,11 @@ export class AuthService {
       }
 
       const text = await response.text();
-      let json: any;
-      try {
-        json = JSON.parse(text);
-      } catch {
+      const { json, errorText } = parseJsonResponse(text);
+      if (!json) {
         return {
           status: 'error',
-          message: 'Server returned an invalid response format.',
+          message: errorText || 'Server returned an invalid response format.',
         };
       }
 
@@ -209,13 +222,11 @@ export class AuthService {
       }
 
       const text = await response.text();
-      let json: any;
-      try {
-        json = JSON.parse(text);
-      } catch {
+      const { json, errorText } = parseJsonResponse(text);
+      if (!json) {
         return {
           status: 'error',
-          message: 'Server returned an invalid response format.',
+          message: errorText || 'Server returned an invalid response format.',
         };
       }
 
@@ -253,34 +264,36 @@ export class AuthService {
    * OTP Verification to REST API Gateway
    * Endpoint: POST /auth/verify-otp
    */
-  static async verifyOtp(email: string, otpCode: string): Promise<AuthApiResponse> {
+  static async verifyOtp(identifier: string, otpCode: string, purpose: string = 'Registration'): Promise<AuthApiResponse> {
     try {
       const payload = {
-        email: email,
+        email: identifier,
+        mobile_number: identifier,
+        phone: identifier,
+        identifier: identifier,
         otp_code: otpCode,
         otp: otpCode,
         code: otpCode,
+        purpose: purpose,
       };
 
-      const response = await AuthService.postRequest(['/verify-otp.php', '/verify.php', '/auth/verify-otp'], payload);
+      const response = await AuthService.postRequest(['/verify-otp.php'], payload);
       if (!response) {
         return { status: 'error', message: 'Unable to reach backend verification gateway.' };
       }
 
       const text = await response.text();
-      let json: any;
-      try {
-        json = JSON.parse(text);
-      } catch {
+      const { json, errorText } = parseJsonResponse(text);
+      if (!json) {
         return {
           status: 'error',
-          message: 'Server returned an invalid response format.',
+          message: errorText || 'Server returned an invalid response format.',
         };
       }
 
       if (json.status === 'success' || json.success === true) {
         AuthService.setCurrentUser({
-          email: email,
+          email: identifier,
         });
 
         return {
@@ -298,6 +311,42 @@ export class AuthService {
       return {
         status: 'error',
         message: error?.message || 'Network error connecting to Civentral servers.',
+      };
+    }
+  }
+
+  /**
+   * Resend OTP code to Email or Mobile Number
+   */
+  static async resendOtp(identifier: string, purpose: string = 'Registration'): Promise<AuthApiResponse> {
+    try {
+      const payload = {
+        email: identifier,
+        mobile_number: identifier,
+        phone: identifier,
+        identifier: identifier,
+        purpose: purpose,
+      };
+
+      const response = await AuthService.postRequest(['/resend-otp.php'], payload);
+      if (!response) {
+        return { status: 'error', message: 'Unable to reach backend gateway.' };
+      }
+
+      const text = await response.text();
+      const { json, errorText } = parseJsonResponse(text);
+      if (!json) {
+        return { status: 'error', message: errorText || 'Failed to resend code.' };
+      }
+
+      return {
+        status: json.status || 'success',
+        message: json.message || 'Verification code resent successfully.',
+      };
+    } catch (error: any) {
+      return {
+        status: 'error',
+        message: error?.message || 'Network error.',
       };
     }
   }

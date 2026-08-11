@@ -16,18 +16,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { AuthService } from '@/src/services/auth-service';
 
-export function VerifyEmailScreen() {
+export function VerifyPhoneScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ email?: string; phone?: string; identifier?: string; citizen_user_id?: string; mode?: string }>();
+  const params = useLocalSearchParams<{ phone?: string; identifier?: string; email?: string; citizen_user_id?: string }>();
   
-  const phone = params.phone || '';
-  const email = params.email || '';
-  const identifier = params.identifier || '';
-  const mode = params.mode || '';
-
-  const isPhone = mode === 'phone' || (mode !== 'email' && identifier && !identifier.includes('@')) || (mode !== 'email' && !email && !!phone);
-  const targetIdentifier = isPhone ? (phone || identifier) : (email || identifier);
+  const targetPhone = params.phone || params.identifier || 'your mobile number';
   const citizenUserId = params.citizen_user_id || '';
+  const email = params.email || '';
 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const inputRefs = useRef<Array<TextInput | null>>([]);
@@ -55,9 +50,9 @@ export function VerifyEmailScreen() {
 
   const handleResend = async () => {
     try {
-      await AuthService.resendOtp(targetIdentifier, 'Registration');
+      await AuthService.resendOtp(targetPhone, 'Registration');
     } catch {}
-    Alert.alert('Code Resent', `A new 6-digit verification code was sent to ${targetIdentifier}.`);
+    Alert.alert('Code Resent', `A new 6-digit SMS verification code was sent to ${targetPhone}.`);
   };
 
   const handleVerifyAndComplete = async () => {
@@ -70,7 +65,7 @@ export function VerifyEmailScreen() {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const res = await AuthService.verifyOtp(targetIdentifier, code, 'Registration');
+    const res = await AuthService.verifyOtp(targetPhone, code, 'Registration');
     setIsLoading(false);
 
     if (res.status === 'success' || res.status === 'otp_required') {
@@ -79,15 +74,15 @@ export function VerifyEmailScreen() {
         router.replace({
           pathname: '/(tabs)',
           params: {
-            email: email || targetIdentifier,
-            phone: phone,
+            phone: targetPhone,
+            email: email,
             citizenUserId: citizenUserId,
             isGuest: 'false',
           },
         } as any);
       }, 800);
     } else {
-      setErrorMessage(res.message || 'Invalid or expired verification code. Please check and try again.');
+      setErrorMessage(res.message || 'Invalid or expired SMS verification code. Please check and try again.');
     }
   };
 
@@ -118,13 +113,11 @@ export function VerifyEmailScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
           
-          {/* Title & Subtitle */}
-          <Text style={styles.screenTitle}>
-            {isPhone ? 'Verify Your Mobile Number' : 'Verify Your Email Address'}
-          </Text>
+          {/* Dedicated Title & Subtitle for Phone */}
+          <Text style={styles.screenTitle}>Verify Your Mobile Number</Text>
           <Text style={styles.screenSubtitle}>
-            We sent a 6-digit verification code to {isPhone ? 'your mobile number ' : 'your email address '}
-            <Text style={styles.boldText}>{targetIdentifier || 'your registered contact'}</Text>.{'\n'}
+            We sent a 6-digit verification code to your mobile number{' '}
+            <Text style={styles.boldText}>{targetPhone}</Text>.{'\n'}
             Enter the code below to activate your account.
           </Text>
 
@@ -154,7 +147,7 @@ export function VerifyEmailScreen() {
           {/* Resend Link */}
           <View style={styles.resendRow}>
             <Text style={styles.resendText}>
-              Didn't receive the code?{' '}
+              Didn't receive the SMS code?{' '}
               <Text style={styles.resendLink} onPress={handleResend}>
                 Resend now
               </Text>

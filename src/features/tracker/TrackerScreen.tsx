@@ -13,12 +13,14 @@ import {
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Badge } from '@/src/components/ui/Badge';
+import { useTheme } from '@/src/context/ThemeContext';
 import { CivicApiService } from '@/src/services/api';
 import { AuthService } from '@/src/services/auth-service';
 import { DomainApplication } from '@/types/domain';
 
 export function TrackerScreen() {
   const router = useRouter();
+  const { isDarkMode } = useTheme();
 
   // Active Session
   const session = AuthService.getCurrentUser();
@@ -112,7 +114,7 @@ export function TrackerScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDarkMode && { backgroundColor: '#0B132B' }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -122,19 +124,19 @@ export function TrackerScreen() {
 
         {/* Header Stack */}
         <View style={styles.headerContainer}>
-          <Text style={styles.headerTitle}>Application Tracker</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, isDarkMode && { color: '#F8FAFC' }]}>Application Tracker</Text>
+          <Text style={[styles.headerSubtitle, isDarkMode && { color: '#94A3B8' }]}>
             Monitor live status, review milestones & processing timelines for your civic permits and requests.
           </Text>
         </View>
 
         {/* Search Bar */}
-        <View style={styles.searchBox}>
-          <IconSymbol name="magnifyingglass" size={18} color="#64748B" />
+        <View style={[styles.searchBox, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+          <IconSymbol name="magnifyingglass" size={18} color={isDarkMode ? '#94A3B8' : '#64748B'} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, isDarkMode && { color: '#F8FAFC' }]}
             placeholder="Search by Application ID or Service..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -153,10 +155,18 @@ export function TrackerScreen() {
           {(['All', 'Under Review', 'Approved', 'Completed'] as const).map((filter) => (
             <TouchableOpacity
               key={filter}
-              style={[styles.filterPill, selectedFilter === filter && styles.filterPillActive]}
+              style={[
+                styles.filterPill,
+                isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+                selectedFilter === filter && (isDarkMode ? { backgroundColor: '#176B87' } : styles.filterPillActive)
+              ]}
               onPress={() => setSelectedFilter(filter)}
               activeOpacity={0.8}>
-              <Text style={[styles.filterPillText, selectedFilter === filter && styles.filterPillTextActive]}>
+              <Text style={[
+                styles.filterPillText,
+                isDarkMode && { color: '#CBD5E1' },
+                selectedFilter === filter && { color: '#FFFFFF' }
+              ]}>
                 {filter}
               </Text>
             </TouchableOpacity>
@@ -165,19 +175,19 @@ export function TrackerScreen() {
 
         {isLoading && !isRefreshing ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" color="#176B87" />
-            <Text style={styles.loadingText}>Fetching tracked applications...</Text>
+            <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#176B87'} />
+            <Text style={[styles.loadingText, isDarkMode && { color: '#38BDF8' }]}>Fetching tracked applications...</Text>
           </View>
         ) : null}
 
         {/* Applications List */}
         {!isLoading && filteredApps.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <View style={[styles.emptyContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
             <View style={styles.emptyIconBox}>
               <IconSymbol name="doc.text.fill" size={32} color="#94A3B8" />
             </View>
-            <Text style={styles.emptyTitle}>No Tracked Applications</Text>
-            <Text style={styles.emptySub}>
+            <Text style={[styles.emptyTitle, isDarkMode && { color: '#F8FAFC' }]}>No Tracked Applications</Text>
+            <Text style={[styles.emptySub, isDarkMode && { color: '#94A3B8' }]}>
               {searchQuery
                 ? `No applications matching "${searchQuery}" found.`
                 : 'You currently have no active permit or document requests being tracked.'}
@@ -195,20 +205,20 @@ export function TrackerScreen() {
             {filteredApps.map((app) => (
               <TouchableOpacity
                 key={app.id}
-                style={styles.appCard}
+                style={[styles.appCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
                 onPress={() => setSelectedApp(app)}
                 activeOpacity={0.88}>
                 {/* Card Top Row */}
                 <View style={styles.cardTopRow}>
-                  <View style={styles.appIdBadge}>
-                    <IconSymbol name="doc.text.fill" size={14} color="#176B87" />
-                    <Text style={styles.appIdText}>{app.id}</Text>
+                  <View style={[styles.appIdBadge, isDarkMode && { backgroundColor: '#0F2942' }]}>
+                    <IconSymbol name="doc.text.fill" size={14} color={isDarkMode ? '#38BDF8' : '#176B87'} />
+                    <Text style={[styles.appIdText, isDarkMode && { color: '#38BDF8' }]}>{app.id}</Text>
                   </View>
                   <Badge label={app.status.toUpperCase()} variant={getStatusVariant(app.status)} />
                 </View>
 
                 {/* Service Title */}
-                <Text style={styles.appTitleText}>{app.serviceTitle}</Text>
+                <Text style={[styles.appTitleText, isDarkMode && { color: '#F8FAFC' }]}>{app.serviceTitle}</Text>
 
                 {/* Timeline Progress Bar Summary */}
                 <View style={styles.timelineSummaryBox}>
@@ -284,25 +294,25 @@ export function TrackerScreen() {
         onRequestClose={() => setSelectedApp(null)}>
         <View style={styles.modalOverlay}>
           {selectedApp ? (
-            <View style={styles.modalCard}>
+            <View style={[styles.modalCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
               <View style={styles.modalHeaderRow}>
                 <View>
-                  <Text style={styles.modalIdText}>{selectedApp.id}</Text>
-                  <Text style={styles.modalTitleText}>{selectedApp.serviceTitle}</Text>
+                  <Text style={[styles.modalIdText, isDarkMode && { color: '#38BDF8' }]}>{selectedApp.id}</Text>
+                  <Text style={[styles.modalTitleText, isDarkMode && { color: '#F8FAFC' }]}>{selectedApp.serviceTitle}</Text>
                 </View>
-                <TouchableOpacity onPress={() => setSelectedApp(null)} style={styles.closeBtn}>
-                  <Text style={styles.closeBtnText}>✕</Text>
+                <TouchableOpacity onPress={() => setSelectedApp(null)} style={[styles.closeBtn, isDarkMode && { backgroundColor: '#0B132B' }]}>
+                  <Text style={[styles.closeBtnText, isDarkMode && { color: '#F8FAFC' }]}>✕</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.modalBadgeRow}>
                 <Badge label={selectedApp.status.toUpperCase()} variant={getStatusVariant(selectedApp.status)} />
-                <Text style={styles.modalSubmittedText}>Filed on {selectedApp.createdAt}</Text>
+                <Text style={[styles.modalSubmittedText, isDarkMode && { color: '#94A3B8' }]}>Filed on {selectedApp.createdAt}</Text>
               </View>
 
-              <View style={styles.modalDivider} />
+              <View style={[styles.modalDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
 
-              <Text style={styles.timelineHeaderTitle}>Processing Milestones</Text>
+              <Text style={[styles.timelineHeaderTitle, isDarkMode && { color: '#F8FAFC' }]}>Processing Milestones</Text>
 
               {/* Step 1 */}
               <View style={styles.milestoneRow}>
@@ -310,8 +320,8 @@ export function TrackerScreen() {
                   <IconSymbol name="checkmark.seal.fill" size={16} color="#FFFFFF" />
                 </View>
                 <View style={styles.milestoneContent}>
-                  <Text style={styles.milestoneTitle}>1. Application Received & Encoded</Text>
-                  <Text style={styles.milestoneSub}>Application data recorded on {selectedApp.createdAt}</Text>
+                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>1. Application Received & Encoded</Text>
+                  <Text style={[styles.milestoneSub, isDarkMode && { color: '#94A3B8' }]}>Application data recorded on {selectedApp.createdAt}</Text>
                 </View>
               </View>
 
@@ -330,8 +340,8 @@ export function TrackerScreen() {
                   />
                 </View>
                 <View style={styles.milestoneContent}>
-                  <Text style={styles.milestoneTitle}>2. Document Verification & Evaluation</Text>
-                  <Text style={styles.milestoneSub}>
+                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>2. Document Verification & Evaluation</Text>
+                  <Text style={[styles.milestoneSub, isDarkMode && { color: '#94A3B8' }]}>
                     {selectedApp.status === 'Under Review'
                       ? 'Currently being evaluated by Department Officer'
                       : `Verified & Approved on ${selectedApp.updatedAt}`}
@@ -347,17 +357,17 @@ export function TrackerScreen() {
                       ? styles.milestoneIconDone
                       : selectedApp.status === 'Approved'
                       ? styles.milestoneIconActive
-                      : styles.milestoneIconPending
+                      : [styles.milestoneIconPending, isDarkMode && { backgroundColor: '#334155' }]
                   }>
                   <IconSymbol
                     name={selectedApp.status === 'Completed' ? 'checkmark.seal.fill' : 'doc.text.fill'}
                     size={16}
-                    color={selectedApp.status === 'Under Review' ? '#94A3B8' : '#FFFFFF'}
+                    color={selectedApp.status === 'Under Review' ? (isDarkMode ? '#64748B' : '#94A3B8') : '#FFFFFF'}
                   />
                 </View>
                 <View style={styles.milestoneContent}>
-                  <Text style={styles.milestoneTitle}>3. Official E-Permit Release / Completion</Text>
-                  <Text style={styles.milestoneSub}>
+                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>3. Official E-Permit Release / Completion</Text>
+                  <Text style={[styles.milestoneSub, isDarkMode && { color: '#94A3B8' }]}>
                     {selectedApp.status === 'Completed'
                       ? 'Digital Clearance Issued & Archived'
                       : selectedApp.status === 'Approved'

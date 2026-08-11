@@ -10,12 +10,14 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Badge } from '@/src/components/ui/Badge';
+import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 
 export type EducationSection = 'menu' | 'dashboard' | 'new' | 'renewal' | 'distribution';
 
 export function EducationScreen() {
   const router = useRouter();
+  const { isDarkMode } = useTheme();
   const params = useLocalSearchParams<{ isGuest?: string }>();
 
   const session = AuthService.getCurrentUser();
@@ -33,7 +35,7 @@ export function EducationScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDarkMode && { backgroundColor: '#0B132B' }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
@@ -43,8 +45,8 @@ export function EducationScreen() {
           <View style={styles.menuStack}>
             {/* Header Title */}
             <View style={styles.headerContainer}>
-              <Text style={styles.headerTitle}>Education & Scholarship Portal</Text>
-              <Text style={styles.headerSubtitle}>
+              <Text style={[styles.headerTitle, isDarkMode && { color: '#F8FAFC' }]}>Education & Scholarship Portal</Text>
+              <Text style={[styles.headerSubtitle, isDarkMode && { color: '#94A3B8' }]}>
                 City Government of Caloocan educational grants, online applications, renewal & cash allowance distribution.
               </Text>
             </View>
@@ -61,43 +63,43 @@ export function EducationScreen() {
             <View style={styles.fourButtonsGrid}>
               {/* BUTTON 1: SCHOLARSHIP DASHBOARD */}
               <TouchableOpacity
-                style={styles.hubCardButton}
-              onPress={() => handleCardPress('dashboard')}
+                style={[styles.hubCardButton, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
+                onPress={() => handleCardPress('dashboard')}
                 activeOpacity={0.85}>
                 <View style={styles.hubCardHeader}>
-                  <View style={[styles.hubIconCircle, { backgroundColor: '#F3E8FF' }]}>
-                    <IconSymbol name="book.closed.fill" size={24} color="#7E22CE" />
+                  <View style={[styles.hubIconCircle, { backgroundColor: isDarkMode ? '#3B0764' : '#F3E8FF' }]}>
+                    <IconSymbol name="book.closed.fill" size={24} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
                   </View>
                   <Badge label="ACTIVE GRANT" variant="success" />
                 </View>
-                <Text style={styles.hubCardTitle}>Scholarship Dashboard</Text>
-                <Text style={styles.hubCardSub}>
+                <Text style={[styles.hubCardTitle, isDarkMode && { color: '#F8FAFC' }]}>Scholarship Dashboard</Text>
+                <Text style={[styles.hubCardSub, isDarkMode && { color: '#CBD5E1' }]}>
                   View active grant status, maintaining GWA requirements, next payout date & city education bulletins.
                 </Text>
                 <View style={styles.hubCardFooter}>
-                  <Text style={styles.hubCardActionText}>Open Dashboard</Text>
-                  <IconSymbol name="chevron.right" size={14} color="#7E22CE" />
+                  <Text style={[styles.hubCardActionText, isDarkMode && { color: '#C084FC' }]}>Open Dashboard</Text>
+                  <IconSymbol name="chevron.right" size={14} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
                 </View>
               </TouchableOpacity>
 
               {/* BUTTON 2: NEW APPLICANT */}
               <TouchableOpacity
-                style={styles.hubCardButton}
+                style={[styles.hubCardButton, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
                 onPress={() => handleCardPress('new')}
                 activeOpacity={0.85}>
                 <View style={styles.hubCardHeader}>
-                  <View style={[styles.hubIconCircle, { backgroundColor: '#E0F2FE' }]}>
-                    <IconSymbol name="doc.text.fill" size={24} color="#0284C7" />
+                  <View style={[styles.hubIconCircle, { backgroundColor: isDarkMode ? '#0F2942' : '#E0F2FE' }]}>
+                    <IconSymbol name="doc.text.fill" size={24} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
                   </View>
                   <Badge label="APPLY ONLINE" variant="info" />
                 </View>
-                <Text style={styles.hubCardTitle}>New Applicant</Text>
-                <Text style={styles.hubCardSub}>
+                <Text style={[styles.hubCardTitle, isDarkMode && { color: '#F8FAFC' }]}>New Applicant</Text>
+                <Text style={[styles.hubCardSub, isDarkMode && { color: '#CBD5E1' }]}>
                   Submit new scholarship application for Tertiary College, Senior High School & SPED City Grants.
                 </Text>
                 <View style={styles.hubCardFooter}>
-                  <Text style={[styles.hubCardActionText, { color: '#0284C7' }]}>Start Application</Text>
-                  <IconSymbol name="chevron.right" size={14} color="#0284C7" />
+                  <Text style={[styles.hubCardActionText, { color: isDarkMode ? '#38BDF8' : '#0284C7' }]}>Start Application</Text>
+                  <IconSymbol name="chevron.right" size={14} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
                 </View>
               </TouchableOpacity>
 

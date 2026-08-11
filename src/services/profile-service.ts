@@ -28,7 +28,7 @@ export class ProfileService {
   /**
    * Fetch Citizen Profile details from PHP Backend API (get-profile.php)
    */
-  static async getProfile(identifier?: string, citizenUserId?: number): Promise<{
+  static async getProfile(identifier?: string, citizenUserId?: number, phone?: string): Promise<{
     status: 'success' | 'error';
     data?: Partial<CitizenProfileData>;
     message?: string;
@@ -36,6 +36,9 @@ export class ProfileService {
     try {
       const queryParams = new URLSearchParams();
       if (identifier) queryParams.append('email', identifier);
+      if (identifier) queryParams.append('identifier', identifier);
+      if (phone) queryParams.append('phone', phone);
+      if (phone) queryParams.append('mobile_number', phone);
       if (citizenUserId) queryParams.append('citizen_user_id', citizenUserId.toString());
 
       const endpoints = [

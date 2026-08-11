@@ -18,11 +18,15 @@ import { AuthService } from '@/src/services/auth-service';
 
 export function RegisterScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ identifier?: string }>();
+  const params = useLocalSearchParams<{ identifier?: string; email?: string; phone?: string; mode?: string }>();
 
-  const [email, setEmail] = useState(params.identifier || '');
+  const initialEmail = params.email || (params.identifier?.includes('@') ? params.identifier : '');
+  const initialPhone = params.phone || (!params.identifier?.includes('@') ? params.identifier : '');
+
+  const [email, setEmail] = useState(initialEmail || '');
+  const [mobileNumber, setMobileNumber] = useState(initialPhone || '');
   const [firstName, setFirstName] = useState('');
-  const [suffix, setSuffix] = useState('Suffix');
+  const [suffix, setSuffix] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [noMiddleName, setNoMiddleName] = useState(false);
   const [lastName, setLastName] = useState('');
@@ -62,6 +66,22 @@ export function RegisterScreen() {
   const handleVerifyAccount = async () => {
     setErrorMessage(null);
 
+    if (email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        setErrorMessage('Please enter a valid email address.');
+        return;
+      }
+    }
+
+    if (mobileNumber.trim()) {
+      const phoneRegex = /^(\+?63|0)9\d{9}$/;
+      if (!phoneRegex.test(mobileNumber.trim().replace(/\s+/g, ''))) {
+        setErrorMessage('Please enter a valid PH mobile number (e.g. 09171234567).');
+        return;
+      }
+    }
+
     if (!firstName.trim()) {
       setErrorMessage('Please enter your first name.');
       return;
@@ -89,22 +109,55 @@ export function RegisterScreen() {
     }
 
     setIsLoading(true);
+
+    // Duplicate Email Pre-Check
+    if (email.trim()) {
+      const emailCheck = await AuthService.checkAccount(email.trim());
+      if (emailCheck.exists) {
+        setErrorMessage('An account with this email address already exists. Please use a different email or sign in.');
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Duplicate Mobile Number Pre-Check
+    if (mobileNumber.trim()) {
+      const phoneCheck = await AuthService.checkAccount(mobileNumber.trim());
+      if (phoneCheck.exists) {
+        setErrorMessage('This mobile number is already associated with another account. Please use a different number or sign in.');
+        setIsLoading(false);
+        return;
+      }
+    }
+
     const res = await AuthService.register({
-      email,
+      email: email.trim(),
+      mobileNumber: mobileNumber.trim(),
       firstName: firstName.trim(),
       middleName: middleName.trim(),
       hasNoMiddleName: noMiddleName,
       lastName: lastName.trim(),
-      suffix: suffix === 'Suffix' || suffix === 'None' ? '' : suffix,
+      suffix: suffix.trim(),
       password,
     });
     setIsLoading(false);
 
     if (res.status === 'otp_required' || res.status === 'success') {
+      const isPhoneRegistration = params.mode === 'phone' || !!params.phone || !!mobileNumber.trim();
+      const targetRoute = isPhoneRegistration ? '/(auth)/verify-phone' : '/(auth)/verify';
+      const modeParam = isPhoneRegistration ? 'phone' : 'email';
+
+      const primaryId = isPhoneRegistration
+        ? (mobileNumber.trim() || params.phone || (res as any).mobile_number || res.email || email.trim())
+        : (res.email || email.trim() || mobileNumber.trim());
+
       router.push({
-        pathname: '/(auth)/verify' as any,
+        pathname: targetRoute as any,
         params: {
-          email: res.email || email,
+          mode: modeParam,
+          email: email.trim() || res.email,
+          phone: mobileNumber.trim() || params.phone,
+          identifier: primaryId,
           citizen_user_id: res.citizen_user_id ? String(res.citizen_user_id) : '',
         },
       });
@@ -147,7 +200,7 @@ export function RegisterScreen() {
             {/* Field 1: Email Address */}
             <Text style={styles.inputLabel}>Email Address</Text>
             <TextInput
-              style={styles.textInputDisabled}
+              style={styles.textInput}
               placeholder="Enter your email address"
               placeholderTextColor="#94A3B8"
               value={email}
@@ -156,7 +209,19 @@ export function RegisterScreen() {
               autoCapitalize="none"
             />
 
-            {/* Field 2: First Name & Suffix Row */}
+            {/* Field 1.5: Phone Number */}
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Mobile Phone Number</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter mobile number (e.g. 09171234567)"
+              placeholderTextColor="#94A3B8"
+              value={mobileNumber}
+              onChangeText={setMobileNumber}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+            />
+
+            {/* Field 1 & 2: First Name + Suffix (Input) */}
             <View style={styles.rowFields}>
               <View style={styles.firstNameContainer}>
                 <TextInput
@@ -168,20 +233,15 @@ export function RegisterScreen() {
                 />
               </View>
 
-              <TouchableOpacity
-                style={styles.suffixDropdown}
-                activeOpacity={0.8}
-                onPress={() => {
-                  Alert.alert('Suffix Selection', 'Select suffix option', [
-                    { text: 'None', onPress: () => setSuffix('None') },
-                    { text: 'Jr.', onPress: () => setSuffix('Jr.') },
-                    { text: 'Sr.', onPress: () => setSuffix('Sr.') },
-                    { text: 'III', onPress: () => setSuffix('III') },
-                  ]);
-                }}>
-                <Text style={styles.suffixText}>{suffix}</Text>
-                <IconSymbol name="chevron.right" size={16} color="#64748B" style={{ transform: [{ rotate: '90deg' }] }} />
-              </TouchableOpacity>
+              <View style={styles.suffixContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Suffix (e.g. Jr.)"
+                  placeholderTextColor="#94A3B8"
+                  value={suffix}
+                  onChangeText={setSuffix}
+                />
+              </View>
             </View>
 
             {/* Field 3: Middle Name */}
@@ -486,19 +546,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   firstNameContainer: {
-    flex: 2,
+    flex: 1.8,
   },
-  suffixDropdown: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 48,
+  suffixContainer: {
+    flex: 1.2,
   },
   suffixText: {
     fontSize: 14,

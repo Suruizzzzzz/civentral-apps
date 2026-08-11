@@ -16,6 +16,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Badge } from '@/src/components/ui/Badge';
+import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 import { CitizenProfileData, ProfileService } from '@/src/services/profile-service';
 
@@ -65,6 +66,7 @@ const INITIAL_ANNOUNCEMENTS: AnnouncementItem[] = [
 
 export function HomeScreen() {
   const router = useRouter();
+  const { isDarkMode } = useTheme();
   const params = useLocalSearchParams<{ isGuest?: string; email?: string; citizenUserId?: string }>();
 
   // Active Session & Guest Status
@@ -154,7 +156,7 @@ export function HomeScreen() {
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDarkMode && { backgroundColor: '#0B132B' }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -164,10 +166,8 @@ export function HomeScreen() {
           ) : undefined
         }>
 
-
-
         {/* SECTION 1: CITIZEN PROFILE CARD */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
           <View style={styles.profileCardHeader}>
             <View style={styles.avatarCircle}>
               <Text style={styles.avatarText}>{userProfile.initials || (isGuestMode ? 'GR' : 'AC')}</Text>
@@ -176,17 +176,20 @@ export function HomeScreen() {
 
             <View style={styles.profileInfoStack}>
               <View style={styles.nameRow}>
-                <Text style={styles.profileNameText}>{userProfile.fullName || 'Citizen Resident'}</Text>
+                <Text style={[styles.profileNameText, isDarkMode && { color: '#F8FAFC' }]}>{userProfile.fullName || 'Citizen Resident'}</Text>
               </View>
-              <Text style={styles.profileIdText}>ID: {userProfile.citizenId || 'Pending Generation'}</Text>
-              <Text style={styles.profileLocationText}>
-                📍 {userProfile.barangay ? `${userProfile.barangay}, Caloocan City` : 'Caloocan City Resident'}
-              </Text>
+              <Text style={[styles.profileIdText, isDarkMode && { color: '#94A3B8' }]}>ID: {userProfile.citizenId || 'Pending Generation'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <IconSymbol name="location.fill" size={12} color="#176B87" style={{ marginRight: 4 }} />
+                <Text style={[styles.profileLocationText, isDarkMode && { color: '#CBD5E1' }]}>
+                  {userProfile.barangay ? `${userProfile.barangay}, Caloocan City` : 'Caloocan City Resident'}
+                </Text>
+              </View>
             </View>
 
             {/* Mini QR Button */}
             <TouchableOpacity
-              style={styles.miniQrBtn}
+              style={[styles.miniQrBtn, isDarkMode && { backgroundColor: '#0B132B', borderColor: '#3A506B' }]}
               onPress={() => setIsQrModalVisible(true)}
               activeOpacity={0.8}>
               <IconSymbol name="qrcode" size={24} color="#176B87" />
@@ -209,12 +212,12 @@ export function HomeScreen() {
 
         {/* SECTION 2: SEARCH BAR */}
         <View style={styles.searchSection}>
-          <View style={styles.searchBarBox}>
-            <IconSymbol name="magnifyingglass" size={20} color="#64748B" />
+          <View style={[styles.searchBarBox, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+            <IconSymbol name="magnifyingglass" size={20} color={isDarkMode ? '#94A3B8' : '#64748B'} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, isDarkMode && { color: '#F8FAFC' }]}
               placeholder="Search services, permits, announcements..."
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -229,70 +232,70 @@ export function HomeScreen() {
         {/* SECTION 3: 6 QUICK SERVICES GRID (6TH IS SEE ALL SERVICES) */}
         <View style={styles.sectionHeaderRow}>
           <View style={styles.sectionHeaderLeft}>
-            <Text style={styles.sectionTitle}>Quick Municipal Services</Text>
-            <Text style={styles.sectionSubtitle}>Fast-track civic access & online processing</Text>
+            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>Quick Municipal Services</Text>
+            <Text style={[styles.sectionSubtitle, isDarkMode && { color: '#94A3B8' }]}>Fast-track civic access & online processing</Text>
           </View>
         </View>
 
         <View style={styles.servicesGrid}>
           {/* Service 1: Barangay Clearance */}
           <TouchableOpacity
-            style={styles.serviceGridCard}
+            style={[styles.serviceGridCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
             onPress={() => router.push('/(tabs)/services')}
             activeOpacity={0.8}>
-            <View style={[styles.serviceIconCircle, { backgroundColor: '#E0F2FE' }]}>
-              <IconSymbol name="person.text.rectangle.fill" size={22} color="#0284C7" />
+            <View style={[styles.serviceIconCircle, { backgroundColor: isDarkMode ? '#0F2942' : '#E0F2FE' }]}>
+              <IconSymbol name="person.text.rectangle.fill" size={22} color="#38BDF8" />
             </View>
-            <Text style={styles.serviceTitle} numberOfLines={2}>Barangay Clearance</Text>
-            <Text style={styles.serviceSub} numberOfLines={1}>E-Clearance & ID</Text>
+            <Text style={[styles.serviceTitle, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={2}>Barangay Clearance</Text>
+            <Text style={[styles.serviceSub, isDarkMode && { color: '#94A3B8' }]} numberOfLines={1}>E-Clearance & ID</Text>
           </TouchableOpacity>
 
           {/* Service 2: Business Permit */}
           <TouchableOpacity
-            style={styles.serviceGridCard}
+            style={[styles.serviceGridCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
             onPress={() => router.push('/(tabs)/services')}
             activeOpacity={0.8}>
-            <View style={[styles.serviceIconCircle, { backgroundColor: '#E0E7FF' }]}>
-              <IconSymbol name="briefcase.fill" size={22} color="#4338CA" />
+            <View style={[styles.serviceIconCircle, { backgroundColor: isDarkMode ? '#1E1B4B' : '#E0E7FF' }]}>
+              <IconSymbol name="briefcase.fill" size={22} color="#818CF8" />
             </View>
-            <Text style={styles.serviceTitle} numberOfLines={2}>Business Permit</Text>
-            <Text style={styles.serviceSub} numberOfLines={1}>New & Renewals</Text>
+            <Text style={[styles.serviceTitle, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={2}>Business Permit</Text>
+            <Text style={[styles.serviceSub, isDarkMode && { color: '#94A3B8' }]} numberOfLines={1}>New & Renewals</Text>
           </TouchableOpacity>
 
           {/* Service 3: Real Property Tax */}
           <TouchableOpacity
-            style={styles.serviceGridCard}
+            style={[styles.serviceGridCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
             onPress={() => router.push('/(tabs)/services')}
             activeOpacity={0.8}>
-            <View style={[styles.serviceIconCircle, { backgroundColor: '#DCFCE7' }]}>
-              <IconSymbol name="house.fill" size={22} color="#15803D" />
+            <View style={[styles.serviceIconCircle, { backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7' }]}>
+              <IconSymbol name="house.fill" size={22} color="#4ADE80" />
             </View>
-            <Text style={styles.serviceTitle} numberOfLines={2}>Real Property Tax</Text>
-            <Text style={styles.serviceSub} numberOfLines={1}>RPT Billing & Pay</Text>
+            <Text style={[styles.serviceTitle, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={2}>Real Property Tax</Text>
+            <Text style={[styles.serviceSub, isDarkMode && { color: '#94A3B8' }]} numberOfLines={1}>RPT Billing & Pay</Text>
           </TouchableOpacity>
 
           {/* Service 4: Health & Medical */}
           <TouchableOpacity
-            style={styles.serviceGridCard}
+            style={[styles.serviceGridCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
             onPress={() => router.push('/(tabs)/services')}
             activeOpacity={0.8}>
-            <View style={[styles.serviceIconCircle, { backgroundColor: '#FEE2E2' }]}>
-              <IconSymbol name="cross.case.fill" size={22} color="#B91C1C" />
+            <View style={[styles.serviceIconCircle, { backgroundColor: isDarkMode ? '#451A03' : '#FEE2E2' }]}>
+              <IconSymbol name="cross.case.fill" size={22} color="#F87171" />
             </View>
-            <Text style={styles.serviceTitle} numberOfLines={2}>Health & Medical</Text>
-            <Text style={styles.serviceSub} numberOfLines={1}>Barangay Clinics</Text>
+            <Text style={[styles.serviceTitle, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={2}>Health & Medical</Text>
+            <Text style={[styles.serviceSub, isDarkMode && { color: '#94A3B8' }]} numberOfLines={1}>Barangay Clinics</Text>
           </TouchableOpacity>
 
           {/* Service 5: Education & Scholarship */}
           <TouchableOpacity
-            style={styles.serviceGridCard}
+            style={[styles.serviceGridCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
             onPress={() => router.push('/education' as any)}
             activeOpacity={0.8}>
-            <View style={[styles.serviceIconCircle, { backgroundColor: '#F3E8FF' }]}>
-              <IconSymbol name="book.closed.fill" size={22} color="#7E22CE" />
+            <View style={[styles.serviceIconCircle, { backgroundColor: isDarkMode ? '#3B0764' : '#F3E8FF' }]}>
+              <IconSymbol name="book.closed.fill" size={22} color="#C084FC" />
             </View>
-            <Text style={styles.serviceTitle} numberOfLines={2}>Education & Scholarship</Text>
-            <Text style={styles.serviceSub} numberOfLines={1}>Grants & Allowance</Text>
+            <Text style={[styles.serviceTitle, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={2}>Education & Scholarship</Text>
+            <Text style={[styles.serviceSub, isDarkMode && { color: '#94A3B8' }]} numberOfLines={1}>Grants & Allowance</Text>
           </TouchableOpacity>
 
           {/* SERVICE 6: SEE ALL SERVICES BUTTON (SPECIAL ACCENT CTA) */}
@@ -314,8 +317,8 @@ export function HomeScreen() {
         {/* SECTION 4: ANNOUNCEMENTS & NEWS */}
         <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
           <View style={styles.sectionHeaderLeft}>
-            <Text style={styles.sectionTitle}>City Announcements & Advisories</Text>
-            <Text style={styles.sectionSubtitle}>Official updates from Caloocan City Government</Text>
+            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>City Announcements & Advisories</Text>
+            <Text style={[styles.sectionSubtitle, isDarkMode && { color: '#94A3B8' }]}>Official updates from Caloocan City Government</Text>
           </View>
         </View>
 
@@ -323,24 +326,24 @@ export function HomeScreen() {
           {filteredAnnouncements.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.announcementCard}
+              style={[styles.announcementCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}
               onPress={() => setSelectedAnnouncement(item)}
               activeOpacity={0.85}>
               <View style={styles.announcementTopRow}>
                 <Badge label={item.category} variant={item.badgeVariant} />
-                <Text style={styles.announcementDateText}>{item.date}</Text>
+                <Text style={[styles.announcementDateText, isDarkMode && { color: '#94A3B8' }]}>{item.date}</Text>
               </View>
 
-              <Text style={styles.announcementTitleText}>{item.title}</Text>
-              <Text style={styles.announcementSummaryText} numberOfLines={2}>
+              <Text style={[styles.announcementTitleText, isDarkMode && { color: '#F8FAFC' }]}>{item.title}</Text>
+              <Text style={[styles.announcementSummaryText, isDarkMode && { color: '#CBD5E1' }]} numberOfLines={2}>
                 {item.summary}
               </Text>
 
               <View style={styles.announcementFooterRow}>
-                <Text style={styles.announcementDeptText}>{item.department}</Text>
+                <Text style={[styles.announcementDeptText, isDarkMode && { color: '#94A3B8' }]}>{item.department}</Text>
                 <View style={styles.readMoreRow}>
-                  <Text style={styles.readMoreText}>Read Announcement</Text>
-                  <IconSymbol name="chevron.right" size={14} color="#176B87" />
+                  <Text style={[styles.readMoreText, isDarkMode && { color: '#38BDF8' }]}>Read Announcement</Text>
+                  <IconSymbol name="chevron.right" size={14} color={isDarkMode ? '#38BDF8' : '#176B87'} />
                 </View>
               </View>
             </TouchableOpacity>
@@ -355,26 +358,26 @@ export function HomeScreen() {
         animationType="slide"
         onRequestClose={() => setIsQrModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.qrModalContainer}>
+          <View style={[styles.qrModalContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
             <View style={styles.qrModalHeader}>
-              <Text style={styles.qrModalTitle}>Civentral Resident Pass</Text>
-              <TouchableOpacity onPress={() => setIsQrModalVisible(false)} style={styles.modalCloseBtn}>
-                <Text style={styles.modalCloseText}>✕</Text>
+              <Text style={[styles.qrModalTitle, isDarkMode && { color: '#F8FAFC' }]}>Civentral Resident Pass</Text>
+              <TouchableOpacity onPress={() => setIsQrModalVisible(false)} style={[styles.modalCloseBtn, isDarkMode && { backgroundColor: '#0B132B' }]}>
+                <Text style={[styles.modalCloseText, isDarkMode && { color: '#F8FAFC' }]}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.qrCodeBox}>
+            <View style={[styles.qrCodeBox, isDarkMode && { backgroundColor: '#FFFFFF', padding: 12, borderRadius: 16 }]}>
               <IconSymbol name="qrcode" size={180} color="#0F172A" />
             </View>
 
-            <Text style={styles.qrCitizenName}>{userProfile.fullName || 'Citizen Resident'}</Text>
-            <Text style={styles.qrCitizenId}>{userProfile.citizenId || 'CITIZEN-PASS'}</Text>
+            <Text style={[styles.qrCitizenName, isDarkMode && { color: '#F8FAFC' }]}>{userProfile.fullName || 'Citizen Resident'}</Text>
+            <Text style={[styles.qrCitizenId, isDarkMode && { color: '#38BDF8' }]}>{userProfile.citizenId || 'CITIZEN-PASS'}</Text>
             <Badge
               label={isGuestMode ? 'GUEST PASS • CALOOCAN CITY' : 'ACTIVE RESIDENT • CALOOCAN CITY'}
               variant={isGuestMode ? 'neutral' : 'success'}
             />
 
-            <Text style={styles.qrInstructionText}>
+            <Text style={[styles.qrInstructionText, isDarkMode && { color: '#CBD5E1' }]}>
               Scan this QR code at City Hall entry checkpoints, Barangay Health Centers, or Civic Service counters.
             </Text>
 
@@ -396,25 +399,25 @@ export function HomeScreen() {
         onRequestClose={() => setSelectedAnnouncement(null)}>
         <View style={styles.modalOverlay}>
           {selectedAnnouncement ? (
-            <View style={styles.announcementModalContainer}>
+            <View style={[styles.announcementModalContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
               <View style={styles.qrModalHeader}>
                 <Badge
                   label={selectedAnnouncement.category}
                   variant={selectedAnnouncement.badgeVariant}
                 />
-                <TouchableOpacity onPress={() => setSelectedAnnouncement(null)} style={styles.modalCloseBtn}>
-                  <Text style={styles.modalCloseText}>✕</Text>
+                <TouchableOpacity onPress={() => setSelectedAnnouncement(null)} style={[styles.modalCloseBtn, isDarkMode && { backgroundColor: '#0B132B' }]}>
+                  <Text style={[styles.modalCloseText, isDarkMode && { color: '#F8FAFC' }]}>✕</Text>
                 </TouchableOpacity>
               </View>
 
               <ScrollView style={{ maxHeight: 380, marginVertical: 12 }}>
-                <Text style={styles.ancModalTitle}>{selectedAnnouncement.title}</Text>
-                <Text style={styles.ancModalDate}>{selectedAnnouncement.date}</Text>
-                <Text style={styles.ancModalDept}>Issued by: {selectedAnnouncement.department}</Text>
+                <Text style={[styles.ancModalTitle, isDarkMode && { color: '#F8FAFC' }]}>{selectedAnnouncement.title}</Text>
+                <Text style={[styles.ancModalDate, isDarkMode && { color: '#94A3B8' }]}>{selectedAnnouncement.date}</Text>
+                <Text style={[styles.ancModalDept, isDarkMode && { color: '#38BDF8' }]}>Issued by: {selectedAnnouncement.department}</Text>
                 
-                <View style={styles.ancModalDivider} />
+                <View style={[styles.ancModalDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
                 
-                <Text style={styles.ancModalBody}>{selectedAnnouncement.fullBody}</Text>
+                <Text style={[styles.ancModalBody, isDarkMode && { color: '#CBD5E1' }]}>{selectedAnnouncement.fullBody}</Text>
               </ScrollView>
 
               <TouchableOpacity

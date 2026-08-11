@@ -20,9 +20,9 @@ import { AuthService } from '@/src/services/auth-service';
 
 export function LoginScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ identifier?: string }>();
+  const params = useLocalSearchParams<{ identifier?: string; email?: string; phone?: string; mode?: string }>();
 
-  const [email, setEmail] = useState(params.identifier || '');
+  const [email, setEmail] = useState(params.identifier || params.email || params.phone || '');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -58,13 +58,19 @@ export function LoginScreen() {
         } as any);
       }, 1000);
     } else if (response.status === 'otp_required') {
-      Alert.alert('Verification Required', response.message || 'Please verify your email to complete login.', [
+      const isPhoneLogin = params.mode === 'phone' || (!email.trim().includes('@') && email.trim());
+      const route = isPhoneLogin ? '/(auth)/verify-phone' : '/(auth)/verify';
+      Alert.alert('Verification Required', response.message || 'Please verify your account to complete login.', [
         {
-          text: 'Verify Email',
+          text: isPhoneLogin ? 'Verify Mobile Number' : 'Verify Email',
           onPress: () =>
             router.push({
-              pathname: '/(auth)/verify' as any,
-              params: { email: response.email || email },
+              pathname: route as any,
+              params: {
+                phone: isPhoneLogin ? ((response as any).mobile_number || email) : '',
+                email: !isPhoneLogin ? (response.email || email) : '',
+                identifier: email,
+              },
             }),
         },
       ]);

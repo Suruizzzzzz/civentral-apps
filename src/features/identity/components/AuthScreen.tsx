@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -13,59 +14,70 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-
-export type AuthMode = 'email' | 'phone';
+import { AuthService } from '@/src/services/auth-service';
 
 export default function AuthScreen() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<AuthMode>('email');
-  const [inputValue, setInputValue] = useState('');
+  const [phoneValue, setPhoneValue] = useState('');
+  const [emailValue, setEmailValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const isEmail = authMode === 'email';
-
-  // Toggle between Email and Phone mode
-  const handleToggleMode = () => {
-    setAuthMode((prev) => (prev === 'email' ? 'phone' : 'email'));
-    setInputValue('');
-    setErrorMessage(null);
-  };
-
   // Input Validation & Continue Action
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setErrorMessage(null);
-    const trimmed = inputValue.trim();
+    const phoneTrimmed = phoneValue.trim();
+    const emailTrimmed = emailValue.trim();
 
-    if (!trimmed) {
-      setErrorMessage(`Please enter your ${isEmail ? 'email address' : 'phone number'}.`);
+    if (!phoneTrimmed && !emailTrimmed) {
+      setErrorMessage('Please enter your phone number or email address to continue.');
       return;
     }
 
-    if (isEmail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(trimmed)) {
-        setErrorMessage('Please enter a valid email address.');
-        return;
-      }
-    } else {
+    if (phoneTrimmed) {
       const phoneRegex = /^(\+?63|0)9\d{9}$/;
-      if (!phoneRegex.test(trimmed.replace(/\s+/g, ''))) {
+      if (!phoneRegex.test(phoneTrimmed.replace(/\s+/g, ''))) {
         setErrorMessage('Please enter a valid PH mobile number.');
         return;
       }
     }
 
-    // Proceed to Lookup / Verification logic
-    Alert.alert(
-      'Account Lookup',
-      `Searching citizen records for ${trimmed}...`,
-      [
-        {
-          text: 'Proceed to Dashboard',
-          onPress: () => router.replace('/(tabs)'),
+    if (emailTrimmed) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailTrimmed)) {
+        setErrorMessage('Please enter a valid email address.');
+        return;
+      }
+    }
+
+    const mode = emailTrimmed && !phoneTrimmed ? 'email' : (phoneTrimmed ? 'phone' : 'email');
+    const primaryIdentifier = mode === 'email' ? emailTrimmed : (phoneTrimmed || emailTrimmed);
+
+    setIsLoading(true);
+    const checkRes = await AuthService.checkAccount(primaryIdentifier);
+    setIsLoading(false);
+
+    if (checkRes.exists) {
+      router.push({
+        pathname: '/(auth)/login' as any,
+        params: {
+          mode: mode,
+          identifier: primaryIdentifier,
+          phone: phoneTrimmed,
+          email: emailTrimmed,
         },
-      ]
-    );
+      });
+    } else {
+      router.push({
+        pathname: '/(auth)/register' as any,
+        params: {
+          mode: mode,
+          identifier: primaryIdentifier,
+          phone: phoneTrimmed,
+          email: emailTrimmed,
+        },
+      });
+    }
   };
 
   // Guest Mode Action
@@ -112,31 +124,46 @@ export default function AuthScreen() {
           <View style={styles.headerContainer}>
             <Text style={styles.headerTitle}>Welcome to Civentral</Text>
             <Text style={styles.headerSubtitle}>
-              Enter your email or phone number to log-in to an existing account or instantly set up your new account.
+              Enter your phone number or email address below. System will automatically direct you to Sign In or Create an Account.
             </Text>
           </View>
 
           {/* Form Area */}
           <View style={styles.formContainer}>
-            {/* Input Label */}
-            <Text style={styles.inputLabel}>
-              {isEmail ? 'Email Address' : 'Phone Number'}
-            </Text>
-
-            {/* Input Field */}
+            {/* Field 1: Phone Number (TOP) */}
+            <Text style={styles.inputLabel}>Phone Number</Text>
             <TextInput
               style={[
                 styles.textInput,
-                errorMessage ? styles.inputErrorBorder : null,
+                errorMessage && !phoneValue.trim() ? styles.inputErrorBorder : null,
               ]}
-              placeholder={isEmail ? 'Enter your email address' : 'Enter your phone number'}
+              placeholder="Enter mobile number (e.g. 09171234567)"
               placeholderTextColor="#94A3B8"
-              value={inputValue}
+              value={phoneValue}
               onChangeText={(text) => {
-                setInputValue(text);
+                setPhoneValue(text);
                 if (errorMessage) setErrorMessage(null);
               }}
-              keyboardType={isEmail ? 'email-address' : 'phone-pad'}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            {/* Field 2: Email Address (BOTTOM OF PHONE NUMBER) */}
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Email Address</Text>
+            <TextInput
+              style={[
+                styles.textInput,
+                errorMessage && !emailValue.trim() ? styles.inputErrorBorder : null,
+              ]}
+              placeholder="Enter email address (e.g. citizen@gmail.com)"
+              placeholderTextColor="#94A3B8"
+              value={emailValue}
+              onChangeText={(text) => {
+                setEmailValue(text);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -146,22 +173,17 @@ export default function AuthScreen() {
               <Text style={styles.errorText}>{errorMessage}</Text>
             ) : null}
 
-            {/* Toggle Link */}
-            <TouchableOpacity
-              style={styles.toggleButton}
-              onPress={handleToggleMode}
-              activeOpacity={0.7}>
-              <Text style={styles.toggleText}>
-                {isEmail ? 'Use Phone Number Instead' : 'Use Email Address Instead'}
-              </Text>
-            </TouchableOpacity>
-
             {/* Primary Action Button (Continue) */}
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={handleContinue}
+              disabled={isLoading}
               activeOpacity={0.85}>
-              <Text style={styles.primaryButtonText}>Continue</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Continue</Text>
+              )}
             </TouchableOpacity>
 
             {/* Divider (OR) */}
@@ -236,7 +258,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 24,
   },
   headerTitle: {
     fontSize: 23,
@@ -249,16 +271,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#475569',
     textAlign: 'center',
-    lineHeight: 18,
-    paddingHorizontal: 12,
+    lineHeight: 19,
   },
   formContainer: {
     width: '100%',
   },
   inputLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#1E293B',
+    fontWeight: '700',
+    color: '#334155',
     marginBottom: 6,
   },
   textInput: {
@@ -277,36 +298,26 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#EF4444',
     fontSize: 12,
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  toggleButton: {
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 24,
-  },
-  toggleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#165B7E',
+    marginTop: 6,
+    fontWeight: '500',
   },
   primaryButton: {
     backgroundColor: '#165B7E',
-    borderRadius: 24,
-    height: 48,
+    borderRadius: 12,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginTop: 20,
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginVertical: 18,
   },
   dividerLine: {
     flex: 1,
@@ -314,37 +325,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
   },
   dividerText: {
-    marginHorizontal: 16,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#94A3B8',
+    marginHorizontal: 12,
   },
   secondaryButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#1E293B',
-    borderRadius: 24,
-    height: 48,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
   },
   secondaryButtonText: {
-    color: '#0F172A',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#334155',
+    fontSize: 15,
+    fontWeight: '600',
   },
   footerContainer: {
     alignItems: 'center',
+    marginTop: 24,
   },
   footerText: {
-    fontSize: 12,
-    color: '#475569',
-    textAlign: 'center',
-    lineHeight: 18,
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 16,
   },
   footerLink: {
     color: '#165B7E',
-    fontWeight: '600',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });
