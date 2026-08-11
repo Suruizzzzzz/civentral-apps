@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Card } from '@/src/components/ui/Card';
 import { Badge } from '@/src/components/ui/Badge';
 
+export { EducationScreen } from './EducationScreen';
+
 export function EducationDomainCard() {
   return (
     <Card variant="outlined">

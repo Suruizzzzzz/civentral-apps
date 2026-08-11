@@ -46,6 +46,7 @@ export class AuthService {
    * Helper to attempt multiple endpoints (REST Gateway primary, legacy fallback)
    */
   private static async postRequest(routes: string[], body: any): Promise<Response | null> {
+    let lastResponse: Response | null = null;
     for (const route of routes) {
       try {
         const url = `${API_BASE_URL}${route.startsWith('/') ? route : '/' + route}`;
@@ -54,10 +55,18 @@ export class AuthService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
-        if (res.ok) return res;
+
+        const contentType = res.headers.get('content-type') || '';
+        // If route returned 404 Not Found or HTML page (e.g. Nginx 404), try next route
+        if (res.status === 404 || contentType.includes('text/html')) {
+          lastResponse = res;
+          continue;
+        }
+
+        return res;
       } catch {}
     }
-    return null;
+    return lastResponse;
   }
 
   /**
@@ -76,7 +85,7 @@ export class AuthService {
         mobile_number: identifier,
       };
 
-      const response = await AuthService.postRequest(['/auth/check-account', '/check-account.php'], payload);
+      const response = await AuthService.postRequest(['/check-account.php', '/auth/check-account'], payload);
       if (!response) return { exists: false };
 
       const text = await response.text();
@@ -110,7 +119,7 @@ export class AuthService {
         password: password,
       };
 
-      const response = await AuthService.postRequest(['/auth/login', '/login.php'], payload);
+      const response = await AuthService.postRequest(['/login.php', '/auth/login'], payload);
       if (!response) {
         return { status: 'error', message: 'Unable to reach backend authentication gateway.' };
       }
@@ -122,7 +131,7 @@ export class AuthService {
       } catch {
         return {
           status: 'error',
-          message: text || 'Server returned an invalid response format.',
+          message: 'Server returned an invalid response format.',
         };
       }
 
@@ -194,7 +203,7 @@ export class AuthService {
         password: userData.password,
       };
 
-      const response = await AuthService.postRequest(['/auth/register', '/register.php'], payload);
+      const response = await AuthService.postRequest(['/register.php', '/auth/register'], payload);
       if (!response) {
         return { status: 'error', message: 'Unable to reach backend registration gateway.' };
       }
@@ -206,7 +215,7 @@ export class AuthService {
       } catch {
         return {
           status: 'error',
-          message: text || 'Server returned an invalid response format.',
+          message: 'Server returned an invalid response format.',
         };
       }
 
@@ -253,7 +262,7 @@ export class AuthService {
         code: otpCode,
       };
 
-      const response = await AuthService.postRequest(['/auth/verify-otp', '/verify.php', '/verify-otp.php'], payload);
+      const response = await AuthService.postRequest(['/verify-otp.php', '/verify.php', '/auth/verify-otp'], payload);
       if (!response) {
         return { status: 'error', message: 'Unable to reach backend verification gateway.' };
       }
@@ -265,7 +274,7 @@ export class AuthService {
       } catch {
         return {
           status: 'error',
-          message: text || 'Server returned an invalid response format.',
+          message: 'Server returned an invalid response format.',
         };
       }
 
@@ -311,7 +320,7 @@ export class AuthService {
         new_password: params.newPassword,
       };
 
-      const response = await AuthService.postRequest(['/profile/password', '/change-password.php'], payload);
+      const response = await AuthService.postRequest(['/change-password.php', '/profile/password'], payload);
       if (!response) {
         return { status: 'error', message: 'Unable to reach backend password gateway.' };
       }
@@ -323,7 +332,7 @@ export class AuthService {
       } catch {
         return {
           status: 'error',
-          message: text || 'Server returned an invalid response format.',
+          message: 'Server returned an invalid response format.',
         };
       }
 
@@ -352,7 +361,7 @@ export class AuthService {
    */
   static async forgotPassword(email: string): Promise<AuthApiResponse> {
     try {
-      const response = await AuthService.postRequest(['/auth/forgot-password', '/forgot-password.php'], { email });
+      const response = await AuthService.postRequest(['/forgot-password.php', '/auth/forgot-password'], { email });
       if (!response) {
         return { status: 'error', message: 'Unable to reach backend password reset gateway.' };
       }
@@ -364,7 +373,7 @@ export class AuthService {
       } catch {
         return {
           status: 'error',
-          message: text || 'Server returned an invalid response format.',
+          message: 'Server returned an invalid response format.',
         };
       }
 
@@ -400,7 +409,7 @@ export class AuthService {
         new_password: params.newPassword,
       };
 
-      const response = await AuthService.postRequest(['/auth/reset-password', '/reset-password.php'], payload);
+      const response = await AuthService.postRequest(['/reset-password.php', '/auth/reset-password'], payload);
       if (!response) {
         return { status: 'error', message: 'Unable to reach backend reset password gateway.' };
       }
@@ -412,7 +421,7 @@ export class AuthService {
       } catch {
         return {
           status: 'error',
-          message: text || 'Server returned an invalid response format.',
+          message: 'Server returned an invalid response format.',
         };
       }
 

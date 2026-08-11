@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/src/components/ui/Card';
+import { Badge } from '@/src/components/ui/Badge';
 export { default as AuthScreen } from './components/AuthScreen';
 export { ProfileScreen } from './ProfileScreen';
 
