@@ -29,12 +29,28 @@ function parseJsonResponse(text: string): { json: any; errorText?: string } {
 }
 
 export class AuthService {
+  private static isGuest: boolean = false;
   private static currentUserEmail: string | null = null;
   private static currentUserPhone: string | null = null;
   private static currentUserId: number | null = null;
   private static currentUserData: any = null;
 
+  static setGuestMode(guest: boolean) {
+    this.isGuest = guest;
+    if (guest) {
+      this.currentUserEmail = null;
+      this.currentUserPhone = null;
+      this.currentUserId = null;
+      this.currentUserData = null;
+    }
+  }
+
+  static isGuestMode(): boolean {
+    return this.isGuest || (!this.currentUserEmail && !this.currentUserPhone && !this.currentUserId);
+  }
+
   static setCurrentUser(data: { email?: string; phone?: string; citizen_user_id?: number; user?: any }) {
+    this.isGuest = false;
     if (data.email) this.currentUserEmail = data.email;
     if (data.phone) this.currentUserPhone = data.phone;
     if (data.citizen_user_id) this.currentUserId = data.citizen_user_id;
@@ -47,16 +63,20 @@ export class AuthService {
   }
 
   static getCurrentUser() {
+    const isGuestSession = this.isGuest || (!this.currentUserEmail && !this.currentUserPhone && !this.currentUserId);
     return {
-      email: this.currentUserEmail,
-      phone: this.currentUserPhone,
-      citizen_user_id: this.currentUserId,
-      user: this.currentUserData,
+      isGuest: isGuestSession,
+      email: isGuestSession ? null : this.currentUserEmail,
+      phone: isGuestSession ? null : this.currentUserPhone,
+      citizen_user_id: isGuestSession ? null : this.currentUserId,
+      user: isGuestSession ? null : this.currentUserData,
     };
   }
 
   static clearCurrentUser() {
+    this.isGuest = false;
     this.currentUserEmail = null;
+    this.currentUserPhone = null;
     this.currentUserId = null;
     this.currentUserData = null;
   }

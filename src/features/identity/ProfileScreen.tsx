@@ -1,41 +1,62 @@
-import React, { useEffect, useState } from 'react';
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { Badge } from "@/src/components/ui/Badge";
+import { useTheme } from "@/src/context/ThemeContext";
+import { AuthService } from "@/src/services/auth-service";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Badge } from '@/src/components/ui/Badge';
-import { useTheme } from '@/src/context/ThemeContext';
-import { AuthService } from '@/src/services/auth-service';
-import { CitizenProfileData, ProfileService } from '@/src/services/profile-service';
+    CitizenProfileData,
+    ProfileService,
+} from "@/src/services/profile-service";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
 
 export function ProfileScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ isGuest?: string; email?: string; phone?: string; citizenUserId?: string }>();
-  
+  const params = useLocalSearchParams<{
+    isGuest?: string;
+    email?: string;
+    phone?: string;
+    citizenUserId?: string;
+  }>();
+
   // Check active session or params
   const session = AuthService.getCurrentUser();
-  const activeEmail = params.email || session.email || '';
-  const activePhone = params.phone || session.phone || '';
-  const activeUserId = params.citizenUserId ? parseInt(params.citizenUserId, 10) : session.citizen_user_id || undefined;
-  
-  // Is Guest if explicitly passed isGuest=true OR if no active contact/id is found
-  const isGuestMode = params.isGuest === 'true' || (!activeEmail && !activePhone && !activeUserId && !session.email && !session.phone);
+  const activeEmail = session.isGuest
+    ? ""
+    : params.email || session.email || "";
+  const activePhone = session.isGuest
+    ? ""
+    : params.phone || session.phone || "";
+  const activeUserId = session.isGuest
+    ? undefined
+    : params.citizenUserId
+      ? parseInt(params.citizenUserId, 10)
+      : session.citizen_user_id || undefined;
+
+  // Is Guest if session isGuest OR explicitly passed isGuest=true OR if no active contact/id is found
+  const isGuestMode =
+    session.isGuest ||
+    params.isGuest === "true" ||
+    (!activeEmail && !activePhone && !activeUserId);
 
   // Active sub-tab state: 'overview' | 'settings'
-  const [activeTab, setActiveTab] = useState<'overview' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<"overview" | "settings">(
+    "overview",
+  );
 
   // Loading & Refresh State
   const [isLoadingApi, setIsLoadingApi] = useState(!isGuestMode);
@@ -44,37 +65,45 @@ export function ProfileScreen() {
   // User Profile Data state initialized with real dynamic state (No hardcoded mock data)
   const [userProfile, setUserProfile] = useState<CitizenProfileData>({
     citizen_user_id: activeUserId || 0,
-    first_name: isGuestMode ? 'Guest' : '',
-    middle_name: '',
-    last_name: isGuestMode ? 'Resident' : '',
-    suffix: '',
-    fullName: isGuestMode ? 'Guest Resident' : '',
-    initials: isGuestMode ? 'GR' : '',
-    email: activeEmail || (isGuestMode ? 'guest@caloocan.gov.ph' : ''),
-    phone: '',
-    address: '',
-    city: 'Caloocan City',
-    barangay: '',
-    birthDate: '',
-    civilStatus: '',
-    citizenId: activeUserId ? `CIV-2026-${String(activeUserId).padStart(5, '0')}` : isGuestMode ? 'CIV-GUEST-2026' : '',
-    status: isGuestMode ? 'Guest' : 'Active',
+    first_name: isGuestMode ? "Guest" : "",
+    middle_name: "",
+    last_name: isGuestMode ? "Resident" : "",
+    suffix: "",
+    fullName: isGuestMode ? "Guest Resident" : "",
+    initials: isGuestMode ? "GR" : "",
+    email: activeEmail || (isGuestMode ? "guest@caloocan.gov.ph" : ""),
+    phone: "",
+    address: "",
+    city: "Caloocan City",
+    barangay: "",
+    birthDate: "",
+    civilStatus: "",
+    citizenId: activeUserId
+      ? `CIV-2026-${String(activeUserId).padStart(5, "0")}`
+      : isGuestMode
+        ? "CIV-GUEST-2026"
+        : "",
+    status: isGuestMode ? "Guest" : "Active",
     isVerified: true,
     registryCompleted: true,
     biometricEnabled: false,
-    memberSince: '',
-    lastLogin: isGuestMode ? 'Current Session (Guest Mode)' : '',
+    memberSince: "",
+    lastLogin: isGuestMode ? "Current Session (Guest Mode)" : "",
   });
 
   // Settings State & Theme
   const { isDarkMode, setIsDarkMode } = useTheme();
-  const [biometricsEnabled, setBiometricsEnabled] = useState(userProfile.biometricEnabled);
-  const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(true);
+  const [biometricsEnabled, setBiometricsEnabled] = useState(
+    userProfile.biometricEnabled,
+  );
+  const [pushNotificationsEnabled, setPushNotificationsEnabled] =
+    useState(true);
   const [sosAlertsEnabled, setSosAlertsEnabled] = useState(true);
 
   // Modals
   const [isQrModalVisible, setIsQrModalVisible] = useState(false);
-  const [isEditProfileModalVisible, setIsEditProfileModalVisible] = useState(false);
+  const [isEditProfileModalVisible, setIsEditProfileModalVisible] =
+    useState(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
 
   // Temporary Edit Form State
@@ -84,15 +113,20 @@ export function ProfileScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   // Change Password Form State
-  const [isChangePasswordModalVisible, setIsChangePasswordModalVisible] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [isCurrentPasswordVisible, setIsCurrentPasswordVisible] = useState(false);
+  const [isChangePasswordModalVisible, setIsChangePasswordModalVisible] =
+    useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [isCurrentPasswordVisible, setIsCurrentPasswordVisible] =
+    useState(false);
   const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
-  const [isConfirmNewPasswordVisible, setIsConfirmNewPasswordVisible] = useState(false);
+  const [isConfirmNewPasswordVisible, setIsConfirmNewPasswordVisible] =
+    useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [changePasswordErrorMessage, setChangePasswordErrorMessage] = useState<string | null>(null);
+  const [changePasswordErrorMessage, setChangePasswordErrorMessage] = useState<
+    string | null
+  >(null);
   const [isSuccessToastVisible, setIsSuccessToastVisible] = useState(false);
 
   // New Password Strength Evaluation
@@ -102,20 +136,27 @@ export function ProfileScreen() {
   const newHasNumber = /[0-9]/.test(newPassword);
   const newHasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
 
-  const getNewStrengthLevel = (): 'weak' | 'medium' | 'strong' | '' => {
-    if (newPassword.length === 0) return '';
+  const getNewStrengthLevel = (): "weak" | "medium" | "strong" | "" => {
+    if (newPassword.length === 0) return "";
     let score = 0;
     if (newHasMinLength) score += 1;
     if (newHasUpper && newHasLower) score += 1;
     if (newHasNumber) score += 1;
     if (newHasSymbol) score += 1;
 
-    if (score >= 4 && newHasMinLength && newHasUpper && newHasLower && newHasNumber && newHasSymbol) {
-      return 'strong';
+    if (
+      score >= 4 &&
+      newHasMinLength &&
+      newHasUpper &&
+      newHasLower &&
+      newHasNumber &&
+      newHasSymbol
+    ) {
+      return "strong";
     } else if (score >= 3 && newHasMinLength) {
-      return 'medium';
+      return "medium";
     } else {
-      return 'weak';
+      return "weak";
     }
   };
 
@@ -125,22 +166,22 @@ export function ProfileScreen() {
     setChangePasswordErrorMessage(null);
 
     if (!currentPassword) {
-      setChangePasswordErrorMessage('Please enter your current password.');
+      setChangePasswordErrorMessage("Please enter your current password.");
       return;
     }
 
     if (!newPassword) {
-      setChangePasswordErrorMessage('Please enter a new password.');
+      setChangePasswordErrorMessage("Please enter a new password.");
       return;
     }
 
-    if (newStrengthLevel !== 'strong') {
-      setChangePasswordErrorMessage('New password must be STRONG to be saved.');
+    if (newStrengthLevel !== "strong") {
+      setChangePasswordErrorMessage("New password must be STRONG to be saved.");
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      setChangePasswordErrorMessage('New passwords do not match.');
+      setChangePasswordErrorMessage("New passwords do not match.");
       return;
     }
 
@@ -153,11 +194,11 @@ export function ProfileScreen() {
     });
     setIsChangingPassword(false);
 
-    if (response.status === 'success') {
+    if (response.status === "success") {
       // Clear fields
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmNewPassword('');
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
       setIsChangePasswordModalVisible(false);
 
       setIsSuccessToastVisible(true);
@@ -165,7 +206,9 @@ export function ProfileScreen() {
         setIsSuccessToastVisible(false);
       }, 2500);
     } else {
-      setChangePasswordErrorMessage(response.message || 'Failed to update password.');
+      setChangePasswordErrorMessage(
+        response.message || "Failed to update password.",
+      );
     }
   };
 
@@ -173,17 +216,30 @@ export function ProfileScreen() {
   const fetchProfileFromApi = async () => {
     if (isGuestMode) return;
 
-    const identifierToUse = activeEmail || activePhone || userProfile.email || userProfile.phone;
-    const response = await ProfileService.getProfile(identifierToUse, activeUserId || userProfile.citizen_user_id, activePhone);
-    
-    if (response.status === 'success' && response.data) {
+    const identifierToUse =
+      activeEmail || activePhone || userProfile.email || userProfile.phone;
+    const response = await ProfileService.getProfile(
+      identifierToUse,
+      activeUserId || userProfile.citizen_user_id,
+      activePhone,
+    );
+
+    if (response.status === "success" && response.data) {
       const data = response.data;
       setUserProfile((prev) => ({
         ...prev,
         ...data,
-        fullName: data.fullName || `${data.first_name || ''} ${data.last_name || ''}`.trim() || prev.fullName || 'Civentral Citizen',
-        initials: data.initials || (data.first_name ? data.first_name.charAt(0).toUpperCase() : prev.initials || 'CC'),
-        status: data.status || 'Active',
+        fullName:
+          data.fullName ||
+          `${data.first_name || ""} ${data.last_name || ""}`.trim() ||
+          prev.fullName ||
+          "Civentral Citizen",
+        initials:
+          data.initials ||
+          (data.first_name
+            ? data.first_name.charAt(0).toUpperCase()
+            : prev.initials || "CC"),
+        status: data.status || "Active",
         isVerified: true,
         registryCompleted: true,
       }));
@@ -241,15 +297,15 @@ export function ProfileScreen() {
     setIsEditProfileModalVisible(false);
 
     Alert.alert(
-      'Profile Updated',
-      'Your contact details have been successfully updated in your profile.'
+      "Profile Updated",
+      "Your contact details have been successfully updated in your profile.",
     );
   };
 
   const handleSignOut = () => {
     if (isGuestMode) {
       AuthService.clearCurrentUser();
-      router.replace('/(auth)');
+      router.replace("/(auth)");
       return;
     }
     setIsLogoutModalVisible(true);
@@ -258,45 +314,105 @@ export function ProfileScreen() {
   const handleConfirmLogout = () => {
     setIsLogoutModalVisible(false);
     AuthService.clearCurrentUser();
-    router.replace('/(auth)');
+    router.replace("/(auth)");
   };
 
   return (
-    <View style={[styles.container, isDarkMode && { backgroundColor: '#0B132B' }]}>
+    <View
+      style={[styles.container, isDarkMode && { backgroundColor: "#0B132B" }]}
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           !isGuestMode ? (
-            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#176B87" />
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor="#176B87"
+            />
           ) : undefined
-        }>
-        
+        }
+      >
         {/* Top Citizen ID Header Card */}
-        <View style={[styles.headerCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+        <View
+          style={[
+            styles.headerCard,
+            isDarkMode && {
+              backgroundColor: "#1C2541",
+              borderColor: "#3A506B",
+            },
+          ]}
+        >
           <View style={styles.avatarRow}>
             <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{userProfile.initials || (isGuestMode ? 'GR' : '...')}</Text>
-              <View style={[styles.onlineBadgeDot, isGuestMode && styles.guestBadgeDot]} />
+              <Text style={styles.avatarText}>
+                {userProfile.initials || (isGuestMode ? "GR" : "...")}
+              </Text>
+              <View
+                style={[
+                  styles.onlineBadgeDot,
+                  isGuestMode && styles.guestBadgeDot,
+                ]}
+              />
             </View>
             <View style={styles.headerInfo}>
               <View style={styles.nameRow}>
-                <Text style={[styles.userNameText, isDarkMode && { color: '#F8FAFC' }]}>{userProfile.fullName || 'Loading Profile...'}</Text>
+                <Text
+                  style={[
+                    styles.userNameText,
+                    isDarkMode && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {userProfile.fullName || "Loading Profile..."}
+                </Text>
               </View>
               {userProfile.citizenId ? (
-                <Text style={[styles.citizenIdText, isDarkMode && { color: '#94A3B8' }]}>ID: {userProfile.citizenId}</Text>
+                <Text
+                  style={[
+                    styles.citizenIdText,
+                    isDarkMode && { color: "#94A3B8" },
+                  ]}
+                >
+                  ID: {userProfile.citizenId}
+                </Text>
               ) : null}
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                <IconSymbol name="location.fill" size={12} color="#176B87" style={{ marginRight: 4 }} />
-                <Text style={[styles.barangayText, isDarkMode && { color: '#CBD5E1' }]}>
-                  {userProfile.barangay ? `${userProfile.barangay}, Caloocan City` : 'Caloocan City Resident'}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: 2,
+                }}
+              >
+                <IconSymbol
+                  name="location.fill"
+                  size={12}
+                  color="#176B87"
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  style={[
+                    styles.barangayText,
+                    isDarkMode && { color: "#CBD5E1" },
+                  ]}
+                >
+                  {userProfile.barangay
+                    ? `${userProfile.barangay}, Caloocan City`
+                    : "Caloocan City Resident"}
                 </Text>
               </View>
             </View>
             <TouchableOpacity
-              style={[styles.qrHeaderBtn, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B' }]}
+              style={[
+                styles.qrHeaderBtn,
+                isDarkMode && {
+                  backgroundColor: "#0F172A",
+                  borderColor: "#3A506B",
+                },
+              ]}
               onPress={() => setIsQrModalVisible(true)}
-              activeOpacity={0.8}>
+              activeOpacity={0.8}
+            >
               <IconSymbol name="qrcode" size={24} color="#176B87" />
               <Text style={styles.qrBtnLabel}>QR ID</Text>
             </TouchableOpacity>
@@ -305,41 +421,83 @@ export function ProfileScreen() {
           {/* Status Badges */}
           <View style={styles.badgesRow}>
             <Badge
-              label={isGuestMode ? 'GUEST USER' : `${(userProfile.status || 'Active').toUpperCase()} RESIDENT`}
-              variant={isGuestMode ? 'neutral' : 'success'}
+              label={
+                isGuestMode
+                  ? "GUEST USER"
+                  : `${(userProfile.status || "Active").toUpperCase()} RESIDENT`
+              }
+              variant={isGuestMode ? "neutral" : "success"}
             />
             <View style={styles.badgeSpacer} />
             <Badge
-              label={isGuestMode ? 'TEMPORARY SESSION' : userProfile.memberSince ? `MEMBER SINCE ${userProfile.memberSince.toUpperCase()}` : 'REGISTERED CITIZEN'}
+              label={
+                isGuestMode
+                  ? "TEMPORARY SESSION"
+                  : userProfile.memberSince
+                    ? `MEMBER SINCE ${userProfile.memberSince.toUpperCase()}`
+                    : "REGISTERED CITIZEN"
+              }
               variant="neutral"
             />
           </View>
         </View>
 
         {/* Tab Navigation Controls (Overview and Settings only) */}
-        <View style={[styles.tabBarContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+        <View
+          style={[
+            styles.tabBarContainer,
+            isDarkMode && {
+              backgroundColor: "#1C2541",
+              borderColor: "#3A506B",
+            },
+          ]}
+        >
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'overview' && (isDarkMode ? { backgroundColor: '#176B87' } : styles.tabButtonActive)]}
-            onPress={() => setActiveTab('overview')}
-            activeOpacity={0.7}>
-            <Text style={[
-              styles.tabButtonText,
-              activeTab === 'overview' && styles.tabButtonTextActive,
-              isDarkMode && { color: activeTab === 'overview' ? '#FFFFFF' : '#E2E8F0', fontWeight: '700' }
-            ]}>
+            style={[
+              styles.tabButton,
+              activeTab === "overview" &&
+                (isDarkMode
+                  ? { backgroundColor: "#176B87" }
+                  : styles.tabButtonActive),
+            ]}
+            onPress={() => setActiveTab("overview")}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.tabButtonText,
+                activeTab === "overview" && styles.tabButtonTextActive,
+                isDarkMode && {
+                  color: activeTab === "overview" ? "#FFFFFF" : "#E2E8F0",
+                  fontWeight: "700",
+                },
+              ]}
+            >
               Overview
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'settings' && (isDarkMode ? { backgroundColor: '#176B87' } : styles.tabButtonActive)]}
-            onPress={() => setActiveTab('settings')}
-            activeOpacity={0.7}>
-            <Text style={[
-              styles.tabButtonText,
-              activeTab === 'settings' && styles.tabButtonTextActive,
-              isDarkMode && { color: activeTab === 'settings' ? '#FFFFFF' : '#E2E8F0', fontWeight: '700' }
-            ]}>
+            style={[
+              styles.tabButton,
+              activeTab === "settings" &&
+                (isDarkMode
+                  ? { backgroundColor: "#176B87" }
+                  : styles.tabButtonActive),
+            ]}
+            onPress={() => setActiveTab("settings")}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.tabButtonText,
+                activeTab === "settings" && styles.tabButtonTextActive,
+                isDarkMode && {
+                  color: activeTab === "settings" ? "#FFFFFF" : "#E2E8F0",
+                  fontWeight: "700",
+                },
+              ]}
+            >
               Settings
             </Text>
           </TouchableOpacity>
@@ -348,19 +506,36 @@ export function ProfileScreen() {
         {isLoadingApi && !isRefreshing ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="small" color="#176B87" />
-            <Text style={styles.loadingText}>Loading profile from get-profile.php...</Text>
+            <Text style={styles.loadingText}>
+              Loading profile from get-profile.php...
+            </Text>
           </View>
         ) : null}
 
         {/* TAB CONTENT: 1. OVERVIEW */}
-        {activeTab === 'overview' && (
+        {activeTab === "overview" && (
           <View style={styles.sectionStack}>
             {/* Personal Details Card */}
-            <View style={[styles.card, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+            <View
+              style={[
+                styles.card,
+                isDarkMode && {
+                  backgroundColor: "#1C2541",
+                  borderColor: "#3A506B",
+                },
+              ]}
+            >
               <View style={styles.cardHeaderRow}>
                 <View style={styles.cardHeaderLeft}>
                   <IconSymbol name="person.fill" size={20} color="#176B87" />
-                  <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>Personal Information</Text>
+                  <Text
+                    style={[
+                      styles.cardTitle,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    Personal Information
+                  </Text>
                 </View>
                 {!isGuestMode && (
                   <TouchableOpacity
@@ -370,10 +545,23 @@ export function ProfileScreen() {
                       setEditAddress(userProfile.address);
                       setIsEditProfileModalVisible(true);
                     }}
-                    activeOpacity={0.7}>
-                    <View style={[styles.editIconBadge, isDarkMode && { backgroundColor: '#176B87' }]}>
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.editIconBadge,
+                        isDarkMode && { backgroundColor: "#176B87" },
+                      ]}
+                    >
                       <IconSymbol name="pencil" size={14} color="#FFFFFF" />
-                      <Text style={[styles.editText, isDarkMode && { color: '#FFFFFF' }]}>Edit</Text>
+                      <Text
+                        style={[
+                          styles.editText,
+                          isDarkMode && { color: "#FFFFFF" },
+                        ]}
+                      >
+                        Edit
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 )}
@@ -381,46 +569,141 @@ export function ProfileScreen() {
 
               <View style={styles.infoGrid}>
                 <View style={styles.infoRow}>
-                  <IconSymbol name="envelope.fill" size={16} color={isDarkMode ? "#94A3B8" : "#64748B"} />
+                  <IconSymbol
+                    name="envelope.fill"
+                    size={16}
+                    color={isDarkMode ? "#94A3B8" : "#64748B"}
+                  />
                   <View style={styles.infoContent}>
-                    <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Email Address</Text>
-                    <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{userProfile.email || 'Not set'}</Text>
-                  </View>
-                </View>
-
-                <View style={[styles.infoDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
-
-                <View style={styles.infoRow}>
-                  <IconSymbol name="phone.fill" size={16} color={isDarkMode ? "#94A3B8" : "#64748B"} />
-                  <View style={styles.infoContent}>
-                    <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Mobile Number</Text>
-                    <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{userProfile.phone || 'Not provided'}</Text>
-                  </View>
-                </View>
-
-                <View style={[styles.infoDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
-
-                <View style={styles.infoRow}>
-                  <IconSymbol name="location.fill" size={16} color={isDarkMode ? "#94A3B8" : "#64748B"} />
-                  <View style={styles.infoContent}>
-                    <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Registered Address</Text>
-                    <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                      {userProfile.address ? userProfile.address : 'Not set (Complete in Citizen Services)'}
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        isDarkMode && { color: "#94A3B8" },
+                      ]}
+                    >
+                      Email Address
+                    </Text>
+                    <Text
+                      style={[
+                        styles.infoValue,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      {userProfile.email || "Not set"}
                     </Text>
                   </View>
                 </View>
 
-                <View style={[styles.infoDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
+                <View
+                  style={[
+                    styles.infoDivider,
+                    isDarkMode && { backgroundColor: "#3A506B" },
+                  ]}
+                />
+
+                <View style={styles.infoRow}>
+                  <IconSymbol
+                    name="phone.fill"
+                    size={16}
+                    color={isDarkMode ? "#94A3B8" : "#64748B"}
+                  />
+                  <View style={styles.infoContent}>
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        isDarkMode && { color: "#94A3B8" },
+                      ]}
+                    >
+                      Mobile Number
+                    </Text>
+                    <Text
+                      style={[
+                        styles.infoValue,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      {userProfile.phone || "Not provided"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.infoDivider,
+                    isDarkMode && { backgroundColor: "#3A506B" },
+                  ]}
+                />
+
+                <View style={styles.infoRow}>
+                  <IconSymbol
+                    name="location.fill"
+                    size={16}
+                    color={isDarkMode ? "#94A3B8" : "#64748B"}
+                  />
+                  <View style={styles.infoContent}>
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        isDarkMode && { color: "#94A3B8" },
+                      ]}
+                    >
+                      Registered Address
+                    </Text>
+                    <Text
+                      style={[
+                        styles.infoValue,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      {userProfile.address
+                        ? userProfile.address
+                        : "Not set (Complete in Citizen Services)"}
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.infoDivider,
+                    isDarkMode && { backgroundColor: "#3A506B" },
+                  ]}
+                />
 
                 <View style={styles.twoColumnRow}>
                   <View style={styles.columnHalf}>
-                    <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Last Active Login</Text>
-                    <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{userProfile.lastLogin || 'N/A'}</Text>
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        isDarkMode && { color: "#94A3B8" },
+                      ]}
+                    >
+                      Last Active Login
+                    </Text>
+                    <Text
+                      style={[
+                        styles.infoValue,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      {userProfile.lastLogin || "N/A"}
+                    </Text>
                   </View>
                   <View style={styles.columnHalf}>
-                    <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Registry Status</Text>
-                    <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                      {isGuestMode ? 'Guest Session' : 'Active (Verified)'}
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        isDarkMode && { color: "#94A3B8" },
+                      ]}
+                    >
+                      Registry Status
+                    </Text>
+                    <Text
+                      style={[
+                        styles.infoValue,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      {isGuestMode ? "Guest Session" : "Active (Verified)"}
                     </Text>
                   </View>
                 </View>
@@ -431,30 +714,52 @@ export function ProfileScreen() {
             <View style={styles.citizenIdCard}>
               <View style={styles.citizenIdHeader}>
                 <View style={styles.idHeaderRow}>
-                  <Text style={styles.idRepublicText}>REPUBLIC OF THE PHILIPPINES</Text>
-                  <Text style={styles.idCityText}>CITY GOVERNMENT OF CALOOCAN</Text>
+                  <Text style={styles.idRepublicText}>
+                    REPUBLIC OF THE PHILIPPINES
+                  </Text>
+                  <Text style={styles.idCityText}>
+                    CITY GOVERNMENT OF CALOOCAN
+                  </Text>
                 </View>
-                <Text style={styles.idCardTitle}>DIGITAL CITIZEN RESIDENT CARD</Text>
+                <Text style={styles.idCardTitle}>
+                  DIGITAL CITIZEN RESIDENT CARD
+                </Text>
               </View>
 
               <View style={styles.idBodyRow}>
                 <View style={styles.idPhotoBox}>
-                  <Text style={styles.idPhotoText}>{userProfile.initials || (isGuestMode ? 'GR' : '...')}</Text>
+                  <Text style={styles.idPhotoText}>
+                    {userProfile.initials || (isGuestMode ? "GR" : "...")}
+                  </Text>
                   <View style={styles.idCheckBadge}>
-                    <IconSymbol name="checkmark.seal.fill" size={14} color="#16A34A" />
+                    <IconSymbol
+                      name="checkmark.seal.fill"
+                      size={14}
+                      color="#16A34A"
+                    />
                   </View>
                 </View>
 
                 <View style={styles.idInfoCol}>
                   <Text style={styles.idLabel}>FULL NAME</Text>
-                  <Text style={styles.idValueName}>{userProfile.fullName || 'Citizen Resident'}</Text>
+                  <Text style={styles.idValueName}>
+                    {userProfile.fullName || "Citizen Resident"}
+                  </Text>
 
-                  <Text style={[styles.idLabel, { marginTop: 4 }]}>CITIZEN ID NO.</Text>
-                  <Text style={styles.idValueHighlight}>{userProfile.citizenId || 'Pending Generation'}</Text>
+                  <Text style={[styles.idLabel, { marginTop: 4 }]}>
+                    CITIZEN ID NO.
+                  </Text>
+                  <Text style={styles.idValueHighlight}>
+                    {userProfile.citizenId || "Pending Generation"}
+                  </Text>
 
-                  <Text style={[styles.idLabel, { marginTop: 4 }]}>BARANGAY RESIDENCE</Text>
+                  <Text style={[styles.idLabel, { marginTop: 4 }]}>
+                    BARANGAY RESIDENCE
+                  </Text>
                   <Text style={styles.idValueSub}>
-                    {userProfile.barangay ? `${userProfile.barangay}, Caloocan City` : 'Caloocan City Resident'}
+                    {userProfile.barangay
+                      ? `${userProfile.barangay}, Caloocan City`
+                      : "Caloocan City Resident"}
                   </Text>
                 </View>
               </View>
@@ -462,16 +767,22 @@ export function ProfileScreen() {
               {/* Complete ID Action CTA */}
               <View style={styles.idFooterBanner}>
                 <View style={styles.idFooterTextStack}>
-                  <Text style={styles.idFooterNoticeTitle}>Need Complete Citizen ID Verification?</Text>
+                  <Text style={styles.idFooterNoticeTitle}>
+                    Need Complete Citizen ID Verification?
+                  </Text>
                   <Text style={styles.idFooterNoticeSub}>
-                    To finish full details, submit documents & get your official ID, visit Citizen Services.
+                    To finish full details, submit documents & get your official
+                    ID, visit Citizen Services.
                   </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.finishIdBtn}
-                  onPress={() => router.push('/(tabs)/services' as any)}
-                  activeOpacity={0.85}>
-                  <Text style={styles.finishIdBtnText}>Complete Citizen ID in Services</Text>
+                  onPress={() => router.push("/(tabs)/services" as any)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.finishIdBtnText}>
+                    Complete Citizen ID in Services
+                  </Text>
                   <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
@@ -480,132 +791,312 @@ export function ProfileScreen() {
         )}
 
         {/* TAB CONTENT: 2. SETTINGS & SECURITY */}
-        {activeTab === 'settings' && (
+        {activeTab === "settings" && (
           <View style={styles.sectionStack}>
             {/* App Appearance & Theme (Dark & Light Mode) */}
-            <View style={[styles.card, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-              <Text style={[styles.cardSectionTitle, isDarkMode && { color: '#F8FAFC' }]}>Appearance & Theme</Text>
+            <View
+              style={[
+                styles.card,
+                isDarkMode && {
+                  backgroundColor: "#1C2541",
+                  borderColor: "#3A506B",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.cardSectionTitle,
+                  isDarkMode && { color: "#F8FAFC" },
+                ]}
+              >
+                Appearance & Theme
+              </Text>
 
               <View style={styles.settingRow}>
                 <View style={styles.settingTextStack}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <IconSymbol
-                      name={isDarkMode ? 'moon.stars.fill' : 'sun.max.fill'}
+                      name={isDarkMode ? "moon.stars.fill" : "sun.max.fill"}
                       size={18}
-                      color={isDarkMode ? '#A855F7' : '#F59E0B'}
+                      color={isDarkMode ? "#A855F7" : "#F59E0B"}
                       style={{ marginRight: 8 }}
                     />
-                    <Text style={[styles.settingLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                      {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+                    <Text
+                      style={[
+                        styles.settingLabel,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      {isDarkMode ? "Dark Mode" : "Light Mode"}
                     </Text>
                   </View>
-                  <Text style={[styles.settingSub, isDarkMode && { color: '#94A3B8' }]}>
-                    {isDarkMode ? 'Sleek dark theme active for Civentral' : 'Bright modern light theme active for Civentral'}
+                  <Text
+                    style={[
+                      styles.settingSub,
+                      isDarkMode && { color: "#94A3B8" },
+                    ]}
+                  >
+                    {isDarkMode
+                      ? "Sleek dark theme active for Civentral"
+                      : "Bright modern light theme active for Civentral"}
                   </Text>
                 </View>
                 <Switch
                   value={isDarkMode}
                   onValueChange={setIsDarkMode}
-                  trackColor={{ false: '#CBD5E1', true: '#176B87' }}
+                  trackColor={{ false: "#CBD5E1", true: "#176B87" }}
                   thumbColor="#FFFFFF"
                 />
               </View>
             </View>
 
             {/* Account & Security */}
-            <View style={[styles.card, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-              <Text style={[styles.cardSectionTitle, isDarkMode && { color: '#F8FAFC' }]}>Security & Biometrics</Text>
+            <View
+              style={[
+                styles.card,
+                isDarkMode && {
+                  backgroundColor: "#1C2541",
+                  borderColor: "#3A506B",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.cardSectionTitle,
+                  isDarkMode && { color: "#F8FAFC" },
+                ]}
+              >
+                Security & Biometrics
+              </Text>
 
               <View style={styles.settingRow}>
                 <View style={styles.settingTextStack}>
-                  <Text style={[styles.settingLabel, isDarkMode && { color: '#F8FAFC' }]}>Biometric Sign-In</Text>
-                  <Text style={[styles.settingSub, isDarkMode && { color: '#94A3B8' }]}>Use Fingerprint or Face ID for fast login</Text>
+                  <Text
+                    style={[
+                      styles.settingLabel,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    Biometric Sign-In
+                  </Text>
+                  <Text
+                    style={[
+                      styles.settingSub,
+                      isDarkMode && { color: "#94A3B8" },
+                    ]}
+                  >
+                    Use Fingerprint or Face ID for fast login
+                  </Text>
                 </View>
                 <Switch
                   value={biometricsEnabled}
                   onValueChange={setBiometricsEnabled}
-                  trackColor={{ false: '#CBD5E1', true: '#176B87' }}
+                  trackColor={{ false: "#CBD5E1", true: "#176B87" }}
                   thumbColor="#FFFFFF"
                 />
               </View>
 
-              <View style={[styles.infoDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
+              <View
+                style={[
+                  styles.infoDivider,
+                  isDarkMode && { backgroundColor: "#3A506B" },
+                ]}
+              />
 
               <TouchableOpacity
                 style={styles.settingActionRow}
                 onPress={() => setIsChangePasswordModalVisible(true)}
-                activeOpacity={0.7}>
+                activeOpacity={0.7}
+              >
                 <View style={styles.settingLeftIcon}>
                   <IconSymbol name="lock.fill" size={18} color="#176B87" />
-                  <Text style={[styles.settingActionText, isDarkMode && { color: '#F8FAFC' }]}>Change Account Password</Text>
+                  <Text
+                    style={[
+                      styles.settingActionText,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    Change Account Password
+                  </Text>
                 </View>
                 <IconSymbol name="chevron.right" size={18} color="#94A3B8" />
               </TouchableOpacity>
             </View>
 
             {/* Notifications */}
-            <View style={[styles.card, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-              <Text style={[styles.cardSectionTitle, isDarkMode && { color: '#F8FAFC' }]}>Notifications & Alerts</Text>
+            <View
+              style={[
+                styles.card,
+                isDarkMode && {
+                  backgroundColor: "#1C2541",
+                  borderColor: "#3A506B",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.cardSectionTitle,
+                  isDarkMode && { color: "#F8FAFC" },
+                ]}
+              >
+                Notifications & Alerts
+              </Text>
 
               <View style={styles.settingRow}>
                 <View style={styles.settingTextStack}>
-                  <Text style={[styles.settingLabel, isDarkMode && { color: '#F8FAFC' }]}>City Push Notifications</Text>
-                  <Text style={[styles.settingSub, isDarkMode && { color: '#94A3B8' }]}>Receive updates on civic services & announcements</Text>
+                  <Text
+                    style={[
+                      styles.settingLabel,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    City Push Notifications
+                  </Text>
+                  <Text
+                    style={[
+                      styles.settingSub,
+                      isDarkMode && { color: "#94A3B8" },
+                    ]}
+                  >
+                    Receive updates on civic services & announcements
+                  </Text>
                 </View>
                 <Switch
                   value={pushNotificationsEnabled}
                   onValueChange={setPushNotificationsEnabled}
-                  trackColor={{ false: '#CBD5E1', true: '#176B87' }}
+                  trackColor={{ false: "#CBD5E1", true: "#176B87" }}
                   thumbColor="#FFFFFF"
                 />
               </View>
 
-              <View style={[styles.infoDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
+              <View
+                style={[
+                  styles.infoDivider,
+                  isDarkMode && { backgroundColor: "#3A506B" },
+                ]}
+              />
 
               <View style={styles.settingRow}>
                 <View style={styles.settingTextStack}>
-                  <Text style={[styles.settingLabel, isDarkMode && { color: '#F8FAFC' }]}>Emergency SOS Broadcasts</Text>
-                  <Text style={[styles.settingSub, isDarkMode && { color: '#94A3B8' }]}>Receive real-time disaster & emergency warnings</Text>
+                  <Text
+                    style={[
+                      styles.settingLabel,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    Emergency SOS Broadcasts
+                  </Text>
+                  <Text
+                    style={[
+                      styles.settingSub,
+                      isDarkMode && { color: "#94A3B8" },
+                    ]}
+                  >
+                    Receive real-time disaster & emergency warnings
+                  </Text>
                 </View>
                 <Switch
                   value={sosAlertsEnabled}
                   onValueChange={setSosAlertsEnabled}
-                  trackColor={{ false: '#CBD5E1', true: '#DC2626' }}
+                  trackColor={{ false: "#CBD5E1", true: "#DC2626" }}
                   thumbColor="#FFFFFF"
                 />
               </View>
             </View>
 
             {/* App Info & Legal */}
-            <View style={[styles.card, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-              <Text style={[styles.cardSectionTitle, isDarkMode && { color: '#F8FAFC' }]}>Support & About</Text>
+            <View
+              style={[
+                styles.card,
+                isDarkMode && {
+                  backgroundColor: "#1C2541",
+                  borderColor: "#3A506B",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.cardSectionTitle,
+                  isDarkMode && { color: "#F8FAFC" },
+                ]}
+              >
+                Support & About
+              </Text>
 
               <TouchableOpacity
                 style={styles.settingActionRow}
-                onPress={() => Alert.alert('City Hall Support Hotline', 'Connecting to Caloocan City Citizen Desk: (02) 8888-CALOOCAN')}
-                activeOpacity={0.7}>
+                onPress={() =>
+                  Alert.alert(
+                    "City Hall Support Hotline",
+                    "Connecting to Caloocan City Citizen Desk: (02) 8888-CALOOCAN",
+                  )
+                }
+                activeOpacity={0.7}
+              >
                 <View style={styles.settingLeftIcon}>
-                  <IconSymbol name="help.circle.fill" size={18} color="#176B87" />
-                  <Text style={[styles.settingActionText, isDarkMode && { color: '#F8FAFC' }]}>City Hall Citizen Help Desk</Text>
+                  <IconSymbol
+                    name="help.circle.fill"
+                    size={18}
+                    color="#176B87"
+                  />
+                  <Text
+                    style={[
+                      styles.settingActionText,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    City Hall Citizen Help Desk
+                  </Text>
                 </View>
                 <IconSymbol name="chevron.right" size={18} color="#94A3B8" />
               </TouchableOpacity>
 
-              <View style={[styles.infoDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
+              <View
+                style={[
+                  styles.infoDivider,
+                  isDarkMode && { backgroundColor: "#3A506B" },
+                ]}
+              />
 
               <View style={styles.settingActionRow}>
                 <View style={styles.settingLeftIcon}>
                   <IconSymbol name="shield.fill" size={18} color="#64748B" />
-                  <Text style={[styles.settingActionText, isDarkMode && { color: '#F8FAFC' }]}>Privacy & Data Protection Policy</Text>
+                  <Text
+                    style={[
+                      styles.settingActionText,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
+                  >
+                    Privacy & Data Protection Policy
+                  </Text>
                 </View>
                 <IconSymbol name="chevron.right" size={18} color="#94A3B8" />
               </View>
 
-              <View style={[styles.infoDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
+              <View
+                style={[
+                  styles.infoDivider,
+                  isDarkMode && { backgroundColor: "#3A506B" },
+                ]}
+              />
 
               <View style={styles.versionRow}>
-                <Text style={[styles.versionLabel, isDarkMode && { color: '#94A3B8' }]}>Civentral Citizen App</Text>
-                <Text style={[styles.versionValue, isDarkMode && { color: '#F8FAFC' }]}>v2.4.1 (Build 2026)</Text>
+                <Text
+                  style={[
+                    styles.versionLabel,
+                    isDarkMode && { color: "#94A3B8" },
+                  ]}
+                >
+                  Civentral Citizen App
+                </Text>
+                <Text
+                  style={[
+                    styles.versionValue,
+                    isDarkMode && { color: "#F8FAFC" },
+                  ]}
+                >
+                  v2.4.1 (Build 2026)
+                </Text>
               </View>
             </View>
 
@@ -613,15 +1104,21 @@ export function ProfileScreen() {
             <TouchableOpacity
               style={styles.signOutBtn}
               onPress={handleSignOut}
-              activeOpacity={0.85}>
-              <IconSymbol name="rectangle.portrait.and.arrow.right" size={20} color="#EF4444" />
+              activeOpacity={0.85}
+            >
+              <IconSymbol
+                name="rectangle.portrait.and.arrow.right"
+                size={20}
+                color="#EF4444"
+              />
               <Text style={styles.signOutBtnText}>
-                {isGuestMode ? 'Exit Guest Mode / Sign In' : 'Log Out of CIVentral'}
+                {isGuestMode
+                  ? "Exit Guest Mode / Sign In"
+                  : "Log Out of CIVentral"}
               </Text>
             </TouchableOpacity>
           </View>
         )}
-
       </ScrollView>
 
       {/* MODAL 1: QR CODE FULLSCREEN */}
@@ -629,38 +1126,91 @@ export function ProfileScreen() {
         visible={isQrModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setIsQrModalVisible(false)}>
+        onRequestClose={() => setIsQrModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
-          <View style={[styles.qrModalContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
+          <View
+            style={[
+              styles.qrModalContainer,
+              isDarkMode && {
+                backgroundColor: "#1C2541",
+                borderColor: "#3A506B",
+                borderWidth: 1,
+              },
+            ]}
+          >
             <View style={styles.qrModalHeader}>
-              <Text style={[styles.qrModalTitle, isDarkMode && { color: '#F8FAFC' }]}>Civentral Resident Pass</Text>
+              <Text
+                style={[
+                  styles.qrModalTitle,
+                  isDarkMode && { color: "#F8FAFC" },
+                ]}
+              >
+                Civentral Resident Pass
+              </Text>
               <TouchableOpacity
                 onPress={() => setIsQrModalVisible(false)}
                 activeOpacity={0.7}
-                style={[styles.closeBtn, isDarkMode && { backgroundColor: '#0B132B' }]}>
-                <Text style={[styles.closeBtnText, isDarkMode && { color: '#F8FAFC' }]}>✕</Text>
+                style={[
+                  styles.closeBtn,
+                  isDarkMode && { backgroundColor: "#0B132B" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.closeBtnText,
+                    isDarkMode && { color: "#F8FAFC" },
+                  ]}
+                >
+                  ✕
+                </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.qrCodeBox, isDarkMode && { backgroundColor: '#FFFFFF', padding: 12, borderRadius: 16 }]}>
+            <View
+              style={[
+                styles.qrCodeBox,
+                isDarkMode && {
+                  backgroundColor: "#FFFFFF",
+                  padding: 12,
+                  borderRadius: 16,
+                },
+              ]}
+            >
               <IconSymbol name="qrcode" size={180} color="#0F172A" />
             </View>
 
-            <Text style={[styles.qrCitizenName, isDarkMode && { color: '#F8FAFC' }]}>{userProfile.fullName || 'Citizen Resident'}</Text>
-            <Text style={[styles.qrCitizenId, isDarkMode && { color: '#38BDF8' }]}>{userProfile.citizenId || 'CITIZEN-PASS'}</Text>
+            <Text
+              style={[styles.qrCitizenName, isDarkMode && { color: "#F8FAFC" }]}
+            >
+              {userProfile.fullName || "Citizen Resident"}
+            </Text>
+            <Text
+              style={[styles.qrCitizenId, isDarkMode && { color: "#38BDF8" }]}
+            >
+              {userProfile.citizenId || "CITIZEN-PASS"}
+            </Text>
             <Badge
-              label={isGuestMode ? 'GUEST PASS • CALOOCAN CITY' : 'ACTIVE RESIDENT • CALOOCAN CITY'}
-              variant={isGuestMode ? 'neutral' : 'success'}
+              label={
+                isGuestMode
+                  ? "GUEST PASS • CALOOCAN CITY"
+                  : "ACTIVE RESIDENT • CALOOCAN CITY"
+              }
+              variant={isGuestMode ? "neutral" : "success"}
             />
 
-            <Text style={[styles.qrInstruction, isDarkMode && { color: '#CBD5E1' }]}>
-              Scan this QR code at City Hall entry points, Barangay Health Centers, or Civic Service counters.
+            <Text
+              style={[styles.qrInstruction, isDarkMode && { color: "#CBD5E1" }]}
+            >
+              Scan this QR code at City Hall entry points, Barangay Health
+              Centers, or Civic Service counters.
             </Text>
 
             <TouchableOpacity
               style={styles.qrCloseActionBtn}
               onPress={() => setIsQrModalVisible(false)}
-              activeOpacity={0.85}>
+              activeOpacity={0.85}
+            >
               <Text style={styles.qrCloseActionText}>Done</Text>
             </TouchableOpacity>
           </View>
@@ -672,29 +1222,81 @@ export function ProfileScreen() {
         visible={isLogoutModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsLogoutModalVisible(false)}>
+        onRequestClose={() => setIsLogoutModalVisible(false)}
+      >
         <View style={styles.logoutOverlay}>
-          <View style={[styles.logoutCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
-
+          <View
+            style={[
+              styles.logoutCard,
+              isDarkMode && {
+                backgroundColor: "#1C2541",
+                borderColor: "#3A506B",
+                borderWidth: 1,
+              },
+            ]}
+          >
             {/* Warning Icon Ring */}
-            <View style={[styles.logoutIconRing, isDarkMode && { backgroundColor: '#451A03' }]}>
-              <IconSymbol name="rectangle.portrait.and.arrow.right" size={32} color="#EF4444" />
+            <View
+              style={[
+                styles.logoutIconRing,
+                isDarkMode && { backgroundColor: "#451A03" },
+              ]}
+            >
+              <IconSymbol
+                name="rectangle.portrait.and.arrow.right"
+                size={32}
+                color="#EF4444"
+              />
             </View>
 
             {/* Header Text */}
-            <Text style={[styles.logoutTitle, isDarkMode && { color: '#F8FAFC' }]}>Sign Out of CIVentral?</Text>
-            <Text style={[styles.logoutSubtitle, isDarkMode && { color: '#CBD5E1' }]}>
-              You are about to leave your secure citizen session. You will need to sign in again to access your government services.
+            <Text
+              style={[styles.logoutTitle, isDarkMode && { color: "#F8FAFC" }]}
+            >
+              Sign Out of CIVentral?
+            </Text>
+            <Text
+              style={[
+                styles.logoutSubtitle,
+                isDarkMode && { color: "#CBD5E1" },
+              ]}
+            >
+              You are about to leave your secure citizen session. You will need
+              to sign in again to access your government services.
             </Text>
 
             {/* Citizen Info Preview Strip */}
-            <View style={[styles.logoutCitizenStrip, isDarkMode && { backgroundColor: '#0B132B', borderColor: '#3A506B' }]}>
+            <View
+              style={[
+                styles.logoutCitizenStrip,
+                isDarkMode && {
+                  backgroundColor: "#0B132B",
+                  borderColor: "#3A506B",
+                },
+              ]}
+            >
               <View style={styles.logoutCitizenAvatar}>
-                <Text style={styles.logoutCitizenAvatarText}>{userProfile.initials || 'CR'}</Text>
+                <Text style={styles.logoutCitizenAvatarText}>
+                  {userProfile.initials || "CR"}
+                </Text>
               </View>
               <View style={styles.logoutCitizenInfo}>
-                <Text style={[styles.logoutCitizenName, isDarkMode && { color: '#F8FAFC' }]}>{userProfile.fullName || 'Citizen Resident'}</Text>
-                <Text style={[styles.logoutCitizenId, isDarkMode && { color: '#94A3B8' }]}>{userProfile.citizenId || 'CALOOCAN CITY RESIDENT'}</Text>
+                <Text
+                  style={[
+                    styles.logoutCitizenName,
+                    isDarkMode && { color: "#F8FAFC" },
+                  ]}
+                >
+                  {userProfile.fullName || "Citizen Resident"}
+                </Text>
+                <Text
+                  style={[
+                    styles.logoutCitizenId,
+                    isDarkMode && { color: "#94A3B8" },
+                  ]}
+                >
+                  {userProfile.citizenId || "CALOOCAN CITY RESIDENT"}
+                </Text>
               </View>
               <View style={styles.logoutActiveBadge}>
                 <View style={styles.logoutActiveDot} />
@@ -707,23 +1309,50 @@ export function ProfileScreen() {
               <TouchableOpacity
                 style={styles.logoutConfirmBtn}
                 onPress={handleConfirmLogout}
-                activeOpacity={0.88}>
-                <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color="#FFFFFF" />
+                activeOpacity={0.88}
+              >
+                <IconSymbol
+                  name="rectangle.portrait.and.arrow.right"
+                  size={18}
+                  color="#FFFFFF"
+                />
                 <Text style={styles.logoutConfirmText}>Yes, Sign Me Out</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.logoutCancelBtn, isDarkMode && { backgroundColor: '#334155', borderColor: '#475569' }]}
+                style={[
+                  styles.logoutCancelBtn,
+                  isDarkMode && {
+                    backgroundColor: "#334155",
+                    borderColor: "#475569",
+                  },
+                ]}
                 onPress={() => setIsLogoutModalVisible(false)}
-                activeOpacity={0.7}>
-                <Text style={[styles.logoutCancelText, isDarkMode && { color: '#F8FAFC' }]}>Keep Me Signed In</Text>
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.logoutCancelText,
+                    isDarkMode && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Keep Me Signed In
+                </Text>
               </TouchableOpacity>
             </View>
 
             {/* Footer Security Notice */}
             <View style={styles.logoutFooterNote}>
               <IconSymbol name="shield.fill" size={12} color="#94A3B8" />
-              <Text style={[styles.logoutFooterText, isDarkMode && { color: '#94A3B8' }]}>  Secured by Caloocan City E-Governance Portal</Text>
+              <Text
+                style={[
+                  styles.logoutFooterText,
+                  isDarkMode && { color: "#94A3B8" },
+                ]}
+              >
+                {" "}
+                Secured by Caloocan City E-Governance Portal
+              </Text>
             </View>
           </View>
         </View>
@@ -734,40 +1363,104 @@ export function ProfileScreen() {
         visible={isEditProfileModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsEditProfileModalVisible(false)}>
+        onRequestClose={() => setIsEditProfileModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
-          <View style={[styles.editModalContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
-            <Text style={[styles.modalHeaderTitle, isDarkMode && { color: '#F8FAFC' }]}>Update Contact Details</Text>
-            <Text style={[styles.modalHeaderSub, isDarkMode && { color: '#CBD5E1' }]}>
+          <View
+            style={[
+              styles.editModalContainer,
+              isDarkMode && {
+                backgroundColor: "#1C2541",
+                borderColor: "#3A506B",
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.modalHeaderTitle,
+                isDarkMode && { color: "#F8FAFC" },
+              ]}
+            >
+              Update Contact Details
+            </Text>
+            <Text
+              style={[
+                styles.modalHeaderSub,
+                isDarkMode && { color: "#CBD5E1" },
+              ]}
+            >
               Ensure your email, mobile number, and address are up to date.
             </Text>
 
-            <Text style={[styles.inputLabel, isDarkMode && { color: '#CBD5E1' }]}>Mobile Number</Text>
+            <Text
+              style={[styles.inputLabel, isDarkMode && { color: "#CBD5E1" }]}
+            >
+              Mobile Number
+            </Text>
             <TextInput
-              style={[styles.modalInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B', color: '#F8FAFC' }]}
+              style={[
+                styles.modalInput,
+                isDarkMode && {
+                  backgroundColor: "#0F172A",
+                  borderColor: "#3A506B",
+                  color: "#F8FAFC",
+                },
+              ]}
               placeholder="e.g. +63 917 123 4567"
-              placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+              placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
               value={editPhone}
               onChangeText={setEditPhone}
               keyboardType="phone-pad"
             />
 
-            <Text style={[styles.inputLabel, { marginTop: 12 }, isDarkMode && { color: '#CBD5E1' }]}>Email Address</Text>
+            <Text
+              style={[
+                styles.inputLabel,
+                { marginTop: 12 },
+                isDarkMode && { color: "#CBD5E1" },
+              ]}
+            >
+              Email Address
+            </Text>
             <TextInput
-              style={[styles.modalInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B', color: '#F8FAFC' }]}
+              style={[
+                styles.modalInput,
+                isDarkMode && {
+                  backgroundColor: "#0F172A",
+                  borderColor: "#3A506B",
+                  color: "#F8FAFC",
+                },
+              ]}
               placeholder="Enter email"
-              placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+              placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
               value={editEmail}
               onChangeText={setEditEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
 
-            <Text style={[styles.inputLabel, { marginTop: 12 }, isDarkMode && { color: '#CBD5E1' }]}>Registered Address</Text>
+            <Text
+              style={[
+                styles.inputLabel,
+                { marginTop: 12 },
+                isDarkMode && { color: "#CBD5E1" },
+              ]}
+            >
+              Registered Address
+            </Text>
             <TextInput
-              style={[styles.modalInput, { height: 60 }, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B', color: '#F8FAFC' }]}
+              style={[
+                styles.modalInput,
+                { height: 60 },
+                isDarkMode && {
+                  backgroundColor: "#0F172A",
+                  borderColor: "#3A506B",
+                  color: "#F8FAFC",
+                },
+              ]}
               placeholder="Enter complete residential address"
-              placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+              placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
               value={editAddress}
               onChangeText={setEditAddress}
               multiline
@@ -775,17 +1468,29 @@ export function ProfileScreen() {
 
             <View style={styles.modalActionsRow}>
               <TouchableOpacity
-                style={[styles.modalCancelBtn, isDarkMode && { backgroundColor: '#334155' }]}
+                style={[
+                  styles.modalCancelBtn,
+                  isDarkMode && { backgroundColor: "#334155" },
+                ]}
                 onPress={() => setIsEditProfileModalVisible(false)}
-                activeOpacity={0.7}>
-                <Text style={[styles.modalCancelText, isDarkMode && { color: '#F8FAFC' }]}>Cancel</Text>
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.modalCancelText,
+                    isDarkMode && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Cancel
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.modalSaveBtn}
                 onPress={handleSaveProfile}
                 disabled={isSaving}
-                activeOpacity={0.85}>
+                activeOpacity={0.85}
+              >
                 {isSaving ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
@@ -802,33 +1507,75 @@ export function ProfileScreen() {
         visible={isChangePasswordModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsChangePasswordModalVisible(false)}>
+        onRequestClose={() => setIsChangePasswordModalVisible(false)}
+      >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoidOverlay}>
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardAvoidOverlay}
+        >
           <View style={styles.modalOverlay}>
-            <View style={[styles.changePasswordModalContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
+            <View
+              style={[
+                styles.changePasswordModalContainer,
+                isDarkMode && {
+                  backgroundColor: "#1C2541",
+                  borderColor: "#3A506B",
+                  borderWidth: 1,
+                },
+              ]}
+            >
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={styles.changePasswordScrollContent}>
-                
-                <Text style={[styles.modalHeaderTitle, isDarkMode && { color: '#F8FAFC' }]}>Change Account Password</Text>
-                <Text style={[styles.modalHeaderSub, isDarkMode && { color: '#CBD5E1' }]}>
+                contentContainerStyle={styles.changePasswordScrollContent}
+              >
+                <Text
+                  style={[
+                    styles.modalHeaderTitle,
+                    isDarkMode && { color: "#F8FAFC" },
+                  ]}
+                >
+                  Change Account Password
+                </Text>
+                <Text
+                  style={[
+                    styles.modalHeaderSub,
+                    isDarkMode && { color: "#CBD5E1" },
+                  ]}
+                >
                   Protect your citizen account by setting a new strong password.
                 </Text>
 
                 {/* Current Password Field */}
-                <Text style={[styles.inputLabel, isDarkMode && { color: '#CBD5E1' }]}>Current Password</Text>
-                <View style={[styles.passwordWrapper, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B' }]}>
+                <Text
+                  style={[
+                    styles.inputLabel,
+                    isDarkMode && { color: "#CBD5E1" },
+                  ]}
+                >
+                  Current Password
+                </Text>
+                <View
+                  style={[
+                    styles.passwordWrapper,
+                    isDarkMode && {
+                      backgroundColor: "#0F172A",
+                      borderColor: "#3A506B",
+                    },
+                  ]}
+                >
                   <TextInput
-                    style={[styles.passwordInput, isDarkMode && { color: '#F8FAFC' }]}
+                    style={[
+                      styles.passwordInput,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
                     placeholder="Enter current password"
-                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
                     value={currentPassword}
                     onChangeText={(text) => {
                       setCurrentPassword(text);
-                      if (changePasswordErrorMessage) setChangePasswordErrorMessage(null);
+                      if (changePasswordErrorMessage)
+                        setChangePasswordErrorMessage(null);
                     }}
                     secureTextEntry={!isCurrentPasswordVisible}
                     autoCapitalize="none"
@@ -836,26 +1583,49 @@ export function ProfileScreen() {
                   <TouchableOpacity
                     style={styles.eyeIconBtn}
                     onPress={() => setIsCurrentPasswordVisible((prev) => !prev)}
-                    activeOpacity={0.7}>
+                    activeOpacity={0.7}
+                  >
                     <IconSymbol
-                      name={isCurrentPasswordVisible ? 'eye.slash.fill' : 'eye.fill'}
+                      name={
+                        isCurrentPasswordVisible ? "eye.slash.fill" : "eye.fill"
+                      }
                       size={18}
-                      color={isDarkMode ? '#94A3B8' : '#64748B'}
+                      color={isDarkMode ? "#94A3B8" : "#64748B"}
                     />
                   </TouchableOpacity>
                 </View>
 
                 {/* New Password Field */}
-                <Text style={[styles.inputLabel, { marginTop: 12 }, isDarkMode && { color: '#CBD5E1' }]}>New Password</Text>
-                <View style={[styles.passwordWrapper, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B' }]}>
+                <Text
+                  style={[
+                    styles.inputLabel,
+                    { marginTop: 12 },
+                    isDarkMode && { color: "#CBD5E1" },
+                  ]}
+                >
+                  New Password
+                </Text>
+                <View
+                  style={[
+                    styles.passwordWrapper,
+                    isDarkMode && {
+                      backgroundColor: "#0F172A",
+                      borderColor: "#3A506B",
+                    },
+                  ]}
+                >
                   <TextInput
-                    style={[styles.passwordInput, isDarkMode && { color: '#F8FAFC' }]}
+                    style={[
+                      styles.passwordInput,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
                     placeholder="Enter new password"
-                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
                     value={newPassword}
                     onChangeText={(text) => {
                       setNewPassword(text);
-                      if (changePasswordErrorMessage) setChangePasswordErrorMessage(null);
+                      if (changePasswordErrorMessage)
+                        setChangePasswordErrorMessage(null);
                     }}
                     secureTextEntry={!isNewPasswordVisible}
                     autoCapitalize="none"
@@ -863,53 +1633,72 @@ export function ProfileScreen() {
                   <TouchableOpacity
                     style={styles.eyeIconBtn}
                     onPress={() => setIsNewPasswordVisible((prev) => !prev)}
-                    activeOpacity={0.7}>
+                    activeOpacity={0.7}
+                  >
                     <IconSymbol
-                      name={isNewPasswordVisible ? 'eye.slash.fill' : 'eye.fill'}
+                      name={
+                        isNewPasswordVisible ? "eye.slash.fill" : "eye.fill"
+                      }
                       size={18}
-                      color={isDarkMode ? '#94A3B8' : '#64748B'}
+                      color={isDarkMode ? "#94A3B8" : "#64748B"}
                     />
                   </TouchableOpacity>
                 </View>
 
                 {/* REAL-TIME PASSWORD STRENGTH METER */}
                 {newPassword.length > 0 && (
-                  <View style={[styles.strengthMeterContainer, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B' }]}>
+                  <View
+                    style={[
+                      styles.strengthMeterContainer,
+                      isDarkMode && {
+                        backgroundColor: "#0F172A",
+                        borderColor: "#3A506B",
+                      },
+                    ]}
+                  >
                     {/* 3 Color Bars */}
                     <View style={styles.strengthBarRow}>
                       <View
                         style={[
                           styles.strengthBar,
-                          newStrengthLevel === 'weak' && styles.barWeak,
-                          newStrengthLevel === 'medium' && styles.barMedium,
-                          newStrengthLevel === 'strong' && styles.barStrong,
+                          newStrengthLevel === "weak" && styles.barWeak,
+                          newStrengthLevel === "medium" && styles.barMedium,
+                          newStrengthLevel === "strong" && styles.barStrong,
                         ]}
                       />
                       <View
                         style={[
                           styles.strengthBar,
-                          newStrengthLevel === 'medium' && styles.barMedium,
-                          newStrengthLevel === 'strong' && styles.barStrong,
+                          newStrengthLevel === "medium" && styles.barMedium,
+                          newStrengthLevel === "strong" && styles.barStrong,
                         ]}
                       />
                       <View
                         style={[
                           styles.strengthBar,
-                          newStrengthLevel === 'strong' && styles.barStrong,
+                          newStrengthLevel === "strong" && styles.barStrong,
                         ]}
                       />
                     </View>
 
                     {/* Strength Label & Status */}
                     <View style={styles.strengthLabelRow}>
-                      <Text style={[styles.strengthPromptText, isDarkMode && { color: '#94A3B8' }]}>Password Strength:</Text>
+                      <Text
+                        style={[
+                          styles.strengthPromptText,
+                          isDarkMode && { color: "#94A3B8" },
+                        ]}
+                      >
+                        Password Strength:
+                      </Text>
                       <Text
                         style={[
                           styles.strengthText,
-                          newStrengthLevel === 'weak' && styles.textWeak,
-                          newStrengthLevel === 'medium' && styles.textMedium,
-                          newStrengthLevel === 'strong' && styles.textStrong,
-                        ]}>
+                          newStrengthLevel === "weak" && styles.textWeak,
+                          newStrengthLevel === "medium" && styles.textMedium,
+                          newStrengthLevel === "strong" && styles.textStrong,
+                        ]}
+                      >
                         {newStrengthLevel.toUpperCase()}
                       </Text>
                     </View>
@@ -918,44 +1707,88 @@ export function ProfileScreen() {
                     <View style={styles.checklistContainer}>
                       <View style={styles.checkItem}>
                         <IconSymbol
-                          name={newHasMinLength ? 'checkmark.seal.fill' : 'chevron.right'}
+                          name={
+                            newHasMinLength
+                              ? "checkmark.seal.fill"
+                              : "chevron.right"
+                          }
                           size={14}
-                          color={newHasMinLength ? '#10B981' : '#94A3B8'}
+                          color={newHasMinLength ? "#10B981" : "#94A3B8"}
                         />
-                        <Text style={[styles.checkText, isDarkMode && { color: '#94A3B8' }, newHasMinLength && styles.checkTextActive]}>
+                        <Text
+                          style={[
+                            styles.checkText,
+                            isDarkMode && { color: "#94A3B8" },
+                            newHasMinLength && styles.checkTextActive,
+                          ]}
+                        >
                           At least 8 characters
                         </Text>
                       </View>
 
                       <View style={styles.checkItem}>
                         <IconSymbol
-                          name={newHasUpper && newHasLower ? 'checkmark.seal.fill' : 'chevron.right'}
+                          name={
+                            newHasUpper && newHasLower
+                              ? "checkmark.seal.fill"
+                              : "chevron.right"
+                          }
                           size={14}
-                          color={newHasUpper && newHasLower ? '#10B981' : '#94A3B8'}
+                          color={
+                            newHasUpper && newHasLower ? "#10B981" : "#94A3B8"
+                          }
                         />
-                        <Text style={[styles.checkText, isDarkMode && { color: '#94A3B8' }, newHasUpper && newHasLower && styles.checkTextActive]}>
+                        <Text
+                          style={[
+                            styles.checkText,
+                            isDarkMode && { color: "#94A3B8" },
+                            newHasUpper &&
+                              newHasLower &&
+                              styles.checkTextActive,
+                          ]}
+                        >
                           Uppercase & lowercase letters
                         </Text>
                       </View>
 
                       <View style={styles.checkItem}>
                         <IconSymbol
-                          name={newHasNumber ? 'checkmark.seal.fill' : 'chevron.right'}
+                          name={
+                            newHasNumber
+                              ? "checkmark.seal.fill"
+                              : "chevron.right"
+                          }
                           size={14}
-                          color={newHasNumber ? '#10B981' : '#94A3B8'}
+                          color={newHasNumber ? "#10B981" : "#94A3B8"}
                         />
-                        <Text style={[styles.checkText, isDarkMode && { color: '#94A3B8' }, newHasNumber && styles.checkTextActive]}>
+                        <Text
+                          style={[
+                            styles.checkText,
+                            isDarkMode && { color: "#94A3B8" },
+                            newHasNumber && styles.checkTextActive,
+                          ]}
+                        >
                           At least 1 number (0-9)
                         </Text>
                       </View>
 
                       <View style={styles.checkItem}>
                         <IconSymbol
-                          name={newHasSymbol ? 'checkmark.seal.fill' : 'chevron.right'}
+                          name={
+                            newHasSymbol
+                              ? "checkmark.seal.fill"
+                              : "chevron.right"
+                          }
                           size={14}
-                          color={newHasSymbol ? '#10B981' : '#94A3B8'}
+                          color={newHasSymbol ? "#10B981" : "#94A3B8"}
                         />
-                        <Text style={[styles.checkText, isDarkMode && { color: '#94A3B8' }, newHasSymbol && styles.checkTextActive]}>
+                        <Text
+                          style={[
+                            styles.checkText,
+                            isDarkMode && { color: "#94A3B8" },
+                            newHasSymbol && styles.checkTextActive,
+                          ]}
+                        >
                           At least 1 special symbol (!@#$%^&*)
                         </Text>
                       </View>
@@ -964,60 +1797,108 @@ export function ProfileScreen() {
                 )}
 
                 {/* Confirm New Password Field */}
-                <Text style={[styles.inputLabel, { marginTop: 12 }, isDarkMode && { color: '#CBD5E1' }]}>Confirm New Password</Text>
-                <View style={[styles.passwordWrapper, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#3A506B' }]}>
+                <Text
+                  style={[
+                    styles.inputLabel,
+                    { marginTop: 12 },
+                    isDarkMode && { color: "#CBD5E1" },
+                  ]}
+                >
+                  Confirm New Password
+                </Text>
+                <View
+                  style={[
+                    styles.passwordWrapper,
+                    isDarkMode && {
+                      backgroundColor: "#0F172A",
+                      borderColor: "#3A506B",
+                    },
+                  ]}
+                >
                   <TextInput
-                    style={[styles.passwordInput, isDarkMode && { color: '#F8FAFC' }]}
+                    style={[
+                      styles.passwordInput,
+                      isDarkMode && { color: "#F8FAFC" },
+                    ]}
                     placeholder="Confirm new password"
-                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
                     value={confirmNewPassword}
                     onChangeText={(text) => {
                       setConfirmNewPassword(text);
-                      if (changePasswordErrorMessage) setChangePasswordErrorMessage(null);
+                      if (changePasswordErrorMessage)
+                        setChangePasswordErrorMessage(null);
                     }}
                     secureTextEntry={!isConfirmNewPasswordVisible}
                     autoCapitalize="none"
                   />
                   <TouchableOpacity
                     style={styles.eyeIconBtn}
-                    onPress={() => setIsConfirmNewPasswordVisible((prev) => !prev)}
-                    activeOpacity={0.7}>
+                    onPress={() =>
+                      setIsConfirmNewPasswordVisible((prev) => !prev)
+                    }
+                    activeOpacity={0.7}
+                  >
                     <IconSymbol
-                      name={isConfirmNewPasswordVisible ? 'eye.slash.fill' : 'eye.fill'}
+                      name={
+                        isConfirmNewPasswordVisible
+                          ? "eye.slash.fill"
+                          : "eye.fill"
+                      }
                       size={18}
-                      color={isDarkMode ? '#94A3B8' : '#64748B'}
+                      color={isDarkMode ? "#94A3B8" : "#64748B"}
                     />
                   </TouchableOpacity>
                 </View>
 
                 {/* Error Message */}
                 {changePasswordErrorMessage ? (
-                  <Text style={styles.changePasswordErrorText}>{changePasswordErrorMessage}</Text>
+                  <Text style={styles.changePasswordErrorText}>
+                    {changePasswordErrorMessage}
+                  </Text>
                 ) : null}
 
                 {/* Modal Actions */}
                 <View style={[styles.modalActionsRow, { marginTop: 16 }]}>
                   <TouchableOpacity
-                    style={[styles.modalCancelBtn, isDarkMode && { backgroundColor: '#334155' }]}
+                    style={[
+                      styles.modalCancelBtn,
+                      isDarkMode && { backgroundColor: "#334155" },
+                    ]}
                     onPress={() => {
-                      setCurrentPassword('');
-                      setNewPassword('');
-                      setConfirmNewPassword('');
+                      setCurrentPassword("");
+                      setNewPassword("");
+                      setConfirmNewPassword("");
                       setChangePasswordErrorMessage(null);
                       setIsChangePasswordModalVisible(false);
                     }}
-                    activeOpacity={0.7}>
-                    <Text style={[styles.modalCancelText, isDarkMode && { color: '#F8FAFC' }]}>Cancel</Text>
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.modalCancelText,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      Cancel
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     style={[
                       styles.modalSaveBtn,
-                      (isChangingPassword || newStrengthLevel !== 'strong' || newPassword !== confirmNewPassword) && styles.modalSaveBtnDisabled,
+                      (isChangingPassword ||
+                        newStrengthLevel !== "strong" ||
+                        newPassword !== confirmNewPassword) &&
+                        styles.modalSaveBtnDisabled,
                     ]}
                     onPress={handleChangePassword}
-                    disabled={isChangingPassword || newStrengthLevel !== 'strong' || newPassword !== confirmNewPassword}
-                    activeOpacity={0.85}>
+                    disabled={
+                      isChangingPassword ||
+                      newStrengthLevel !== "strong" ||
+                      newPassword !== confirmNewPassword
+                    }
+                    activeOpacity={0.85}
+                  >
                     {isChangingPassword ? (
                       <ActivityIndicator color="#FFFFFF" size="small" />
                     ) : (
@@ -1036,11 +1917,16 @@ export function ProfileScreen() {
         visible={isSuccessToastVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsSuccessToastVisible(false)}>
+        onRequestClose={() => setIsSuccessToastVisible(false)}
+      >
         <View style={styles.successToastOverlay}>
           <View style={styles.successToastCard}>
             <View style={styles.successToastCheckCircle}>
-              <IconSymbol name="checkmark.seal.fill" size={38} color="#FFFFFF" />
+              <IconSymbol
+                name="checkmark.seal.fill"
+                size={38}
+                color="#FFFFFF"
+              />
             </View>
             <Text style={styles.successToastTitle}>Password Updated</Text>
             <Text style={styles.successToastSub}>
@@ -1056,7 +1942,7 @@ export function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -1065,23 +1951,23 @@ const styles = StyleSheet.create({
   },
   loadingBox: {
     paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
     gap: 8,
   },
   loadingText: {
     fontSize: 12,
-    color: '#176B87',
-    fontWeight: '600',
+    color: "#176B87",
+    fontWeight: "600",
   },
   headerCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -1089,88 +1975,88 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   avatarCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#176B87',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    backgroundColor: "#176B87",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   onlineBadgeDot: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 2,
     right: 2,
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: '#16A34A',
+    backgroundColor: "#16A34A",
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
   },
   guestBadgeDot: {
-    backgroundColor: '#94A3B8',
+    backgroundColor: "#94A3B8",
   },
   headerInfo: {
     flex: 1,
     marginLeft: 14,
   },
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   userNameText: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: "800",
+    color: "#0F172A",
   },
   citizenIdText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#176B87',
+    fontWeight: "700",
+    color: "#176B87",
     marginTop: 2,
   },
   barangayText: {
     fontSize: 12,
-    color: '#64748B',
+    color: "#64748B",
     marginTop: 2,
   },
   qrHeaderBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F0F9FF',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F0F9FF",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: "#BAE6FD",
   },
   qrBtnLabel: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#176B87',
+    fontWeight: "700",
+    color: "#176B87",
     marginTop: 2,
   },
   badgesRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   badgeSpacer: {
     width: 8,
   },
   tabBarContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#E2E8F0',
+    flexDirection: "row",
+    backgroundColor: "#E2E8F0",
     borderRadius: 14,
     padding: 3,
     marginBottom: 16,
@@ -1178,12 +2064,12 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 12,
   },
   tabButtonActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -1191,66 +2077,66 @@ const styles = StyleSheet.create({
   },
   tabButtonText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
+    fontWeight: "600",
+    color: "#64748B",
   },
   tabButtonTextActive: {
-    color: '#176B87',
-    fontWeight: '800',
+    color: "#176B87",
+    fontWeight: "800",
   },
   sectionStack: {
     gap: 12,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
   cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 14,
   },
   cardHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: "700",
+    color: "#0F172A",
     marginLeft: 8,
   },
   editIconBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F9FF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0F9FF",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: "#BAE6FD",
   },
   editText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#176B87',
+    fontWeight: "700",
+    color: "#176B87",
     marginLeft: 4,
   },
   infoGrid: {
     gap: 10,
   },
   infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
   },
   infoContent: {
     marginLeft: 10,
@@ -1258,23 +2144,23 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 11,
-    color: '#64748B',
-    fontWeight: '500',
+    color: "#64748B",
+    fontWeight: "500",
   },
   infoValue: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#0F172A',
+    fontWeight: "600",
+    color: "#0F172A",
     marginTop: 1,
   },
   infoDivider: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: "#F1F5F9",
     marginVertical: 4,
   },
   twoColumnRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   columnHalf: {
     flex: 1,
@@ -1282,12 +2168,12 @@ const styles = StyleSheet.create({
 
   /* Digital Citizen ID Preview Styles (Bottom of Personal Info) */
   citizenIdCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    overflow: 'hidden',
-    shadowColor: '#0F172A',
+    borderColor: "#CBD5E1",
+    overflow: "hidden",
+    shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -1295,57 +2181,57 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   citizenIdHeader: {
-    backgroundColor: '#0F4C61',
+    backgroundColor: "#0F4C61",
     paddingVertical: 10,
     paddingHorizontal: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   idHeaderRow: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   idRepublicText: {
     fontSize: 9,
-    color: '#CBD5E1',
-    fontWeight: '700',
+    color: "#CBD5E1",
+    fontWeight: "700",
     letterSpacing: 1,
   },
   idCityText: {
     fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '800',
+    color: "#FFFFFF",
+    fontWeight: "800",
   },
   idCardTitle: {
     fontSize: 11,
-    color: '#38BDF8',
-    fontWeight: '900',
+    color: "#38BDF8",
+    fontWeight: "900",
     marginTop: 2,
     letterSpacing: 0.5,
   },
   idBodyRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 14,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
   },
   idPhotoBox: {
     width: 64,
     height: 74,
-    backgroundColor: '#176B87',
+    backgroundColor: "#176B87",
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
   idPhotoText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   idCheckBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -4,
     right: -4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 8,
     padding: 2,
   },
@@ -1355,72 +2241,72 @@ const styles = StyleSheet.create({
   },
   idLabel: {
     fontSize: 9,
-    color: '#64748B',
-    fontWeight: '700',
+    color: "#64748B",
+    fontWeight: "700",
   },
   idValueName: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: "800",
+    color: "#0F172A",
   },
   idValueHighlight: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#176B87',
+    fontWeight: "800",
+    color: "#176B87",
   },
   idValueSub: {
     fontSize: 11,
-    color: '#475569',
-    fontWeight: '500',
+    color: "#475569",
+    fontWeight: "500",
   },
   idFooterBanner: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: "#F0F9FF",
     borderTopWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: "#BAE6FD",
     padding: 14,
     gap: 10,
   },
   idFooterTextStack: {
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   idFooterNoticeTitle: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: "800",
+    color: "#0F172A",
   },
   idFooterNoticeSub: {
     fontSize: 11,
-    color: '#475569',
+    color: "#475569",
     marginTop: 2,
     lineHeight: 16,
   },
   finishIdBtn: {
-    backgroundColor: '#176B87',
+    backgroundColor: "#176B87",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
   },
   finishIdBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 
   /* Settings Tab */
   cardSectionTitle: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: "800",
+    color: "#0F172A",
     marginBottom: 12,
   },
   settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 4,
   },
   settingTextStack: {
@@ -1429,171 +2315,171 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: "700",
+    color: "#0F172A",
   },
   settingSub: {
     fontSize: 11,
-    color: '#64748B',
+    color: "#64748B",
     marginTop: 2,
   },
   settingActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 8,
   },
   settingLeftIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   settingActionText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#0F172A',
+    fontWeight: "600",
+    color: "#0F172A",
     marginLeft: 10,
   },
   versionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 4,
   },
   versionLabel: {
     fontSize: 12,
-    color: '#64748B',
+    color: "#64748B",
   },
   versionValue: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: "700",
+    color: "#0F172A",
   },
   signOutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FEF2F2',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEF2F2",
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: "#FCA5A5",
     borderRadius: 16,
     paddingVertical: 14,
     marginTop: 8,
     gap: 8,
   },
   signOutBtnText: {
-    color: '#EF4444',
+    color: "#EF4444",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   /* Modals */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   qrModalContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 24,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
   qrModalHeader: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   qrModalTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: "800",
+    color: "#0F172A",
   },
   closeBtn: {
     padding: 4,
   },
   closeBtnText: {
     fontSize: 18,
-    color: '#64748B',
-    fontWeight: '700',
+    color: "#64748B",
+    fontWeight: "700",
   },
   qrCodeBox: {
     padding: 16,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     marginBottom: 14,
   },
   qrCitizenName: {
     fontSize: 18,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontWeight: "900",
+    color: "#0F172A",
   },
   qrCitizenId: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#176B87',
+    fontWeight: "700",
+    color: "#176B87",
     marginBottom: 8,
   },
   qrInstruction: {
     fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
+    color: "#64748B",
+    textAlign: "center",
     marginTop: 12,
     lineHeight: 18,
   },
   qrCloseActionBtn: {
-    backgroundColor: '#176B87',
+    backgroundColor: "#176B87",
     borderRadius: 14,
     paddingVertical: 12,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
     marginTop: 20,
   },
   qrCloseActionText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   editModalContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 20,
-    width: '100%',
+    width: "100%",
   },
   modalHeaderTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: "800",
+    color: "#0F172A",
   },
   modalHeaderSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: "#64748B",
     marginTop: 4,
     marginBottom: 16,
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
+    fontWeight: "700",
+    color: "#334155",
     marginBottom: 6,
   },
   modalInput: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: "#CBD5E1",
     borderRadius: 10,
     paddingHorizontal: 12,
     height: 44,
     fontSize: 13,
-    color: '#0F172A',
+    color: "#0F172A",
   },
   modalActionsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     marginTop: 20,
   },
@@ -1602,114 +2488,114 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    alignItems: 'center',
+    borderColor: "#CBD5E1",
+    alignItems: "center",
   },
   modalCancelText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: "700",
+    color: "#64748B",
   },
   modalSaveBtn: {
     flex: 1.5,
-    backgroundColor: '#176B87',
+    backgroundColor: "#176B87",
     paddingVertical: 12,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalSaveText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
 
   /* ── LOGOUT MODAL STYLES ── */
   logoutOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(10, 20, 40, 0.72)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
+    backgroundColor: "rgba(10, 20, 40, 0.72)",
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
   logoutCard: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
+    width: "100%",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 24,
     paddingTop: 28,
     paddingBottom: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoutIconRing: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: "#FEF2F2",
     borderWidth: 2,
-    borderColor: '#FECACA',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#FECACA",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
   },
   logoutTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
-    textAlign: 'center',
+    fontWeight: "800",
+    color: "#0F172A",
+    textAlign: "center",
     marginBottom: 8,
   },
   logoutSubtitle: {
     fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
+    color: "#64748B",
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 20,
     paddingHorizontal: 8,
   },
   logoutCitizenStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    width: '100%',
+    width: "100%",
     marginBottom: 24,
   },
   logoutCitizenAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#165B7E',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#165B7E",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   logoutCitizenAvatarText: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   logoutCitizenInfo: {
     flex: 1,
   },
   logoutCitizenName: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: "700",
+    color: "#0F172A",
   },
   logoutCitizenId: {
     fontSize: 11,
-    color: '#64748B',
+    color: "#64748B",
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   logoutActiveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#DCFCE7",
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1718,70 +2604,70 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#16A34A',
+    backgroundColor: "#16A34A",
     marginRight: 4,
   },
   logoutActiveLabel: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#16A34A',
+    fontWeight: "800",
+    color: "#16A34A",
     letterSpacing: 0.5,
   },
   logoutActionsCol: {
-    width: '100%',
+    width: "100%",
     gap: 10,
     marginBottom: 20,
   },
   logoutConfirmBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#DC2626',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#DC2626",
     borderRadius: 14,
     paddingVertical: 15,
     gap: 8,
   },
   logoutConfirmText: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   logoutCancelBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F1F5F9",
     borderRadius: 14,
     paddingVertical: 15,
   },
   logoutCancelText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#334155',
+    fontWeight: "600",
+    color: "#334155",
   },
   logoutFooterNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   logoutFooterText: {
     fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
+    color: "#94A3B8",
+    fontWeight: "500",
   },
 
   /* ── CHANGE PASSWORD MODAL STYLES ── */
   changePasswordModalContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 24,
-    width: '100%',
-    maxHeight: '90%',
+    width: "100%",
+    maxHeight: "90%",
   },
   passwordWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: "#CBD5E1",
     borderRadius: 10,
     paddingHorizontal: 14,
     height: 48,
@@ -1789,100 +2675,100 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
-    height: '100%',
+    height: "100%",
     fontSize: 14,
-    color: '#0F172A',
+    color: "#0F172A",
   },
   eyeIconBtn: {
     padding: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalSaveBtnDisabled: {
-    backgroundColor: '#94A3B8',
+    backgroundColor: "#94A3B8",
     opacity: 0.7,
   },
   changePasswordErrorText: {
-    color: '#EF4444',
+    color: "#EF4444",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     marginTop: 6,
     marginBottom: 6,
   },
 
   /* Strength Meter Styles */
   strengthMeterContainer: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
   },
   strengthBarRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
     height: 6,
     marginBottom: 8,
   },
   strengthBar: {
     flex: 1,
-    height: '100%',
-    backgroundColor: '#E2E8F0',
+    height: "100%",
+    backgroundColor: "#E2E8F0",
     borderRadius: 3,
   },
   barWeak: {
-    backgroundColor: '#EF4444',
+    backgroundColor: "#EF4444",
   },
   barMedium: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: "#F59E0B",
   },
   barStrong: {
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
   },
   strengthLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 10,
     gap: 6,
   },
   strengthPromptText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
+    fontWeight: "600",
+    color: "#64748B",
   },
   strengthText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   textWeak: {
-    color: '#EF4444',
+    color: "#EF4444",
   },
   textMedium: {
-    color: '#F59E0B',
+    color: "#F59E0B",
   },
   textStrong: {
-    color: '#10B981',
+    color: "#10B981",
   },
   checklistContainer: {
     gap: 6,
   },
   checkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   checkText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#94A3B8',
+    fontWeight: "600",
+    color: "#94A3B8",
   },
   checkTextActive: {
-    color: '#334155',
+    color: "#334155",
   },
   keyboardAvoidOverlay: {
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   changePasswordScrollContent: {
     flexGrow: 1,
@@ -1890,19 +2776,19 @@ const styles = StyleSheet.create({
   },
   successToastOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(15, 23, 42, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 30,
   },
   successToastCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     paddingVertical: 32,
     paddingHorizontal: 24,
-    width: '85%',
-    alignItems: 'center',
-    shadowColor: '#000000',
+    width: "85%",
+    alignItems: "center",
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
@@ -1912,11 +2798,11 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#10B981",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 20,
-    shadowColor: '#10B981',
+    shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -1924,15 +2810,15 @@ const styles = StyleSheet.create({
   },
   successToastTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
-    textAlign: 'center',
+    fontWeight: "800",
+    color: "#0F172A",
+    textAlign: "center",
     marginBottom: 8,
   },
   successToastSub: {
     fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
+    color: "#64748B",
+    textAlign: "center",
     lineHeight: 18,
   },
 });

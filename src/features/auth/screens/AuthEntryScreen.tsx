@@ -80,6 +80,7 @@ export function AuthEntryScreen() {
 
   // Guest Mode Action
   const handleContinueAsGuest = () => {
+    AuthService.setGuestMode(true);
     router.replace({
       pathname: '/(tabs)',
       params: { isGuest: 'true' },

@@ -1,8 +1,8 @@
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useTheme } from '@/src/context/ThemeContext';
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useTheme } from "@/src/context/ThemeContext";
+import React from "react";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export interface HeaderBarProps {
   subtitle?: string;
@@ -11,7 +11,7 @@ export interface HeaderBarProps {
 }
 
 export function HeaderBar({
-  subtitle = 'Caloocan Government Services',
+  subtitle = "Caloocan Government Services",
   onNotificationPress,
   hasUnreadNotifications = true,
 }: HeaderBarProps) {
@@ -20,31 +20,57 @@ export function HeaderBar({
   const { isDarkMode } = useTheme();
 
   return (
-    <View style={[
-      styles.headerContainer,
-      { paddingTop: topPadding },
-      isDarkMode && { backgroundColor: '#1C2541', borderBottomColor: '#3A506B' }
-    ]}>
+    <View
+      style={[
+        styles.headerContainer,
+        { paddingTop: topPadding },
+        isDarkMode && {
+          backgroundColor: "#1C2541",
+          borderBottomColor: "#3A506B",
+        },
+      ]}
+    >
       {/* Left: Logo + App Name + Subtitle */}
       <View style={styles.leftBrand}>
         <Image
-          source={require('@/assets/images/logo.png')}
+          source={require("@/assets/images/logo.png")}
           style={styles.logoImage}
           resizeMode="contain"
         />
         <View style={styles.textStack}>
-          <Text style={[styles.brandTitle, isDarkMode && { color: '#38BDF8' }]}>CIVENTRAL</Text>
-          <Text style={[styles.brandSubtitle, isDarkMode && { color: '#CBD5E1' }]}>{subtitle}</Text>
+          <Text style={[styles.brandTitle, isDarkMode && { color: "#38BDF8" }]}>
+            CIVENTRAL
+          </Text>
+          <Text
+            style={[styles.brandSubtitle, isDarkMode && { color: "#CBD5E1" }]}
+          >
+            {subtitle}
+          </Text>
         </View>
       </View>
 
       {/* Right: Bell Notification with Red Badge */}
       <TouchableOpacity
-        style={[styles.notificationBtn, isDarkMode && { backgroundColor: '#0B132B' }]}
+        style={[
+          styles.notificationBtn,
+          isDarkMode && { backgroundColor: "#0B132B" },
+        ]}
         onPress={onNotificationPress}
-        activeOpacity={0.7}>
-        <IconSymbol name="bell.fill" size={22} color={isDarkMode ? '#38BDF8' : '#176B87'} />
-        {hasUnreadNotifications && <View style={[styles.redBadgeDot, isDarkMode && { borderColor: '#1C2541' }]} />}
+        activeOpacity={0.7}
+      >
+        <IconSymbol
+          name="bell.fill"
+          size={22}
+          color={isDarkMode ? "#38BDF8" : "#176B87"}
+        />
+        {hasUnreadNotifications && (
+          <View
+            style={[
+              styles.redBadgeDot,
+              isDarkMode && { borderColor: "#1C2541" },
+            ]}
+          />
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -52,18 +78,18 @@ export function HeaderBar({
 
 const styles = StyleSheet.create({
   headerContainer: {
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   leftBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   logoImage: {
     width: 36,
@@ -71,37 +97,37 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   textStack: {
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   brandTitle: {
     fontSize: 16,
-    fontWeight: '900',
-    color: '#176B87',
+    fontWeight: "900",
+    color: "#176B87",
     letterSpacing: 0.5,
   },
   brandSubtitle: {
     fontSize: 11,
-    color: '#64748B',
-    fontWeight: '500',
+    color: "#64748B",
+    fontWeight: "500",
     marginTop: -1,
   },
   notificationBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
   redBadgeDot: {
-    position: 'absolute',
+    position: "absolute",
     top: 5,
     right: 5,
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#EF4444',
+    backgroundColor: "#EF4444",
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
   },
 });
