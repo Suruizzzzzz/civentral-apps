@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ImageBackground,
   Modal,
   ScrollView,
   StyleSheet,
@@ -17,7 +18,7 @@ import { AuthService } from '@/src/services/auth-service';
 export interface ServiceCatalogItem {
   id: string;
   title: string;
-  category: 'EDUCATION' | 'BARANGAY' | 'BUSINESS' | 'TREASURY' | 'HEALTH' | 'SOCIAL';
+  category: 'EDUCATION' | 'BARANGAY' | 'BUSINESS' | 'TREASURY' | 'HEALTH' | 'SOCIAL' | 'DISASTER' | 'HOUSING' | 'TRANSPORT' | 'FACILITIES';
   description: string;
   iconName: string;
   iconBg: string;
@@ -27,7 +28,284 @@ export interface ServiceCatalogItem {
   route: string;
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  ALL: 'All Services',
+  DISASTER: 'Disaster & Emergency',
+  HOUSING: 'Zoning & Housing',
+  TRANSPORT: 'Transport & Mobility',
+  FACILITIES: 'Public Facilities',
+  EDUCATION: 'Education',
+  BARANGAY: 'Barangay',
+  BUSINESS: 'Business',
+  TREASURY: 'Treasury & RPT',
+  HEALTH: 'Health',
+  SOCIAL: 'Social Welfare',
+};
+
+const CATEGORIES = [
+  'ALL',
+  'DISASTER',
+  'HOUSING',
+  'TRANSPORT',
+  'FACILITIES',
+  'EDUCATION',
+  'BARANGAY',
+  'BUSINESS',
+  'TREASURY',
+  'HEALTH',
+  'SOCIAL',
+] as const;
+
 const SERVICES_CATALOG: ServiceCatalogItem[] = [
+  // 1. DISASTER & EMERGENCY SERVICES
+  {
+    id: 'SVC-DRR',
+    title: 'Disaster & Emergency Services',
+    category: 'DISASTER',
+    description: 'Hazard & Evacuation Map, Report an Incident, Emergency Alerts, Relief Distribution Status.',
+    iconName: 'exclamationmark.triangle.fill',
+    iconBg: '#FFEDD5',
+    iconColor: '#C2410C',
+    badgeLabel: 'EMERGENCY',
+    badgeVariant: 'danger',
+    route: '/emergency',
+  },
+  {
+    id: 'SVC-DRR-MAP',
+    title: 'Hazard & Evacuation Map',
+    category: 'DISASTER',
+    description: 'Interactive flood maps, active evacuation centers, shelter capacity & nearest emergency checkpoints.',
+    iconName: 'location.fill',
+    iconBg: '#FEF3C7',
+    iconColor: '#D97706',
+    badgeLabel: 'EVACUATION',
+    badgeVariant: 'warning',
+    route: '/emergency',
+  },
+  {
+    id: 'SVC-DRR-INC',
+    title: 'Report an Incident',
+    category: 'DISASTER',
+    description: 'Submit urgent reports for fires, vehicular collisions, fallen trees, flooding & public safety hazards.',
+    iconName: 'flame.fill',
+    iconBg: '#FEE2E2',
+    iconColor: '#DC2626',
+    badgeLabel: 'INCIDENT REPORT',
+    badgeVariant: 'danger',
+    route: '/emergency',
+  },
+  {
+    id: 'SVC-DRR-ALT',
+    title: 'Emergency Alerts & Advisories',
+    category: 'DISASTER',
+    description: 'Real-time city alerts for typhoon warnings, class suspensions, power interruptions & road closures.',
+    iconName: 'bell.fill',
+    iconBg: '#FFEDD5',
+    iconColor: '#EA580C',
+    badgeLabel: 'ALERTS',
+    badgeVariant: 'warning',
+    route: '/emergency',
+  },
+  {
+    id: 'SVC-DRR-RLF',
+    title: 'Relief Distribution Status',
+    category: 'DISASTER',
+    description: 'Track calamity aid schedules, food pack distribution sites & barangay relief claim stubs.',
+    iconName: 'heart.text.square.fill',
+    iconBg: '#FEF3C7',
+    iconColor: '#B45309',
+    badgeLabel: 'RELIEF STATUS',
+    badgeVariant: 'info',
+    route: '/emergency',
+  },
+
+  // 2. ZONING & HOUSING SERVICES
+  {
+    id: 'SVC-HOU',
+    title: 'Zoning & Housing Services',
+    category: 'HOUSING',
+    description: 'Zoning Clearance, Housing Assistance/Beneficiary Application, Occupancy Requests, Building/Subdivision Review.',
+    iconName: 'building.2.fill',
+    iconBg: '#E0F2FE',
+    iconColor: '#0369A1',
+    badgeLabel: 'HOUSING PORTAL',
+    badgeVariant: 'info',
+    route: '/housing',
+  },
+  {
+    id: 'SVC-HOU-ZON',
+    title: 'Zoning Clearance',
+    category: 'HOUSING',
+    description: 'Apply for locational clearance, land-use verification certificates & commercial zoning approval.',
+    iconName: 'doc.text.fill',
+    iconBg: '#E0F2FE',
+    iconColor: '#0284C7',
+    badgeLabel: 'ZONING',
+    badgeVariant: 'info',
+    route: '/housing',
+  },
+  {
+    id: 'SVC-HOU-AST',
+    title: 'Housing Assistance & Beneficiary Application',
+    category: 'HOUSING',
+    description: 'Caloocan socialized housing program, informal settler relocation & housing beneficiary application.',
+    iconName: 'house.fill',
+    iconBg: '#DCFCE7',
+    iconColor: '#15803D',
+    badgeLabel: 'BENEFICIARY',
+    badgeVariant: 'success',
+    route: '/housing',
+  },
+  {
+    id: 'SVC-HOU-OCC',
+    title: 'Occupancy Requests & Permits',
+    category: 'HOUSING',
+    description: 'Submit requests for Certificate of Occupancy, structural safety inspection & clearance verification.',
+    iconName: 'checkmark.seal.fill',
+    iconBg: '#E0E7FF',
+    iconColor: '#4338CA',
+    badgeLabel: 'OCCUPANCY',
+    badgeVariant: 'info',
+    route: '/housing',
+  },
+  {
+    id: 'SVC-HOU-REV',
+    title: 'Building & Subdivision Review',
+    category: 'HOUSING',
+    description: 'Architectural plan evaluation, subdivision development clearance & municipal engineering review.',
+    iconName: 'wrench.and.screwdriver.fill',
+    iconBg: '#F1F5F9',
+    iconColor: '#475569',
+    badgeLabel: 'BUILDING REVIEW',
+    badgeVariant: 'neutral',
+    route: '/housing',
+  },
+
+  // 3. TRANSPORT & MOBILITY SERVICES
+  {
+    id: 'SVC-TRN',
+    title: 'Transport & Mobility Services',
+    category: 'TRANSPORT',
+    description: 'PUV Services, Franchise Application/Renewal, Traffic Violations, Vehicle Inspection.',
+    iconName: 'car.fill',
+    iconBg: '#ECFDF5',
+    iconColor: '#047857',
+    badgeLabel: 'TRANSPORT',
+    badgeVariant: 'success',
+    route: '/transport',
+  },
+  {
+    id: 'SVC-TRN-PUV',
+    title: 'PUV Services & Route Management',
+    category: 'TRANSPORT',
+    description: 'Tricycle, jeepney, and shuttle route permits, terminal slots & official fare matrix schedules.',
+    iconName: 'car.fill',
+    iconBg: '#E0F2FE',
+    iconColor: '#0284C7',
+    badgeLabel: 'PUV ROUTES',
+    badgeVariant: 'info',
+    route: '/transport',
+  },
+  {
+    id: 'SVC-TRN-FRN',
+    title: 'Franchise Application & Renewal',
+    category: 'TRANSPORT',
+    description: 'Apply for new TODA franchise, annual renewal, body number assignment & operator ID card.',
+    iconName: 'creditcard.fill',
+    iconBg: '#FEF3C7',
+    iconColor: '#B45309',
+    badgeLabel: 'TODA FRANCHISE',
+    badgeVariant: 'warning',
+    route: '/transport',
+  },
+  {
+    id: 'SVC-TRN-TKT',
+    title: 'Traffic Violations & Citation Fines',
+    category: 'TRANSPORT',
+    description: 'Check CPTMD traffic violation tickets, contest citations online & settle fines.',
+    iconName: 'exclamationmark.triangle.fill',
+    iconBg: '#FEE2E2',
+    iconColor: '#DC2626',
+    badgeLabel: 'TRAFFIC TICKETS',
+    badgeVariant: 'danger',
+    route: '/transport',
+  },
+  {
+    id: 'SVC-TRN-INS',
+    title: 'Vehicle & Roadworthiness Inspection',
+    category: 'TRANSPORT',
+    description: 'Schedule public transport emission testing, roadworthiness inspection & safety checks.',
+    iconName: 'wrench.and.screwdriver.fill',
+    iconBg: '#ECFDF5',
+    iconColor: '#059669',
+    badgeLabel: 'INSPECTION',
+    badgeVariant: 'success',
+    route: '/transport',
+  },
+
+  // 4. PUBLIC FACILITIES & UTILITIES
+  {
+    id: 'SVC-FAC',
+    title: 'Public Facilities & Utilities',
+    category: 'FACILITIES',
+    description: 'Cemetery & Burial Services, Parks & Recreation Scheduling, Facility Reservations, Water Supply & Drainage Requests.',
+    iconName: 'wrench.and.screwdriver.fill',
+    iconBg: '#F5F3FF',
+    iconColor: '#6D28D9',
+    badgeLabel: 'FACILITIES',
+    badgeVariant: 'neutral',
+    route: '/facilities',
+  },
+  {
+    id: 'SVC-FAC-CEM',
+    title: 'Cemetery & Burial Services',
+    category: 'FACILITIES',
+    description: 'Public cemetery plot assignment, burial permits, cremation requests & indigent burial assistance.',
+    iconName: 'house.fill',
+    iconBg: '#F1F5F9',
+    iconColor: '#334155',
+    badgeLabel: 'BURIAL AID',
+    badgeVariant: 'neutral',
+    route: '/facilities',
+  },
+  {
+    id: 'SVC-FAC-PRK',
+    title: 'Parks & Recreation Scheduling',
+    category: 'FACILITIES',
+    description: 'Book public parks, Caloocan Sports Complex courts, amphitheaters & municipal recreation grounds.',
+    iconName: 'heart.text.square.fill',
+    iconBg: '#DCFCE7',
+    iconColor: '#16A34A',
+    badgeLabel: 'PARKS & RECREATION',
+    badgeVariant: 'success',
+    route: '/facilities',
+  },
+  {
+    id: 'SVC-FAC-RES',
+    title: 'Facility & Hall Reservations',
+    category: 'FACILITIES',
+    description: 'Reserve City Hall convention centers, barangay multi-purpose halls & community gymnasiums.',
+    iconName: 'building.2.fill',
+    iconBg: '#E0F2FE',
+    iconColor: '#0284C7',
+    badgeLabel: 'RESERVATIONS',
+    badgeVariant: 'info',
+    route: '/facilities',
+  },
+  {
+    id: 'SVC-FAC-WTR',
+    title: 'Water Supply & Drainage Requests',
+    category: 'FACILITIES',
+    description: 'Request drainage declogging, flood control maintenance, water tank dispatch & utility repairs.',
+    iconName: 'wrench.and.screwdriver.fill',
+    iconBg: '#E0E7FF',
+    iconColor: '#4338CA',
+    badgeLabel: 'WATER & DRAINAGE',
+    badgeVariant: 'info',
+    route: '/facilities',
+  },
+
+  // 5. EXISTING CATEGORIES
   {
     id: 'SVC-EDU',
     title: 'Education & Scholarship Portal',
@@ -112,15 +390,17 @@ export function ServicesCatalogScreen() {
   const isGuestMode = params.isGuest === 'true' || (!session.email && !session.citizen_user_id);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'EDUCATION' | 'BARANGAY' | 'BUSINESS' | 'TREASURY'>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<typeof CATEGORIES[number]>('ALL');
   const [isAuthGateVisible, setIsAuthGateVisible] = useState(false);
 
   const filteredServices = SERVICES_CATALOG.filter((item) => {
     const matchesCat = selectedCategory === 'ALL' || item.category === selectedCategory;
+    const query = searchQuery.trim().toLowerCase();
     const matchesQuery =
-      searchQuery.trim() === '' ||
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      query === '' ||
+      item.title.toLowerCase().includes(query) ||
+      item.description.toLowerCase().includes(query);
+
     return matchesCat && matchesQuery;
   });
 
@@ -141,7 +421,7 @@ export function ServicesCatalogScreen() {
         <View style={styles.headerContainer}>
           <Text style={[styles.headerTitle, isDarkMode && { color: '#F8FAFC' }]}>Municipal Services Directory</Text>
           <Text style={[styles.headerSubtitle, isDarkMode && { color: '#94A3B8' }]}>
-            Access 50+ official Caloocan City government e-services, permits, education grants & digital clearance.
+            Access official Caloocan City government e-services, permits, education grants & digital clearance.
           </Text>
         </View>
 
@@ -164,25 +444,28 @@ export function ServicesCatalogScreen() {
 
         {/* Category Pills */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-          {(['ALL', 'EDUCATION', 'BARANGAY', 'BUSINESS', 'TREASURY'] as const).map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[
-                styles.categoryPill,
-                isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
-                selectedCategory === cat && (isDarkMode ? { backgroundColor: '#0284C7' } : styles.categoryPillActive)
-              ]}
-              onPress={() => setSelectedCategory(cat)}
-              activeOpacity={0.8}>
-              <Text style={[
-                styles.categoryPillText,
-                isDarkMode && { color: '#CBD5E1' },
-                selectedCategory === cat && { color: '#FFFFFF' }
-              ]}>
-                {cat === 'ALL' ? 'All Services' : cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[
+                  styles.categoryPill,
+                  isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+                  isSelected && (isDarkMode ? { backgroundColor: '#0284C7' } : styles.categoryPillActive)
+                ]}
+                onPress={() => setSelectedCategory(cat)}
+                activeOpacity={0.8}>
+                <Text style={[
+                  styles.categoryPillText,
+                  isDarkMode && { color: '#CBD5E1' },
+                  isSelected && { color: '#FFFFFF' }
+                ]}>
+                  {CATEGORY_LABELS[cat] || cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Guest Warning Banner */}
@@ -197,41 +480,80 @@ export function ServicesCatalogScreen() {
 
         {/* Services List */}
         <View style={styles.servicesList}>
-          {filteredServices.map((service) => (
-            <TouchableOpacity
-              key={service.id}
-              style={[
-                styles.serviceCard,
-                isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
-                isGuestMode && styles.serviceCardLocked
-              ]}
-              onPress={() => handleServicePress(service.route)}
-              activeOpacity={0.85}>
-              <View style={styles.cardHeaderRow}>
-                <View style={[styles.iconCircle, { backgroundColor: isDarkMode ? '#0F2942' : service.iconBg }]}>
-                  <IconSymbol name={service.iconName as any} size={22} color={isDarkMode ? '#38BDF8' : service.iconColor} />
-                </View>
-                <View style={styles.badgeRow}>
-                  <Badge label={service.badgeLabel} variant={service.badgeVariant} />
-                  {isGuestMode && (
-                    <View style={styles.lockBadge}>
-                      <IconSymbol name="lock.fill" size={11} color="#94A3B8" />
+          {filteredServices.map((service) => {
+            if (service.id === 'SVC-EDU') {
+              return (
+                <TouchableOpacity
+                  key={service.id}
+                  style={[
+                    styles.serviceCard,
+                    styles.educationBannerCard,
+                    isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+                    isGuestMode && styles.serviceCardLocked
+                  ]}
+                  onPress={() => handleServicePress(service.route)}
+                  activeOpacity={0.88}>
+                  <ImageBackground
+                    source={
+                      isDarkMode
+                        ? require('@/assets/images/education-dark.png')
+                        : require('@/assets/images/education-light.png')
+                    }
+                    style={styles.educationBannerBg}
+                    imageStyle={styles.educationBannerImageStyle}
+                    resizeMode="cover">
+                    <View style={styles.educationBannerContent}>
+                      <View style={[styles.educationIconCircle, isDarkMode && { backgroundColor: '#1C2541' }]}>
+                        <IconSymbol name="book.closed.fill" size={24} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
+                      </View>
+                      <Text style={[styles.educationBannerTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                        Education & Scholarship
+                      </Text>
+                      <Text style={[styles.educationBannerSub, isDarkMode && { color: '#CBD5E1' }]}>
+                        Manage applications, renewals, grants and scholar services.
+                      </Text>
                     </View>
-                  )}
+                  </ImageBackground>
+                </TouchableOpacity>
+              );
+            }
+
+            return (
+              <TouchableOpacity
+                key={service.id}
+                style={[
+                  styles.serviceCard,
+                  isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+                  isGuestMode && styles.serviceCardLocked
+                ]}
+                onPress={() => handleServicePress(service.route)}
+                activeOpacity={0.85}>
+                <View style={styles.cardHeaderRow}>
+                  <View style={[styles.iconCircle, { backgroundColor: isDarkMode ? '#0F2942' : service.iconBg }]}>
+                    <IconSymbol name={service.iconName as any} size={22} color={isDarkMode ? '#38BDF8' : service.iconColor} />
+                  </View>
+                  <View style={styles.badgeRow}>
+                    <Badge label={service.badgeLabel} variant={service.badgeVariant} />
+                    {isGuestMode && (
+                      <View style={styles.lockBadge}>
+                        <IconSymbol name="lock.fill" size={11} color="#94A3B8" />
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
 
-              <Text style={[styles.serviceTitle, isDarkMode && { color: '#F8FAFC' }]}>{service.title}</Text>
-              <Text style={[styles.serviceSub, isDarkMode && { color: '#CBD5E1' }]}>{service.description}</Text>
+                <Text style={[styles.serviceTitle, isDarkMode && { color: '#F8FAFC' }]}>{service.title}</Text>
+                <Text style={[styles.serviceSub, isDarkMode && { color: '#CBD5E1' }]}>{service.description}</Text>
 
-              <View style={styles.cardFooterRow}>
-                <Text style={[styles.launchText, isDarkMode && { color: '#38BDF8' }, isGuestMode && styles.launchTextLocked]}>
-                  {isGuestMode ? 'Login Required' : 'Open E-Service'}
-                </Text>
-                <IconSymbol name={isGuestMode ? 'lock.fill' : 'chevron.right'} size={14} color={isGuestMode ? '#94A3B8' : isDarkMode ? '#38BDF8' : '#176B87'} />
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.cardFooterRow}>
+                  <Text style={[styles.launchText, isDarkMode && { color: '#38BDF8' }, isGuestMode && styles.launchTextLocked]}>
+                    {isGuestMode ? 'Login Required' : 'Open E-Service'}
+                  </Text>
+                  <IconSymbol name={isGuestMode ? 'lock.fill' : 'chevron.right'} size={14} color={isGuestMode ? '#94A3B8' : isDarkMode ? '#38BDF8' : '#176B87'} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -368,6 +690,95 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
   },
+  typeChipScroll: {
+    gap: 8,
+    paddingBottom: 12,
+  },
+  typeChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  typeChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  resultsBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    marginBottom: 12,
+  },
+  resultsCountText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  resultsBoldText: {
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  resetFilterBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  resetFilterText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  emptyStateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F0F9FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 18,
+    paddingHorizontal: 12,
+  },
+  emptyResetBtn: {
+    backgroundColor: '#176B87',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  emptyResetText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
   servicesList: {
     gap: 12,
   },
@@ -382,6 +793,52 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
+  },
+  educationBannerCard: {
+    padding: 0,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 22,
+  },
+  educationBannerBg: {
+    width: '100%',
+    minHeight: 160,
+    justifyContent: 'center',
+  },
+  educationBannerImageStyle: {
+    borderRadius: 22,
+  },
+  educationBannerContent: {
+    padding: 22,
+    maxWidth: '65%',
+  },
+  educationIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  educationBannerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  educationBannerSub: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    fontWeight: '500',
   },
   cardHeaderRow: {
     flexDirection: 'row',
