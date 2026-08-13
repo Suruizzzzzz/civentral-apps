@@ -80,7 +80,10 @@ export function LoginScreen() {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert('Reset Password', 'Please contact Caloocan City Hall Helpdesk or use email verification to reset.');
+    router.push({
+      pathname: '/(auth)/forgot-password' as any,
+      params: { identifier: email.trim() },
+    });
   };
 
   return (
@@ -108,7 +111,7 @@ export function LoginScreen() {
           <View style={styles.headerContainer}>
             <Text style={styles.headerTitle}>Welcome Back!</Text>
             <Text style={styles.headerSubtitle}>
-              Please enter your password to sign-in to your CIVentral account.
+              Please enter your password to sign-in to your Civentral account.
             </Text>
           </View>
 
@@ -208,7 +211,7 @@ export function LoginScreen() {
               />
 
               {/* Capitalized Title */}
-              <Text style={styles.simpleGovTitle}>CIVENTRAL</Text>
+              <Text style={styles.simpleGovTitle}>Civentral</Text>
               <Text style={styles.simpleGovSubtitle}>CITY OF CALOOCAN</Text>
 
               {/* Loading Spinner at the Bottom */}

@@ -1114,7 +1114,7 @@ export function ProfileScreen() {
               <Text style={styles.signOutBtnText}>
                 {isGuestMode
                   ? "Exit Guest Mode / Sign In"
-                  : "Log Out of CIVentral"}
+                  : "Log Out of Civentral"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1253,7 +1253,7 @@ export function ProfileScreen() {
             <Text
               style={[styles.logoutTitle, isDarkMode && { color: "#F8FAFC" }]}
             >
-              Sign Out of CIVentral?
+              Sign Out of Civentral?
             </Text>
             <Text
               style={[

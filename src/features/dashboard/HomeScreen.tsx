@@ -76,7 +76,7 @@ const INITIAL_ANNOUNCEMENTS: AnnouncementItem[] = [
     summary:
       "Caloocan City Treasury launches instant digital clearance processing for Q3 business permit renewals.",
     fullBody:
-      "Business owners can now apply for, renew, and pay Q3 business permits completely online via CIVentral. Approved e-permits with official QR verification will be issued within 24 hours of payment clearance.",
+      "Business owners can now apply for, renew, and pay Q3 business permits completely online via Civentral. Approved e-permits with official QR verification will be issued within 24 hours of payment clearance.",
     department: "Business Permits and Licensing Office (BPLO)",
   },
 ];

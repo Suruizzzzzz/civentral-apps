@@ -39,7 +39,7 @@ export function HeaderBar({
         />
         <View style={styles.textStack}>
           <Text style={[styles.brandTitle, isDarkMode && { color: "#38BDF8" }]}>
-            CIVENTRAL
+            Civentral
           </Text>
           <Text
             style={[styles.brandSubtitle, isDarkMode && { color: "#CBD5E1" }]}

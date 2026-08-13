@@ -8,13 +8,14 @@ import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 type IconMapping = Record<string, ComponentProps<typeof MaterialIcons>['name']>;
 
 /**
- * SF Symbols to Material Icons mappings for CIVentral
+ * SF Symbols to Material Icons mappings for Civentral
  */
 const MAPPING: IconMapping = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.left': 'chevron-left',
   'shield.fill': 'shield',
   'person.text.rectangle.fill': 'badge',
   'heart.text.square.fill': 'volunteer-activism',
