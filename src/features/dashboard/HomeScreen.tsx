@@ -241,7 +241,7 @@ export function HomeScreen() {
     border: dm ? "#3A506B" : "#E5E7EB",
     textPrimary: dm ? "#F8FAFC" : "#111827",
     textSecondary: dm ? "#94A3B8" : "#667085",
-    blue: "#176B87",
+    blue: dm ? "#38BDF8" : "#176B87",
     blueLight: dm ? "#0F2942" : "#EBF5FB",
   };
 
@@ -599,7 +599,7 @@ export function HomeScreen() {
               />
             </TouchableOpacity>
           </View>
-          <View style={[styles.shortcutRow, { borderColor: C.border }]}>
+          <View style={[styles.shortcutRow, { backgroundColor: C.surface, borderColor: C.border }]}>
             <TouchableOpacity
               style={styles.shortcutItem}
               onPress={() => router.push("/(tabs)/services")}
@@ -1193,7 +1193,6 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     borderRadius: 14,
     overflow: "hidden",
-    backgroundColor: "#FFFFFF",
   },
   shortcutItem: {
     flex: 1,

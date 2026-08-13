@@ -170,7 +170,7 @@ export function ServicesCatalogScreen() {
               style={[
                 styles.categoryPill,
                 isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
-                selectedCategory === cat && (isDarkMode ? { backgroundColor: '#176B87' } : styles.categoryPillActive)
+                selectedCategory === cat && (isDarkMode ? { backgroundColor: '#0284C7' } : styles.categoryPillActive)
               ]}
               onPress={() => setSelectedCategory(cat)}
               activeOpacity={0.8}>
