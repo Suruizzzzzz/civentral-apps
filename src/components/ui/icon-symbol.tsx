@@ -51,6 +51,10 @@ const MAPPING: IconMapping = {
   'doc.text.fill': 'assignment',
   'eye.fill': 'visibility',
   'eye.slash.fill': 'visibility-off',
+  'moon.stars.fill': 'nights-stay',
+  'moon.fill': 'dark-mode',
+  'sun.max.fill': 'wb-sunny',
+  'sun.fill': 'light-mode',
 };
 
 export type IconSymbolName = keyof typeof MAPPING;

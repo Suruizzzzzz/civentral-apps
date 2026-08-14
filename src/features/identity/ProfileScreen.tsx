@@ -463,18 +463,34 @@ export function ProfileScreen() {
             onPress={() => setActiveTab("overview")}
             activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeTab === "overview" && styles.tabButtonTextActive,
-                isDarkMode && {
-                  color: activeTab === "overview" ? "#FFFFFF" : "#E2E8F0",
-                  fontWeight: "700",
-                },
-              ]}
-            >
-              Overview
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <IconSymbol
+                name="person.crop.circle.fill"
+                size={16}
+                color={
+                  activeTab === "overview"
+                    ? isDarkMode
+                      ? "#FFFFFF"
+                      : "#176B87"
+                    : isDarkMode
+                      ? "#94A3B8"
+                      : "#64748B"
+                }
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[
+                  styles.tabButtonText,
+                  activeTab === "overview" && styles.tabButtonTextActive,
+                  isDarkMode && {
+                    color: activeTab === "overview" ? "#FFFFFF" : "#E2E8F0",
+                    fontWeight: "700",
+                  },
+                ]}
+              >
+                Overview
+              </Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -488,18 +504,34 @@ export function ProfileScreen() {
             onPress={() => setActiveTab("settings")}
             activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeTab === "settings" && styles.tabButtonTextActive,
-                isDarkMode && {
-                  color: activeTab === "settings" ? "#FFFFFF" : "#E2E8F0",
-                  fontWeight: "700",
-                },
-              ]}
-            >
-              Settings
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <IconSymbol
+                name="gearshape.fill"
+                size={16}
+                color={
+                  activeTab === "settings"
+                    ? isDarkMode
+                      ? "#FFFFFF"
+                      : "#176B87"
+                    : isDarkMode
+                      ? "#94A3B8"
+                      : "#64748B"
+                }
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[
+                  styles.tabButtonText,
+                  activeTab === "settings" && styles.tabButtonTextActive,
+                  isDarkMode && {
+                    color: activeTab === "settings" ? "#FFFFFF" : "#E2E8F0",
+                    fontWeight: "700",
+                  },
+                ]}
+              >
+                Settings
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -844,7 +876,7 @@ export function ProfileScreen() {
                 <Switch
                   value={isDarkMode}
                   onValueChange={setIsDarkMode}
-                  trackColor={{ false: "#CBD5E1", true: "#176B87" }}
+                  trackColor={{ false: isDarkMode ? "#334155" : "#CBD5E1", true: isDarkMode ? "#38BDF8" : "#176B87" }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -871,14 +903,22 @@ export function ProfileScreen() {
 
               <View style={styles.settingRow}>
                 <View style={styles.settingTextStack}>
-                  <Text
-                    style={[
-                      styles.settingLabel,
-                      isDarkMode && { color: "#F8FAFC" },
-                    ]}
-                  >
-                    Biometric Sign-In
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <IconSymbol
+                      name="fingerprint"
+                      size={18}
+                      color={isDarkMode ? "#38BDF8" : "#176B87"}
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text
+                      style={[
+                        styles.settingLabel,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      Biometric Sign-In
+                    </Text>
+                  </View>
                   <Text
                     style={[
                       styles.settingSub,
@@ -891,7 +931,7 @@ export function ProfileScreen() {
                 <Switch
                   value={biometricsEnabled}
                   onValueChange={setBiometricsEnabled}
-                  trackColor={{ false: "#CBD5E1", true: "#176B87" }}
+                  trackColor={{ false: isDarkMode ? "#334155" : "#CBD5E1", true: isDarkMode ? "#38BDF8" : "#176B87" }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -909,7 +949,7 @@ export function ProfileScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.settingLeftIcon}>
-                  <IconSymbol name="lock.fill" size={18} color="#176B87" />
+                  <IconSymbol name="lock.fill" size={18} color={isDarkMode ? "#38BDF8" : "#176B87"} />
                   <Text
                     style={[
                       styles.settingActionText,
@@ -919,7 +959,7 @@ export function ProfileScreen() {
                     Change Account Password
                   </Text>
                 </View>
-                <IconSymbol name="chevron.right" size={18} color="#94A3B8" />
+                <IconSymbol name="chevron.right" size={18} color={isDarkMode ? "#64748B" : "#94A3B8"} />
               </TouchableOpacity>
             </View>
 
@@ -944,14 +984,22 @@ export function ProfileScreen() {
 
               <View style={styles.settingRow}>
                 <View style={styles.settingTextStack}>
-                  <Text
-                    style={[
-                      styles.settingLabel,
-                      isDarkMode && { color: "#F8FAFC" },
-                    ]}
-                  >
-                    City Push Notifications
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <IconSymbol
+                      name="bell.fill"
+                      size={18}
+                      color={isDarkMode ? "#38BDF8" : "#176B87"}
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text
+                      style={[
+                        styles.settingLabel,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      City Push Notifications
+                    </Text>
+                  </View>
                   <Text
                     style={[
                       styles.settingSub,
@@ -964,7 +1012,7 @@ export function ProfileScreen() {
                 <Switch
                   value={pushNotificationsEnabled}
                   onValueChange={setPushNotificationsEnabled}
-                  trackColor={{ false: "#CBD5E1", true: "#176B87" }}
+                  trackColor={{ false: isDarkMode ? "#334155" : "#CBD5E1", true: isDarkMode ? "#38BDF8" : "#176B87" }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -978,14 +1026,22 @@ export function ProfileScreen() {
 
               <View style={styles.settingRow}>
                 <View style={styles.settingTextStack}>
-                  <Text
-                    style={[
-                      styles.settingLabel,
-                      isDarkMode && { color: "#F8FAFC" },
-                    ]}
-                  >
-                    Emergency SOS Broadcasts
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <IconSymbol
+                      name="exclamationmark.triangle.fill"
+                      size={18}
+                      color="#EF4444"
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text
+                      style={[
+                        styles.settingLabel,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
+                      Emergency SOS Broadcasts
+                    </Text>
+                  </View>
                   <Text
                     style={[
                       styles.settingSub,
@@ -998,7 +1054,7 @@ export function ProfileScreen() {
                 <Switch
                   value={sosAlertsEnabled}
                   onValueChange={setSosAlertsEnabled}
-                  trackColor={{ false: "#CBD5E1", true: "#DC2626" }}
+                  trackColor={{ false: isDarkMode ? "#334155" : "#CBD5E1", true: "#DC2626" }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -1037,7 +1093,7 @@ export function ProfileScreen() {
                   <IconSymbol
                     name="help.circle.fill"
                     size={18}
-                    color="#176B87"
+                    color={isDarkMode ? "#38BDF8" : "#176B87"}
                   />
                   <Text
                     style={[
@@ -1048,7 +1104,7 @@ export function ProfileScreen() {
                     City Hall Citizen Help Desk
                   </Text>
                 </View>
-                <IconSymbol name="chevron.right" size={18} color="#94A3B8" />
+                <IconSymbol name="chevron.right" size={18} color={isDarkMode ? "#64748B" : "#94A3B8"} />
               </TouchableOpacity>
 
               <View
@@ -1060,7 +1116,7 @@ export function ProfileScreen() {
 
               <View style={styles.settingActionRow}>
                 <View style={styles.settingLeftIcon}>
-                  <IconSymbol name="shield.fill" size={18} color="#64748B" />
+                  <IconSymbol name="shield.fill" size={18} color={isDarkMode ? "#38BDF8" : "#64748B"} />
                   <Text
                     style={[
                       styles.settingActionText,
