@@ -154,7 +154,7 @@ export function VerifyEmailScreen() {
           {/* Resend Link */}
           <View style={styles.resendRow}>
             <Text style={styles.resendText}>
-              Didn't receive the code?{' '}
+              Didn&apos;t receive the code?{' '}
               <Text style={styles.resendLink} onPress={handleResend}>
                 Resend now
               </Text>

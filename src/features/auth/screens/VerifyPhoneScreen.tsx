@@ -147,7 +147,7 @@ export function VerifyPhoneScreen() {
           {/* Resend Link */}
           <View style={styles.resendRow}>
             <Text style={styles.resendText}>
-              Didn't receive the SMS code?{' '}
+              Didn&apos;t receive the SMS code?{' '}
               <Text style={styles.resendLink} onPress={handleResend}>
                 Resend now
               </Text>
