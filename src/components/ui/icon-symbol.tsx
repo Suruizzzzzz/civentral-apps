@@ -55,6 +55,15 @@ const MAPPING: IconMapping = {
   'moon.fill': 'dark-mode',
   'sun.max.fill': 'wb-sunny',
   'sun.fill': 'light-mode',
+  'calendar': 'calendar-today',
+  'megaphone.fill': 'campaign',
+  'circle.fill': 'lens',
+  'circle': 'radio-button-unchecked',
+  'clock.fill': 'schedule',
+  'info.circle.fill': 'info',
+  'history': 'history',
+  'map': 'map',
+  'clipboard': 'content-paste',
 };
 
 export type IconSymbolName = keyof typeof MAPPING;

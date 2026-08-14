@@ -31,6 +31,14 @@ export function EducationScreen() {
       setIsAuthGateVisible(true);
       return;
     }
+    if (section === 'dashboard') {
+      router.push('/education/dashboard' as any);
+      return;
+    }
+    if (section === 'distribution') {
+      router.push('/education/distribution' as any);
+      return;
+    }
     setActiveSection(section);
   };
 
