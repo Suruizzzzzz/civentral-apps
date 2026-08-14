@@ -1,6 +1,6 @@
 import React from "react";
 import { Platform, ScrollView, StyleSheet, View } from "react-native";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/src/components/ui/Skeleton";
 import { useTheme } from "@/src/context/ThemeContext";
 
 export function HomeScreenSkeleton() {

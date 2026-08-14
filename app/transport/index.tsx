@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { useTheme } from '@/src/context/ThemeContext';
 
 const TRANSPORT_SERVICES = [

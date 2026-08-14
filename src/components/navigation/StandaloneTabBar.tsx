@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { useTheme } from '@/src/context/ThemeContext';
 
 /**
  * StandaloneTabBar — identical pill design to CustomTabBar,
@@ -21,9 +22,17 @@ const TAB_ITEMS = [
 export function StandaloneTabBar() {
   const router = useRouter();
   const pathname = usePathname();
+  const { isDarkMode } = useTheme();
+
+  const activeColor = isDarkMode ? '#38BDF8' : '#176B87';
+  const inactiveColor = isDarkMode ? '#64748B' : '#94A3B8';
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+      ]}>
       {TAB_ITEMS.map((item) => {
         const isSOS = 'isSOS' in item && item.isSOS;
 
@@ -35,7 +44,7 @@ export function StandaloneTabBar() {
               onPress={() => router.push(item.route as any)}
               activeOpacity={0.85}
               style={styles.sosButtonContainer}>
-              <View style={styles.sosCircle}>
+              <View style={[styles.sosCircle, isDarkMode && { borderColor: '#1C2541' }]}>
                 <IconSymbol name={item.icon as any} size={30} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
@@ -47,7 +56,7 @@ export function StandaloneTabBar() {
           ? pathname === '/'
           : pathname.startsWith(item.route.replace('/(tabs)', ''));
 
-        const color = isActive ? '#176B87' : '#94A3B8';
+        const color = isActive ? activeColor : inactiveColor;
 
         return (
           <TouchableOpacity
@@ -120,3 +129,4 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
 });
+

@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { AuthService } from '@/src/services/auth-service';
 
 export function LoginScreen() {

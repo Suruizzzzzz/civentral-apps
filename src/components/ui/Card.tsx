@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from 'react';
 import { StyleSheet, View, ViewProps } from 'react-native';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useColorScheme } from '@/src/hooks/use-color-scheme';
 
 export interface CardProps extends PropsWithChildren<ViewProps> {
   variant?: 'elevated' | 'outlined' | 'flat';

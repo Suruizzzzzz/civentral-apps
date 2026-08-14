@@ -1,4 +1,4 @@
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { useTheme } from "@/src/context/ThemeContext";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";

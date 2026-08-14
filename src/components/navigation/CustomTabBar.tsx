@@ -1,4 +1,4 @@
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { useTheme } from "@/src/context/ThemeContext";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import React from "react";
@@ -61,7 +61,7 @@ export function CustomTabBar({
               activeOpacity={0.85}
               style={styles.sosButtonContainer}
             >
-              <View style={styles.sosCircle}>
+              <View style={[styles.sosCircle, isDarkMode && { borderColor: "#1C2541" }]}>
                 <IconSymbol name="shield.fill" size={30} color="#FFFFFF" />
               </View>
             </TouchableOpacity>

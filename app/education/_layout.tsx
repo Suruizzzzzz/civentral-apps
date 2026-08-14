@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { HeaderBar } from '@/src/components/common/HeaderBar';
 import { StandaloneTabBar } from '@/src/components/navigation/StandaloneTabBar';
+import { styles } from '@/src/features/education/styles/layout.styles';
 
 /**
  * Education department layout.
@@ -31,13 +32,3 @@ export default function EducationLayout() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  shell: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  content: {
-    flex: 1,
-  },
-});

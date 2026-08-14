@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { IconSymbol } from '@/src/components/ui/icon-symbol';
 
 export interface FloatingSOSButtonProps {
   onPress: () => void;

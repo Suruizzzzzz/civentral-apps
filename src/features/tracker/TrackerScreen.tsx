@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Badge } from '@/src/components/ui/Badge';
 import { useTheme } from '@/src/context/ThemeContext';
 import { CivicApiService } from '@/src/services/api';
