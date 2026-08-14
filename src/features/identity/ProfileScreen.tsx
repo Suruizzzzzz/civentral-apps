@@ -205,11 +205,12 @@ export function ProfileScreen() {
     useState(true);
   const [sosAlertsEnabled, setSosAlertsEnabled] = useState(true);
 
-  // Modals
+  // Modals & Loading
   const [isQrModalVisible, setIsQrModalVisible] = useState(false);
   const [isEditProfileModalVisible, setIsEditProfileModalVisible] =
     useState(false);
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Temporary Edit Form State
   const [editPhone, setEditPhone] = useState(userProfile.phone);
@@ -407,18 +408,24 @@ export function ProfileScreen() {
     );
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     if (isGuestMode) {
+      setIsLoggingOut(true);
+      await new Promise((resolve) => setTimeout(resolve, 800));
       AuthService.clearCurrentUser();
+      setIsLoggingOut(false);
       router.replace("/(auth)");
       return;
     }
     setIsLogoutModalVisible(true);
   };
 
-  const handleConfirmLogout = () => {
-    setIsLogoutModalVisible(false);
+  const handleConfirmLogout = async () => {
+    setIsLoggingOut(true);
+    await new Promise((resolve) => setTimeout(resolve, 800));
     AuthService.clearCurrentUser();
+    setIsLoggingOut(false);
+    setIsLogoutModalVisible(false);
     router.replace("/(auth)");
   };
 
@@ -1472,16 +1479,23 @@ export function ProfileScreen() {
             {/* Action Buttons */}
             <View style={styles.logoutActionsCol}>
               <TouchableOpacity
-                style={styles.logoutConfirmBtn}
+                style={[styles.logoutConfirmBtn, isLoggingOut && { opacity: 0.8 }]}
                 onPress={handleConfirmLogout}
+                disabled={isLoggingOut}
                 activeOpacity={0.88}
               >
-                <IconSymbol
-                  name="rectangle.portrait.and.arrow.right"
-                  size={18}
-                  color="#FFFFFF"
-                />
-                <Text style={styles.logoutConfirmText}>Yes, Sign Me Out</Text>
+                {isLoggingOut ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <IconSymbol
+                      name="rectangle.portrait.and.arrow.right"
+                      size={18}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.logoutConfirmText}>Yes, Sign Me Out</Text>
+                  </>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1493,6 +1507,7 @@ export function ProfileScreen() {
                   },
                 ]}
                 onPress={() => setIsLogoutModalVisible(false)}
+                disabled={isLoggingOut}
                 activeOpacity={0.7}
               >
                 <Text
@@ -2096,6 +2111,40 @@ export function ProfileScreen() {
             <Text style={styles.successToastTitle}>Password Updated</Text>
             <Text style={styles.successToastSub}>
               Your account password has been changed successfully.
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 5: LOGOUT LOADING OVERLAY */}
+      <Modal visible={isLoggingOut} transparent animationType="fade">
+        <View style={styles.logoutLoadingOverlay}>
+          <View
+            style={[
+              styles.logoutLoadingCard,
+              isDarkMode && {
+                backgroundColor: "#1C2541",
+                borderColor: "#3A506B",
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <ActivityIndicator size="large" color="#176B87" />
+            <Text
+              style={[
+                styles.logoutLoadingText,
+                isDarkMode && { color: "#F8FAFC" },
+              ]}
+            >
+              Signing out safely...
+            </Text>
+            <Text
+              style={[
+                styles.logoutLoadingSub,
+                isDarkMode && { color: "#CBD5E1" },
+              ]}
+            >
+              Clearing your active session
             </Text>
           </View>
         </View>

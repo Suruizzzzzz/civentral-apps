@@ -68,36 +68,75 @@ export function RegisterScreen() {
   const handleVerifyAccount = async () => {
     setErrorMessage(null);
 
-    if (email.trim()) {
+    const cleanEmail = email.trim();
+    const cleanPhone = mobileNumber.trim().replace(/[^0-9]/g, '');
+    const cleanFirstName = firstName.trim();
+    const cleanLastName = lastName.trim();
+    const cleanMiddleName = middleName.trim();
+
+    // 1. Email Address Validation
+    const isEmailMode = params.mode === 'email' || (!!cleanEmail && cleanEmail.includes('@')) || !!params.email || params.identifier?.includes('@');
+    if (isEmailMode && !cleanEmail) {
+      setErrorMessage('Email address is required.');
+      return;
+    }
+    if (cleanEmail) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email.trim())) {
-        setErrorMessage('Please enter a valid email address.');
+      if (!emailRegex.test(cleanEmail)) {
+        setErrorMessage('Please enter a valid email address (e.g. name@example.com).');
         return;
       }
     }
 
-    if (mobileNumber.trim()) {
-      const phoneRegex = /^(\+?63|0)9\d{9}$/;
-      if (!phoneRegex.test(mobileNumber.trim().replace(/\s+/g, ''))) {
-        setErrorMessage('Please enter a valid PH mobile number (e.g. 09171234567).');
+    // 2. Mobile Phone Validation (Numeric, 11 digits, starts with 09)
+    const isPhoneRequired = params.mode === 'phone' || (!cleanEmail && !params.email);
+    if (isPhoneRequired && !cleanPhone) {
+      setErrorMessage('Mobile phone number is required.');
+      return;
+    }
+    if (cleanPhone) {
+      if (cleanPhone.length !== 11) {
+        setErrorMessage('Mobile phone number must be exactly 11 digits (e.g. 09171234567).');
+        return;
+      }
+      if (!cleanPhone.startsWith('09')) {
+        setErrorMessage('Mobile phone number must start with 09 (e.g. 09171234567).');
         return;
       }
     }
 
-    if (!firstName.trim()) {
-      setErrorMessage('Please enter your first name.');
+    // 3. First Name (Required, min 2 chars)
+    if (!cleanFirstName) {
+      setErrorMessage('First Name is required.');
       return;
     }
-    if (!lastName.trim()) {
-      setErrorMessage('Please enter your last name.');
+    if (cleanFirstName.length < 2) {
+      setErrorMessage('First Name must be at least 2 characters long.');
       return;
     }
+
+    // 4. Last Name (Required, min 2 chars)
+    if (!cleanLastName) {
+      setErrorMessage('Last Name is required.');
+      return;
+    }
+    if (cleanLastName.length < 2) {
+      setErrorMessage('Last Name must be at least 2 characters long.');
+      return;
+    }
+
+    // 5. Middle Name (Optional, min 2 chars if entered)
+    if (!noMiddleName && cleanMiddleName && cleanMiddleName.length < 2) {
+      setErrorMessage('Middle Name must be at least 2 characters long, or select "I have no middle name".');
+      return;
+    }
+
+    // 6. Password Required & Strict Strength Enforcement
     if (!password) {
-      setErrorMessage('Please enter a password.');
+      setErrorMessage('Password is required.');
       return;
     }
 
-    // STRICT PASSWORD STRENGTH ENFORCEMENT
     if (strengthLevel !== 'strong') {
       setErrorMessage(
         'Password strength is ' + (strengthLevel ? strengthLevel.toUpperCase() : 'WEAK') + '. Registration requires a STRONG password (at least 8 characters with uppercase, lowercase, number, and special symbol).'
@@ -208,20 +247,31 @@ export function RegisterScreen() {
               placeholder="Enter your email address"
               placeholderTextColor="#94A3B8"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errorMessage) setErrorMessage(null);
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
+              maxLength={100}
             />
 
             {/* Field 1.5: Phone Number */}
-            <Text style={[styles.inputLabel, { marginTop: 14 }]}>Mobile Phone Number</Text>
+            <Text style={[styles.inputLabel, { marginTop: 14 }]}>
+              Mobile Phone Number (11 Digits, Local Format)
+            </Text>
             <TextInput
               style={styles.textInput}
-              placeholder="Enter mobile number (e.g. 09171234567)"
+              placeholder="09XXXXXXXXX (11 digits)"
               placeholderTextColor="#94A3B8"
               value={mobileNumber}
-              onChangeText={setMobileNumber}
-              keyboardType="phone-pad"
+              onChangeText={(text) => {
+                const cleaned = text.replace(/[^0-9]/g, '').slice(0, 11);
+                setMobileNumber(cleaned);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              keyboardType="numeric"
+              maxLength={11}
               autoCapitalize="none"
             />
 
@@ -233,7 +283,11 @@ export function RegisterScreen() {
                   placeholder="First Name"
                   placeholderTextColor="#94A3B8"
                   value={firstName}
-                  onChangeText={setFirstName}
+                  onChangeText={(text) => {
+                    setFirstName(text);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  maxLength={50}
                 />
               </View>
 
@@ -243,7 +297,11 @@ export function RegisterScreen() {
                   placeholder="Suffix (e.g. Jr.)"
                   placeholderTextColor="#94A3B8"
                   value={suffix}
-                  onChangeText={setSuffix}
+                  onChangeText={(text) => {
+                    setSuffix(text);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  maxLength={10}
                 />
               </View>
             </View>
@@ -254,8 +312,12 @@ export function RegisterScreen() {
               placeholder="Middle Name"
               placeholderTextColor="#94A3B8"
               value={noMiddleName ? '' : middleName}
-              onChangeText={setMiddleName}
+              onChangeText={(text) => {
+                setMiddleName(text);
+                if (errorMessage) setErrorMessage(null);
+              }}
               editable={!noMiddleName}
+              maxLength={50}
             />
 
             {/* Checkbox: I have no middle name */}
@@ -264,6 +326,7 @@ export function RegisterScreen() {
               onPress={() => {
                 setNoMiddleName((prev) => !prev);
                 if (!noMiddleName) setMiddleName('');
+                if (errorMessage) setErrorMessage(null);
               }}
               activeOpacity={0.8}>
               <View style={[styles.checkbox, noMiddleName && styles.checkboxChecked]}>
@@ -278,7 +341,11 @@ export function RegisterScreen() {
               placeholder="Last Name"
               placeholderTextColor="#94A3B8"
               value={lastName}
-              onChangeText={setLastName}
+              onChangeText={(text) => {
+                setLastName(text);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              maxLength={50}
             />
 
             {/* Field 5: Password */}
@@ -294,6 +361,7 @@ export function RegisterScreen() {
                 }}
                 secureTextEntry={!isPasswordVisible}
                 autoCapitalize="none"
+                maxLength={64}
               />
               <TouchableOpacity
                 style={styles.eyeIconBtn}
@@ -407,6 +475,7 @@ export function RegisterScreen() {
                 }}
                 secureTextEntry={!isConfirmPasswordVisible}
                 autoCapitalize="none"
+                maxLength={64}
               />
               <TouchableOpacity
                 style={styles.eyeIconBtn}
