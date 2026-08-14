@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -13,12 +14,15 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { AuthService } from '@/src/services/auth-service';
 
 export function VerifyEmailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string; phone?: string; identifier?: string; citizen_user_id?: string; mode?: string }>();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 24 : 20) + 12;
   
   const phone = params.phone || '';
   const email = params.email || '';
@@ -98,7 +102,7 @@ export function VerifyEmailScreen() {
         style={styles.keyboardContainer}>
         
         {/* Top Back Nav Bar */}
-        <View style={styles.topNav}>
+        <View style={[styles.topNav, { paddingTop: topPadding }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
@@ -119,14 +123,21 @@ export function VerifyEmailScreen() {
           keyboardShouldPersistTaps="handled">
           
           {/* Title & Subtitle */}
-          <Text style={styles.screenTitle}>
-            {isPhone ? 'Verify Your Mobile Number' : 'Verify Your Email Address'}
-          </Text>
-          <Text style={styles.screenSubtitle}>
-            We sent a 6-digit verification code to {isPhone ? 'your mobile number ' : 'your email address '}
-            <Text style={styles.boldText}>{targetIdentifier || 'your registered contact'}</Text>.{'\n'}
-            Enter the code below to activate your account.
-          </Text>
+          <View style={{ alignItems: 'center', marginBottom: 12 }}>
+            <Image
+              source={require('@/assets/images/verify-otp.png')}
+              style={{ width: 170, height: 170, marginBottom: 8 }}
+              resizeMode="contain"
+            />
+            <Text style={[styles.screenTitle, { textAlign: 'center' }]}>
+              {isPhone ? 'Verify Your Mobile Number' : 'Verify Your Email Address'}
+            </Text>
+            <Text style={[styles.screenSubtitle, { textAlign: 'center' }]}>
+              We sent a 6-digit verification code to {isPhone ? 'your mobile number ' : 'your email address '}
+              <Text style={styles.boldText}>{targetIdentifier || 'your registered contact'}</Text>.{'\n'}
+              Enter the code below to activate your account.
+            </Text>
+          </View>
 
           {/* 6 Square OTP Inputs */}
           <View style={styles.otpRow}>

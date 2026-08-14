@@ -13,12 +13,15 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { AuthService } from '@/src/services/auth-service';
 
 export function RegisterScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ identifier?: string; email?: string; phone?: string; mode?: string }>();
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 24 : 20) + 12;
 
   const initialEmail = params.email || (params.identifier?.includes('@') ? params.identifier : '');
   const initialPhone = params.phone || (!params.identifier?.includes('@') ? params.identifier : '');
@@ -173,7 +176,7 @@ export function RegisterScreen() {
         style={styles.keyboardContainer}>
         
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: topPadding }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
           
