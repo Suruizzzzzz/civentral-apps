@@ -64,6 +64,10 @@ const MAPPING: IconMapping = {
   'history': 'history',
   'map': 'map',
   'clipboard': 'content-paste',
+  'star.fill': 'star',
+  'target': 'track-changes',
+  'funnel.fill': 'filter-list',
+  'sparkles': 'auto-awesome',
 };
 
 export type IconSymbolName = keyof typeof MAPPING;

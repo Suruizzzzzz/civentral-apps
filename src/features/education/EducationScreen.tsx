@@ -39,6 +39,10 @@ export function EducationScreen() {
       router.push('/education/distribution' as any);
       return;
     }
+    if (section === 'new') {
+      router.push('/education/new-applicant' as any);
+      return;
+    }
     setActiveSection(section);
   };
 

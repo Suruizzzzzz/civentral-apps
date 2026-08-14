@@ -28,13 +28,14 @@ export const styles = StyleSheet.create({
 
   /* Page heading */
   header: {
+    alignItems: "center",
     marginBottom: 20,
   },
 
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     flexWrap: "wrap",
     gap: 8,
   },
@@ -43,6 +44,7 @@ export const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "800",
     color: "#0F172A",
+    textAlign: "center",
     letterSpacing: -0.5,
   },
 
