@@ -69,8 +69,9 @@ export const styles = StyleSheet.create({
   },
 
   robotArtwork: {
-    width: 125,
-    height: 125,
+    width: 145,
+    height: 110,
+    backgroundColor: "transparent",
   },
 
   /* Section Cards */

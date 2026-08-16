@@ -1,3 +1,4 @@
+import { ResizeMode, Video } from "expo-av";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -9,8 +10,8 @@ import {
   View,
 } from "react-native";
 
-const robotLight = require("@/assets/images/robot-light.png");
-const robotDark = require("@/assets/images/robot-dark.png");
+const videoLight = require("@/assets/images/video-light-robot.mp4");
+const videoDark = require("@/assets/images/video-dark-robot.mp4");
 const puzzleLight = require("@/assets/images/puzzle.png");
 const puzzleDark = require("@/assets/images/puzzle-dark.png");
 const browseLight = require("@/assets/images/browse.png");
@@ -90,7 +91,7 @@ export default function NewApplicantRoute() {
             style={[
               styles.headerCard,
               isDarkMode && {
-                backgroundColor: "#010E24",
+                backgroundColor: "#01091D",
                 borderColor: "#0D213F",
               },
             ]}
@@ -210,34 +211,31 @@ export default function NewApplicantRoute() {
             style={[
               styles.headerCard,
               isDarkMode && {
-                backgroundColor: "#010E24",
+                backgroundColor: "#01091D",
                 borderColor: "#0D213F",
               },
             ]}
           >
             <View style={styles.headerContent}>
               <Text
-                style={[
-                  styles.headerTitle,
-                  isDarkMode && { color: "#F8FAFC" },
-                ]}
+                style={[styles.headerTitle, isDarkMode && { color: "#F8FAFC" }]}
               >
                 New Scholarship Application
               </Text>
               <Text
-                style={[
-                  styles.headerSub,
-                  isDarkMode && { color: "#CBD5E1" },
-                ]}
+                style={[styles.headerSub, isDarkMode && { color: "#CBD5E1" }]}
               >
                 How would you like to find a scholarship?
               </Text>
             </View>
 
-            <Image
-              source={isDarkMode ? robotDark : robotLight}
+            <Video
+              source={isDarkMode ? videoDark : videoLight}
               style={styles.robotArtwork}
-              resizeMode="contain"
+              resizeMode={ResizeMode.CONTAIN}
+              isLooping
+              isMuted
+              shouldPlay
             />
           </View>
 
@@ -272,18 +270,12 @@ export default function NewApplicantRoute() {
                 </View>
 
                 <Text
-                  style={[
-                    styles.cardTitle,
-                    isDarkMode && { color: "#F8FAFC" },
-                  ]}
+                  style={[styles.cardTitle, isDarkMode && { color: "#F8FAFC" }]}
                 >
                   Use Scholarship Matching
                 </Text>
                 <Text
-                  style={[
-                    styles.cardSub,
-                    isDarkMode && { color: "#CBD5E1" },
-                  ]}
+                  style={[styles.cardSub, isDarkMode && { color: "#CBD5E1" }]}
                 >
                   Answer a few questions and get personalized scholarship
                   matches that fit your profile.
@@ -373,18 +365,12 @@ export default function NewApplicantRoute() {
 
               <View style={styles.cardContent}>
                 <Text
-                  style={[
-                    styles.cardTitle,
-                    isDarkMode && { color: "#F8FAFC" },
-                  ]}
+                  style={[styles.cardTitle, isDarkMode && { color: "#F8FAFC" }]}
                 >
                   Browse Scholarships
                 </Text>
                 <Text
-                  style={[
-                    styles.cardSub,
-                    isDarkMode && { color: "#CBD5E1" },
-                  ]}
+                  style={[styles.cardSub, isDarkMode && { color: "#CBD5E1" }]}
                 >
                   Explore all available scholarship programs and find
                   opportunities that interest you.
