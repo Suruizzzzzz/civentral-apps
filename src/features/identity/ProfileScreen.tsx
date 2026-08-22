@@ -1,27 +1,27 @@
-import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { Badge } from "@/src/components/ui/Badge";
+import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { useTheme } from "@/src/context/ThemeContext";
 import { AuthService } from "@/src/services/auth-service";
 import {
-    CitizenProfileData,
-    ProfileService,
+  CitizenProfileData,
+  ProfileService,
 } from "@/src/services/profile-service";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { styles } from "./styles/ProfileScreen.styles";
 
@@ -78,10 +78,23 @@ function SkeletonItem({
 
 function ProfileSkeletonLoading({ isDarkMode }: { isDarkMode: boolean }) {
   return (
-    <View style={[styles.container, isDarkMode && { backgroundColor: "#0B132B" }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <View
+      style={[styles.container, isDarkMode && { backgroundColor: "#0B132B" }]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header Card Skeleton */}
-        <View style={[styles.headerCard, isDarkMode && { backgroundColor: "#1C2541", borderColor: "#3A506B" }]}>
+        <View
+          style={[
+            styles.headerCard,
+            isDarkMode && {
+              backgroundColor: "#1C2541",
+              borderColor: "#3A506B",
+            },
+          ]}
+        >
           <View style={styles.avatarRow}>
             <SkeletonItem width={64} height={64} borderRadius={32} />
             <View style={[styles.headerInfo, { gap: 8 }]}>
@@ -99,13 +112,30 @@ function ProfileSkeletonLoading({ isDarkMode }: { isDarkMode: boolean }) {
         </View>
 
         {/* Tab Switcher Skeleton */}
-        <View style={[styles.tabBarContainer, isDarkMode && { backgroundColor: "#1C2541", borderColor: "#3A506B" }]}>
+        <View
+          style={[
+            styles.tabBarContainer,
+            isDarkMode && {
+              backgroundColor: "#1C2541",
+              borderColor: "#3A506B",
+            },
+          ]}
+        >
           <SkeletonItem width="48%" height={38} borderRadius={10} />
           <SkeletonItem width="48%" height={38} borderRadius={10} />
         </View>
 
         {/* Section Card 1 Skeleton */}
-        <View style={[styles.card, isDarkMode && { backgroundColor: "#1C2541", borderColor: "#3A506B" }, { gap: 16, padding: 18 }]}>
+        <View
+          style={[
+            styles.card,
+            isDarkMode && {
+              backgroundColor: "#1C2541",
+              borderColor: "#3A506B",
+            },
+            { gap: 16, padding: 18 },
+          ]}
+        >
           <SkeletonItem width={180} height={20} borderRadius={6} />
           <View style={{ gap: 12 }}>
             <SkeletonItem height={48} borderRadius={10} />
@@ -116,7 +146,16 @@ function ProfileSkeletonLoading({ isDarkMode }: { isDarkMode: boolean }) {
         </View>
 
         {/* Section Card 2 Skeleton */}
-        <View style={[styles.card, isDarkMode && { backgroundColor: "#1C2541", borderColor: "#3A506B" }, { gap: 16, padding: 18, marginTop: 16 }]}>
+        <View
+          style={[
+            styles.card,
+            isDarkMode && {
+              backgroundColor: "#1C2541",
+              borderColor: "#3A506B",
+            },
+            { gap: 16, padding: 18, marginTop: 16 },
+          ]}
+        >
           <SkeletonItem width={160} height={20} borderRadius={6} />
           <View style={{ gap: 12 }}>
             <SkeletonItem height={54} borderRadius={12} />
@@ -992,7 +1031,10 @@ export function ProfileScreen() {
                 <Switch
                   value={isDarkMode}
                   onValueChange={setIsDarkMode}
-                  trackColor={{ false: isDarkMode ? "#334155" : "#CBD5E1", true: isDarkMode ? "#38BDF8" : "#176B87" }}
+                  trackColor={{
+                    false: isDarkMode ? "#334155" : "#CBD5E1",
+                    true: isDarkMode ? "#38BDF8" : "#176B87",
+                  }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -1047,7 +1089,10 @@ export function ProfileScreen() {
                 <Switch
                   value={biometricsEnabled}
                   onValueChange={setBiometricsEnabled}
-                  trackColor={{ false: isDarkMode ? "#334155" : "#CBD5E1", true: isDarkMode ? "#38BDF8" : "#176B87" }}
+                  trackColor={{
+                    false: isDarkMode ? "#334155" : "#CBD5E1",
+                    true: isDarkMode ? "#38BDF8" : "#176B87",
+                  }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -1065,7 +1110,11 @@ export function ProfileScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.settingLeftIcon}>
-                  <IconSymbol name="lock.fill" size={18} color={isDarkMode ? "#38BDF8" : "#176B87"} />
+                  <IconSymbol
+                    name="lock.fill"
+                    size={18}
+                    color={isDarkMode ? "#38BDF8" : "#176B87"}
+                  />
                   <Text
                     style={[
                       styles.settingActionText,
@@ -1075,7 +1124,11 @@ export function ProfileScreen() {
                     Change Account Password
                   </Text>
                 </View>
-                <IconSymbol name="chevron.right" size={18} color={isDarkMode ? "#64748B" : "#94A3B8"} />
+                <IconSymbol
+                  name="chevron.right"
+                  size={18}
+                  color={isDarkMode ? "#64748B" : "#94A3B8"}
+                />
               </TouchableOpacity>
             </View>
 
@@ -1128,7 +1181,10 @@ export function ProfileScreen() {
                 <Switch
                   value={pushNotificationsEnabled}
                   onValueChange={setPushNotificationsEnabled}
-                  trackColor={{ false: isDarkMode ? "#334155" : "#CBD5E1", true: isDarkMode ? "#38BDF8" : "#176B87" }}
+                  trackColor={{
+                    false: isDarkMode ? "#334155" : "#CBD5E1",
+                    true: isDarkMode ? "#38BDF8" : "#176B87",
+                  }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -1170,7 +1226,10 @@ export function ProfileScreen() {
                 <Switch
                   value={sosAlertsEnabled}
                   onValueChange={setSosAlertsEnabled}
-                  trackColor={{ false: isDarkMode ? "#334155" : "#CBD5E1", true: "#DC2626" }}
+                  trackColor={{
+                    false: isDarkMode ? "#334155" : "#CBD5E1",
+                    true: "#DC2626",
+                  }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -1220,7 +1279,11 @@ export function ProfileScreen() {
                     City Hall Citizen Help Desk
                   </Text>
                 </View>
-                <IconSymbol name="chevron.right" size={18} color={isDarkMode ? "#64748B" : "#94A3B8"} />
+                <IconSymbol
+                  name="chevron.right"
+                  size={18}
+                  color={isDarkMode ? "#64748B" : "#94A3B8"}
+                />
               </TouchableOpacity>
 
               <View
@@ -1232,7 +1295,11 @@ export function ProfileScreen() {
 
               <View style={styles.settingActionRow}>
                 <View style={styles.settingLeftIcon}>
-                  <IconSymbol name="shield.fill" size={18} color={isDarkMode ? "#38BDF8" : "#64748B"} />
+                  <IconSymbol
+                    name="shield.fill"
+                    size={18}
+                    color={isDarkMode ? "#38BDF8" : "#64748B"}
+                  />
                   <Text
                     style={[
                       styles.settingActionText,
@@ -1479,7 +1546,10 @@ export function ProfileScreen() {
             {/* Action Buttons */}
             <View style={styles.logoutActionsCol}>
               <TouchableOpacity
-                style={[styles.logoutConfirmBtn, isLoggingOut && { opacity: 0.8 }]}
+                style={[
+                  styles.logoutConfirmBtn,
+                  isLoggingOut && { opacity: 0.8 },
+                ]}
                 onPress={handleConfirmLogout}
                 disabled={isLoggingOut}
                 activeOpacity={0.88}
@@ -1493,7 +1563,9 @@ export function ProfileScreen() {
                       size={18}
                       color="#FFFFFF"
                     />
-                    <Text style={styles.logoutConfirmText}>Yes, Sign Me Out</Text>
+                    <Text style={styles.logoutConfirmText}>
+                      Yes, Sign Me Out
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>

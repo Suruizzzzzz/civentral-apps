@@ -68,6 +68,10 @@ const MAPPING: IconMapping = {
   'target': 'track-changes',
   'funnel.fill': 'filter-list',
   'sparkles': 'auto-awesome',
+  'xmark.circle.fill': 'cancel',
+  'circle-check': 'check-circle',
+  'circle-xmark': 'cancel',
+  'circle-info': 'info',
 };
 
 export type IconSymbolName = keyof typeof MAPPING;

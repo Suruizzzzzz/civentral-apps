@@ -15,13 +15,7 @@ export default function EducationLayout() {
         onNotificationPress={() => router.push("/(tabs)/notifications" as any)}
       />
       <View style={styles.content}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="dashboard" />
-          <Stack.Screen name="new-applicant" />
-          <Stack.Screen name="renewal" />
-          <Stack.Screen name="distribution" />
-        </Stack>
+        <Stack screenOptions={{ headerShown: false }} />
       </View>
       <StandaloneTabBar />
     </View>

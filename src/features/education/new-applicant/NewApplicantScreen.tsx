@@ -20,9 +20,9 @@ const browseDark = require("@/assets/images/browse-dark.png");
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { Skeleton } from "@/src/components/ui/Skeleton";
 import { useTheme } from "@/src/context/ThemeContext";
-import { styles } from "@/src/features/education/styles/NewApplicant.styles";
+import { styles } from "./styles/NewApplicant.styles";
 
-export default function NewApplicantRoute() {
+export function NewApplicantScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
 
@@ -32,7 +32,7 @@ export default function NewApplicantRoute() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 600);
+    }, 400);
     return () => clearTimeout(timer);
   }, []);
 
@@ -40,7 +40,7 @@ export default function NewApplicantRoute() {
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
-    }, 800);
+    }, 600);
   }, []);
 
   return (
@@ -98,14 +98,14 @@ export default function NewApplicantRoute() {
           >
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Skeleton
-                width="80%"
+                width={180}
                 height={26}
-                borderRadius={6}
+                borderRadius={8}
                 style={{ marginBottom: 8 }}
               />
-              <Skeleton width="95%" height={16} borderRadius={4} />
+              <Skeleton width="90%" height={16} borderRadius={4} />
             </View>
-            <Skeleton width={110} height={110} borderRadius={20} />
+            <Skeleton width={110} height={90} borderRadius={16} />
           </View>
 
           {/* CARD 1 SKELETON */}
@@ -118,42 +118,28 @@ export default function NewApplicantRoute() {
               },
             ]}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 16,
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <Skeleton width={100} height={100} borderRadius={16} />
+            <View style={styles.cardMainRow}>
+              <Skeleton width={95} height={95} borderRadius={16} />
               <View style={{ flex: 1 }}>
                 <Skeleton
-                  width={100}
+                  width={90}
                   height={20}
                   borderRadius={10}
                   style={{ marginBottom: 8 }}
                 />
                 <Skeleton
-                  width="90%"
+                  width={150}
                   height={20}
                   borderRadius={6}
                   style={{ marginBottom: 6 }}
                 />
-                <Skeleton width="100%" height={14} borderRadius={4} />
+                <Skeleton width="90%" height={14} borderRadius={4} />
               </View>
             </View>
-            <View
-              style={{
-                flexDirection: "column",
-                paddingTop: 12,
-                borderTopWidth: 1,
-                borderTopColor: isDarkMode ? "#0D274A" : "#F1F5F9",
-              }}
-            >
-              <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+            <View style={{ gap: 10, marginTop: 12 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Skeleton width={120} height={24} borderRadius={12} />
                 <Skeleton width={90} height={24} borderRadius={12} />
-                <Skeleton width={80} height={24} borderRadius={12} />
               </View>
               <Skeleton width="100%" height={40} borderRadius={20} />
             </View>
@@ -169,36 +155,22 @@ export default function NewApplicantRoute() {
               },
             ]}
           >
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 16,
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <Skeleton width={100} height={100} borderRadius={16} />
+            <View style={styles.cardMainRow}>
+              <Skeleton width={95} height={95} borderRadius={16} />
               <View style={{ flex: 1 }}>
                 <Skeleton
-                  width="85%"
+                  width={140}
                   height={20}
                   borderRadius={6}
                   style={{ marginBottom: 6 }}
                 />
-                <Skeleton width="100%" height={14} borderRadius={4} />
+                <Skeleton width="90%" height={14} borderRadius={4} />
               </View>
             </View>
-            <View
-              style={{
-                flexDirection: "column",
-                paddingTop: 12,
-                borderTopWidth: 1,
-                borderTopColor: isDarkMode ? "#0A2242" : "#F1F5F9",
-              }}
-            >
-              <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
-                <Skeleton width={80} height={24} borderRadius={12} />
-                <Skeleton width={90} height={24} borderRadius={12} />
+            <View style={{ gap: 10, marginTop: 12 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Skeleton width={100} height={24} borderRadius={12} />
+                <Skeleton width={110} height={24} borderRadius={12} />
               </View>
               <Skeleton width="100%" height={40} borderRadius={20} />
             </View>
@@ -338,6 +310,7 @@ export default function NewApplicantRoute() {
                   styles.primaryActionBtn,
                   isDarkMode && { backgroundColor: "#3B82F6" },
                 ]}
+                onPress={() => router.push('/education/new-applicant/matching' as any)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.primaryActionBtnText}>Start Matching</Text>
@@ -433,6 +406,7 @@ export default function NewApplicantRoute() {
                   styles.secondaryActionBtn,
                   isDarkMode && { borderColor: "#38BDF8" },
                 ]}
+                onPress={() => router.push('/education/new-applicant/browse-scholarships' as any)}
                 activeOpacity={0.8}
               >
                 <Text
