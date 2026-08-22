@@ -135,28 +135,99 @@ export function ScholarshipRenewalScreen() {
           )}
 
           {data.state === 'RENEWAL_AVAILABLE' && (
-            <View style={[styles.banner, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}>
-              <IconSymbol name="checkmark.circle.fill" size={24} color="#16A34A" />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.bannerTitle, { color: '#166534' }]}>Renewal Available</Text>
-                <Text style={[styles.bannerText, { color: '#14532D' }]}>
-                  The scholarship renewal window is open! Scholars are invited to submit their latest COR and grade records for review.
-                </Text>
+            <View>
+              <View style={[styles.banner, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}>
+                <IconSymbol name="checkmark.circle.fill" size={24} color="#16A34A" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.bannerTitle, { color: '#166534' }]}>Renewal Available</Text>
+                  <Text style={[styles.bannerText, { color: '#14532D' }]}>
+                    The scholarship renewal window is open! Scholars are invited to submit their latest COR, COG, and SOA records for review.
+                  </Text>
+                </View>
               </View>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#9333EA',
+                  borderRadius: 14,
+                  paddingVertical: 14,
+                  paddingHorizontal: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: 12,
+                  marginBottom: 16,
+                  flexDirection: 'row',
+                  gap: 8,
+                }}
+                onPress={() => router.push('/education/renewal/application' as any)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
+                  Start Renewal
+                </Text>
+                <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
           )}
 
           {data.state === 'RENEWAL_EXISTS' && (
-            <View style={[styles.banner, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', borderWidth: 1 }]}>
-              <IconSymbol name="doc.text.fill" size={24} color="#7C3AED" />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.bannerTitle, { color: '#5B21B6' }]}>Renewal Submitted</Text>
-                <Text style={[styles.bannerText, { color: '#4C1D95' }]}>
-                  Your renewal application ({data.renewal?.renewal_code}) was submitted on{' '}
-                  {data.renewal?.submitted_at ? new Date(data.renewal.submitted_at).toLocaleDateString() : 'recent date'}.
-                  Current status: {data.renewal?.renewal_status}.
-                </Text>
+            <View>
+              <View style={[styles.banner, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', borderWidth: 1 }]}>
+                <IconSymbol name="doc.text.fill" size={24} color="#7C3AED" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.bannerTitle, { color: '#5B21B6' }]}>Renewal Submitted</Text>
+                  <Text style={[styles.bannerText, { color: '#4C1D95' }]}>
+                    Your renewal application ({data.renewal?.renewal_code}) was submitted on{' '}
+                    {data.renewal?.submitted_at ? new Date(data.renewal.submitted_at).toLocaleDateString() : 'recent date'}.
+                    Current status: {data.renewal?.renewal_status}.
+                  </Text>
+                </View>
               </View>
+
+              {/* ACTION REQUIRED BUTTON vs PASSIVE STATUS NOTE */}
+              {data.renewal?.citizen_action_required ? (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#D97706',
+                    borderRadius: 14,
+                    paddingVertical: 14,
+                    paddingHorizontal: 20,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginTop: 12,
+                    marginBottom: 16,
+                    flexDirection: 'row',
+                    gap: 8,
+                  }}
+                  onPress={() => router.push('/education/renewal/compliance' as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
+                    Review Required Action
+                  </Text>
+                  <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              ) : data.renewal?.renewal_status === 'Returned' ? (
+                <View
+                  style={{
+                    backgroundColor: '#FFFBEB',
+                    borderColor: '#FDE68A',
+                    borderWidth: 1,
+                    borderRadius: 14,
+                    padding: 14,
+                    marginTop: 12,
+                    marginBottom: 16,
+                    flexDirection: 'row',
+                    gap: 10,
+                    alignItems: 'center',
+                  }}
+                >
+                  <IconSymbol name="clock.fill" size={20} color="#D97706" />
+                  <Text style={{ flex: 1, fontSize: 13, color: '#92400E', lineHeight: 18 }}>
+                    Your response has been submitted and is awaiting coordinator review.
+                  </Text>
+                </View>
+              ) : null}
             </View>
           )}
 
