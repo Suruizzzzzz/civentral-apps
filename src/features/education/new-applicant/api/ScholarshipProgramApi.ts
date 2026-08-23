@@ -1,3 +1,4 @@
+import { fetch as expoFetch } from 'expo/fetch';
 import { Platform } from 'react-native';
 
 export const EDUCATION_API_BASE_URL = Platform.select({
@@ -47,6 +48,7 @@ export interface ScholarshipEligibilityRequirement {
 
 export interface ScholarshipRequiredDocument {
   document_requirement_id: number;
+  program_document_id?: number;
   document_code: string;
   document_name: string;
   description: string;
@@ -154,7 +156,9 @@ export async function fetchScholarshipPrograms(categoryId?: number): Promise<Sch
 }
 
 export async function getScholarshipProgramDetails(programId: number): Promise<ScholarshipProgram | null> {
-  const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-programs/${programId}`);
+  const url = `${EDUCATION_API_BASE_URL}/scholarship-programs/${programId}`;
+  console.log('[ScholarshipProgramApi] GET Program Detail URL =', url);
+  const res = await fetch(url);
   if (res.status === 404) return null;
   const json = await res.json();
   return json.data || null;
@@ -198,6 +202,18 @@ export async function fetchMatchingEducationLevels(): Promise<string[]> {
   return ['Senior High School', 'Tertiary', 'Continuing Education/Vocational'];
 }
 
+import { AuthService } from '@/src/services/auth-service';
+
+export interface SubmitApplicationResult {
+  application_id: number;
+  application_code: string;
+  application_status: string;
+  submitted_at: string;
+  program_name: string;
+  academic_year: string;
+  term: string;
+}
+
 export async function submitPreScreen(
   educationLevel: string,
   answers: Record<string, string>
@@ -211,4 +227,87 @@ export async function submitPreScreen(
   return json.data;
 }
 
+export async function submitNewScholarshipApplication(
+  formData: FormData
+): Promise<SubmitApplicationResult> {
+  const postUrl = `${EDUCATION_API_BASE_URL}/scholarship-applications/citizen/submit`;
+  console.log('[NewApplication] POST URL =', postUrl);
+  console.log('[NewApplication] request started =', new Date().toISOString());
+
+  console.log('[NewApplication] before AuthService.getCurrentUser');
+  const session = await AuthService.getCurrentUser();
+  const citizenUserId =
+    session?.citizen_user_id ||
+    session?.user?.citizen_user_id ||
+    session?.user?.user_id;
+
+  console.log('[NewApplication] after AuthService.getCurrentUser', {
+    hasUser: !!session,
+    hasToken: !!session?.user?.token,
+    isGuest: session?.isGuest,
+    citizenUserId,
+  });
+
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+  };
+
+  if (session?.user?.token) {
+    headers['Authorization'] = `Bearer ${session.user.token}`;
+  } else if (citizenUserId) {
+    // Local development fallback authentication matching renewalApi.ts contract
+    headers['X-Citizen-User-Id'] = String(citizenUserId);
+    headers['X-User-Id'] = String(citizenUserId);
+  }
+
+  try {
+    console.log('[NewApplication] before expo/fetch to:', postUrl);
+    const fetchStartTime = Date.now();
+    const res = await expoFetch(postUrl, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    const fetchDuration = Date.now() - fetchStartTime;
+    console.log('[NewApplication] expo/fetch resolved in', fetchDuration, 'ms. HTTP Status:', res.status);
+
+    const rawText = await res.text();
+    console.log('[NewApplication] body received length:', rawText.length, 'snippet:', rawText.slice(0, 200));
+
+    let json: any = null;
+
+    if (rawText && rawText.trim().length > 0) {
+      try {
+        json = JSON.parse(rawText);
+      } catch {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            json = JSON.parse(jsonMatch[0]);
+          } catch {}
+        }
+      }
+    }
+
+    if (!res.ok || (json && json.status === 'error')) {
+      const errorMsg =
+        json?.message ||
+        `Submission failed with HTTP ${res.status}. Please try again later.`;
+      const err = new Error(errorMsg) as any;
+      err.status = res.status;
+      throw err;
+    }
+
+    if (!json || !json.data) {
+      throw new Error('Server returned an unexpected response format.');
+    }
+
+    return json.data;
+  } catch (err: any) {
+    console.error('[NewApplication] submit error caught:', err);
+    throw err;
+  } finally {
+    console.log('[NewApplication] submitNewScholarshipApplication finally block executed');
+  }
+}
 

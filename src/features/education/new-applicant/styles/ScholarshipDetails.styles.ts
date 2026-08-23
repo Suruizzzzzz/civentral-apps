@@ -167,6 +167,21 @@ export const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  activeApplyBtn: {
+    width: "100%",
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#EA580C",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  activeApplyText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
   disabledApplyBtn: {
     width: "100%",
     height: 48,

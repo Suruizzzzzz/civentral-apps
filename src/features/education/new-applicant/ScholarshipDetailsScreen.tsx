@@ -1,13 +1,153 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { CitizenDashboardData, fetchCitizenDashboard } from '../dashboard/api/scholarshipDashboardApi';
 import { getScholarshipProgramDetails, ScholarshipProgram } from './api/ScholarshipProgramApi';
 import { styles } from './styles/ScholarshipDetails.styles';
+
+interface ApplyCTAState {
+  canApply: boolean;
+  buttonText: string;
+  noticeText: string | null;
+  isLoadingState?: boolean;
+}
+
+function computeApplyCTAState(
+  program: ScholarshipProgram | null,
+  dashboardData: CitizenDashboardData | null,
+  isLoading: boolean,
+  isLoadingDashboard: boolean
+): ApplyCTAState {
+  if (isLoading || isLoadingDashboard) {
+    return {
+      canApply: false,
+      buttonText: 'Checking Eligibility...',
+      noticeText: null,
+      isLoadingState: true,
+    };
+  }
+
+  if (!program) {
+    return {
+      canApply: false,
+      buttonText: 'Program Unavailable',
+      noticeText: 'This scholarship program cannot be loaded.',
+    };
+  }
+
+  // 1. Program Status Check
+  if (program.program_status !== 'Active') {
+    return {
+      canApply: false,
+      buttonText: 'Program Inactive',
+      noticeText: 'This scholarship program is currently not active.',
+    };
+  }
+
+  // 2. Active Scholar Check (using actual scholar status / dashboard state)
+  const isScholarActive =
+    dashboardData?.state === 'ACTIVE_SCHOLAR' ||
+    dashboardData?.state === 'ACTIVE_GRANT' ||
+    dashboardData?.state === 'SCHOLAR_WITHOUT_GRANT' ||
+    (dashboardData?.scholar &&
+      (dashboardData.scholar.scholar_status === 'Active' ||
+        dashboardData.scholar.scholar_status === 'Enrolled'));
+
+  if (isScholarActive) {
+    return {
+      canApply: false,
+      buttonText: 'Already an Active Scholar',
+      noticeText: 'Citizens with an active scholarship are not eligible for new applications.',
+    };
+  }
+
+  // 3. Application In Progress / Duplicate Application Check
+  const existingApp = dashboardData?.application;
+  const isAppInProgressState = dashboardData?.state === 'APPLICATION_IN_PROGRESS';
+
+  if (existingApp || isAppInProgressState) {
+    const appStatus = existingApp?.application_status || 'In Progress';
+    // Terminal statuses that do NOT block:
+    const isTerminalStatus = ['Rejected', 'Withdrawn', 'Cancelled'].includes(appStatus);
+
+    if (!isTerminalStatus) {
+      // Check if program_id matches when available
+      const appProgramId = dashboardData?.scholarship?.program_id;
+      if (!appProgramId || appProgramId === program.program_id) {
+        return {
+          canApply: false,
+          buttonText: `Already Applied (${appStatus})`,
+          noticeText: `You already have an active application with status "${appStatus}".`,
+        };
+      }
+    }
+  }
+
+  // 4. Application Period Check
+  const period = program.application_period || (program.application_periods && program.application_periods[0]);
+
+  if (!period) {
+    return {
+      canApply: false,
+      buttonText: 'No Active Application Period',
+      noticeText: 'There is currently no application period scheduled for this program.',
+    };
+  }
+
+  // Authoritative backend status check first
+  const periodStatus = (period.status || '').toLowerCase();
+
+  if (periodStatus === 'closed') {
+    return {
+      canApply: false,
+      buttonText: 'Application Period Closed',
+      noticeText: 'The application period for this scholarship has closed.',
+    };
+  }
+
+  if (periodStatus === 'scheduled' || periodStatus === 'upcoming') {
+    return {
+      canApply: false,
+      buttonText: 'Application Opening Soon',
+      noticeText: `Opening Date: ${period.opening_date ? new Date(period.opening_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBA'}`,
+    };
+  }
+
+  // Fallback to client-side date window check if status is open or not explicitly set
+  if (period.opening_date && period.closing_date) {
+    const now = new Date();
+    const openDate = new Date(`${period.opening_date}T00:00:00`);
+    const closeDate = new Date(`${period.closing_date}T23:59:59`);
+
+    if (now < openDate) {
+      return {
+        canApply: false,
+        buttonText: 'Application Opening Soon',
+        noticeText: `Opening Date: ${new Date(period.opening_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+      };
+    }
+
+    if (now > closeDate) {
+      return {
+        canApply: false,
+        buttonText: 'Application Period Closed',
+        noticeText: `The application period ended on ${new Date(period.closing_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`,
+      };
+    }
+  }
+
+  // Open & Allowed!
+  return {
+    canApply: true,
+    buttonText: 'Apply for Scholarship',
+    noticeText: 'Application period is currently open.',
+  };
+}
 
 export function ScholarshipDetailsScreen() {
   const router = useRouter();
@@ -17,7 +157,9 @@ export function ScholarshipDetailsScreen() {
   const { isDarkMode } = useTheme();
 
   const [program, setProgram] = useState<ScholarshipProgram | null>(null);
+  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +167,7 @@ export function ScholarshipDetailsScreen() {
     if (!programId) {
       setError('No scholarship program selected.');
       setIsLoading(false);
+      setIsLoadingDashboard(false);
       return;
     }
 
@@ -41,6 +184,15 @@ export function ScholarshipDetailsScreen() {
       setError('Unable to load scholarship details.');
     } finally {
       setIsLoading(false);
+    }
+
+    try {
+      const dash = await fetchCitizenDashboard();
+      setDashboardData(dash);
+    } catch (dashErr) {
+      console.warn('[ScholarshipDetailsScreen] dashboard fetch error:', dashErr);
+    } finally {
+      setIsLoadingDashboard(false);
       setRefreshing(false);
     }
   };
@@ -51,8 +203,19 @@ export function ScholarshipDetailsScreen() {
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
+    setIsLoadingDashboard(true);
     loadDetails();
   }, [programId]);
+
+  const ctaState = computeApplyCTAState(program, dashboardData, isLoading, isLoadingDashboard);
+
+  const handleApplyPress = () => {
+    if (!programId) return;
+    router.push({
+      pathname: '/education/new-applicant/application' as any,
+      params: { program_id: String(programId) },
+    });
+  };
 
   return (
     <ScrollView
@@ -103,6 +266,7 @@ export function ScholarshipDetailsScreen() {
             }}
             onPress={() => {
               setIsLoading(true);
+              setIsLoadingDashboard(true);
               loadDetails();
             }}
           >
@@ -250,6 +414,41 @@ export function ScholarshipDetailsScreen() {
                 No specific financial benefit amounts configured.
               </Text>
             )}
+          </View>
+
+          {/* 6. BOTTOM CTA CONTAINER */}
+          <View style={[styles.sectionCard, styles.applyContainer, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+            {ctaState.canApply ? (
+              <TouchableOpacity
+                style={[styles.activeApplyBtn, isDarkMode && { backgroundColor: '#FB923C' }]}
+                onPress={handleApplyPress}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.activeApplyText}>
+                  {ctaState.buttonText}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.disabledApplyBtn}
+                disabled={true}
+                activeOpacity={1}
+              >
+                {ctaState.isLoadingState ? (
+                  <ActivityIndicator color="#64748B" size="small" />
+                ) : (
+                  <Text style={styles.disabledApplyText}>
+                    {ctaState.buttonText}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {ctaState.noticeText ? (
+              <Text style={[styles.applyNotice, isDarkMode && { color: '#94A3B8' }]}>
+                {ctaState.noticeText}
+              </Text>
+            ) : null}
           </View>
         </>
       ) : null}
