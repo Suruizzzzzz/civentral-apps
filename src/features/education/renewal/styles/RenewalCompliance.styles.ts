@@ -4,7 +4,7 @@ export const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 140,
   },
   backBtn: {
     flexDirection: 'row',
