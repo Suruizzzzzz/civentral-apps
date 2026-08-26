@@ -592,4 +592,86 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+
+  /* View Details Button on Hero Card */
+  heroViewDetailsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+    paddingTop: 6,
+  },
+
+  heroViewDetailsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  heroViewDetailsText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#7E22CE",
+  },
+
+  /* Action Required Compliance Card */
+  actionRequiredCard: {
+    backgroundColor: "#FFFBEB",
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+
+  actionRequiredHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  actionRequiredIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  actionRequiredTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#92400E",
+  },
+
+  actionRequiredSub: {
+    fontSize: 12,
+    color: "#B45309",
+    marginTop: 2,
+    lineHeight: 17,
+  },
+
+  actionRequiredBtn: {
+    backgroundColor: "#D97706",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+  },
+
+  actionRequiredBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
 });

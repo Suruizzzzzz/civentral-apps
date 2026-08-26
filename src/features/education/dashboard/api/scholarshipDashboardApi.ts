@@ -71,11 +71,15 @@ export interface CitizenDashboardResponse {
 export async function fetchCitizenDashboard(): Promise<CitizenDashboardData> {
   const session = await AuthService.getCurrentUser();
   const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
+  const token = session?.token || session?.user?.token;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   if (citizenUserId) {
     headers['X-Citizen-User-Id'] = String(citizenUserId);
     headers['X-User-Id'] = String(citizenUserId);

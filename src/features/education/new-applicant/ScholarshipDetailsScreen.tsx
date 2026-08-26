@@ -151,8 +151,9 @@ function computeApplyCTAState(
 
 export function ScholarshipDetailsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ program_id?: string }>();
+  const params = useLocalSearchParams<{ program_id?: string; source?: string }>();
   const programId = params.program_id ? parseInt(params.program_id, 10) : null;
+  const isDashboardSource = params.source === 'dashboard';
 
   const { isDarkMode } = useTheme();
 
@@ -246,7 +247,7 @@ export function ScholarshipDetailsScreen() {
           style={styles.backIcon}
         />
         <Text style={[styles.backText, isDarkMode && { color: '#FB923C' }]}>
-          Back
+          {isDashboardSource ? 'Back to Dashboard' : 'Back'}
         </Text>
       </TouchableOpacity>
 
@@ -298,6 +299,41 @@ export function ScholarshipDetailsScreen() {
               Program Code: {program.program_code}
             </Text>
           </View>
+
+          {/* SCHOLARSHIP STATUS TIMELINE (FOR DASHBOARD VIEW) */}
+          {isDashboardSource && dashboardData?.process_timeline && dashboardData.process_timeline.length > 0 ? (
+            <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC', marginBottom: 12 }]}>
+                Scholarship Status & Timeline
+              </Text>
+              <View>
+                {dashboardData.process_timeline.map((item, idx) => (
+                  <View key={item.key || idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <View style={{ alignItems: 'center', width: 28, marginRight: 8 }}>
+                      <View style={{
+                        width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: item.is_completed ? '#DCFCE7' : item.is_current ? '#FEF3C7' : '#F1F5F9'
+                      }}>
+                        <IconSymbol
+                          name={item.is_completed ? 'checkmark.circle.fill' : item.is_current ? 'clock.fill' : 'circle'}
+                          size={14}
+                          color={item.is_completed ? '#16A34A' : item.is_current ? '#D97706' : '#94A3B8'}
+                        />
+                      </View>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                        {item.title}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: item.is_completed ? '#16A34A' : item.is_current ? '#D97706' : '#94A3B8', marginTop: 2 }}>
+                        {item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : item.is_completed ? 'Completed' : 'Pending'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           {/* 1. OVERVIEW */}
           <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
@@ -417,39 +453,48 @@ export function ScholarshipDetailsScreen() {
           </View>
 
           {/* 6. BOTTOM CTA CONTAINER */}
-          <View style={[styles.sectionCard, styles.applyContainer, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            {ctaState.canApply ? (
-              <TouchableOpacity
-                style={[styles.activeApplyBtn, isDarkMode && { backgroundColor: '#FB923C' }]}
-                onPress={handleApplyPress}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.activeApplyText}>
-                  {ctaState.buttonText}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.disabledApplyBtn}
-                disabled={true}
-                activeOpacity={1}
-              >
-                {ctaState.isLoadingState ? (
-                  <ActivityIndicator color="#64748B" size="small" />
-                ) : (
-                  <Text style={styles.disabledApplyText}>
+          {!isDashboardSource ? (
+            <View style={[styles.sectionCard, styles.applyContainer, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              {ctaState.canApply ? (
+                <TouchableOpacity
+                  style={[styles.activeApplyBtn, isDarkMode && { backgroundColor: '#FB923C' }]}
+                  onPress={handleApplyPress}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.activeApplyText}>
                     {ctaState.buttonText}
                   </Text>
-                )}
-              </TouchableOpacity>
-            )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.disabledApplyBtn}
+                  disabled={true}
+                  activeOpacity={1}
+                >
+                  {ctaState.isLoadingState ? (
+                    <ActivityIndicator color="#64748B" size="small" />
+                  ) : (
+                    <Text style={styles.disabledApplyText}>
+                      {ctaState.buttonText}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
 
-            {ctaState.noticeText ? (
-              <Text style={[styles.applyNotice, isDarkMode && { color: '#94A3B8' }]}>
-                {ctaState.noticeText}
+              {ctaState.noticeText ? (
+                <Text style={[styles.applyNotice, isDarkMode && { color: '#94A3B8' }]}>
+                  {ctaState.noticeText}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <View style={[styles.sectionCard, { alignItems: 'center', padding: 16 }, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <Badge variant="success" label="Active Scholar" />
+              <Text style={{ fontSize: 13, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 6, textAlign: 'center' }}>
+                You are currently viewing details for your active scholarship program.
               </Text>
-            ) : null}
-          </View>
+            </View>
+          )}
         </>
       ) : null}
     </ScrollView>

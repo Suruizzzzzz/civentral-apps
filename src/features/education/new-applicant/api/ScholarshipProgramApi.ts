@@ -241,9 +241,11 @@ export async function submitNewScholarshipApplication(
     session?.user?.citizen_user_id ||
     session?.user?.user_id;
 
+  const token = session?.token || session?.user?.token;
+
   console.log('[NewApplication] after AuthService.getCurrentUser', {
     hasUser: !!session,
-    hasToken: !!session?.user?.token,
+    hasToken: !!token,
     isGuest: session?.isGuest,
     citizenUserId,
   });
@@ -252,9 +254,10 @@ export async function submitNewScholarshipApplication(
     'Accept': 'application/json',
   };
 
-  if (session?.user?.token) {
-    headers['Authorization'] = `Bearer ${session.user.token}`;
-  } else if (citizenUserId) {
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (citizenUserId) {
     // Local development fallback authentication matching renewalApi.ts contract
     headers['X-Citizen-User-Id'] = String(citizenUserId);
     headers['X-User-Id'] = String(citizenUserId);

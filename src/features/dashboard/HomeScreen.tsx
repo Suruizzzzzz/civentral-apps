@@ -203,14 +203,26 @@ export function HomeScreen() {
         ...data,
         status: data.status || "Active",
       }));
+      AuthService.setCurrentUser({
+        email: data.email || activeEmail,
+        citizen_user_id: data.citizen_user_id || activeUserId,
+        user: data,
+      });
     }
   };
 
   useEffect(() => {
     async function initData() {
       if (isGuestMode) {
+        AuthService.setGuestMode(true);
         setIsLoadingProfile(false);
         return;
+      }
+      if (activeUserId || activeEmail) {
+        AuthService.setCurrentUser({
+          email: activeEmail,
+          citizen_user_id: activeUserId,
+        });
       }
       setIsLoadingProfile(true);
       await loadProfile();

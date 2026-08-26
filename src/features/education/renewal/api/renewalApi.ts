@@ -171,10 +171,15 @@ export async function fetchCitizenRenewalOverview(): Promise<CitizenRenewalOverv
     session?.user?.citizen_user_id ||
     session?.user?.user_id;
 
+  const token = session?.token || session?.user?.token;
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
 
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   if (citizenUserId) {
     headers["X-Citizen-User-Id"] = String(citizenUserId);
     headers["X-User-Id"] = String(citizenUserId);
@@ -212,8 +217,13 @@ export async function submitCitizenRenewal(
     session?.user?.citizen_user_id ||
     session?.user?.user_id;
 
+  const token = session?.token || session?.user?.token;
+
   const headers: Record<string, string> = {};
 
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   if (citizenUserId) {
     headers["X-Citizen-User-Id"] = String(citizenUserId);
     headers["X-User-Id"] = String(citizenUserId);
@@ -248,10 +258,15 @@ export async function fetchCitizenRenewalCompliance(): Promise<CitizenCompliance
     session?.user?.citizen_user_id ||
     session?.user?.user_id;
 
+  const token = session?.token || session?.user?.token;
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
 
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   if (citizenUserId) {
     headers["X-Citizen-User-Id"] = String(citizenUserId);
     headers["X-User-Id"] = String(citizenUserId);
@@ -292,8 +307,13 @@ export async function submitCitizenComplianceResponse(
     session?.user?.citizen_user_id ||
     session?.user?.user_id;
 
+  const token = session?.token || session?.user?.token;
+
   const headers: Record<string, string> = {};
 
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   if (citizenUserId) {
     headers["X-Citizen-User-Id"] = String(citizenUserId);
     headers["X-User-Id"] = String(citizenUserId);

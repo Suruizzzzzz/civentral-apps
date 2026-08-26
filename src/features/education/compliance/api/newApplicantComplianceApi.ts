@@ -1,0 +1,143 @@
+﻿import { AuthService } from '@/src/services/auth-service';
+import { EDUCATION_API_BASE_URL } from '../../new-applicant/api/ScholarshipProgramApi';
+
+export interface TargetDocumentItem {
+  application_document_id: number;
+  program_document_id: number;
+  document_code: string;
+  document_name: string;
+  original_filename: string;
+  mime_type: string;
+  file_size: number;
+  submission_status: string;
+  validation_result: string;
+  review_remarks?: string | null;
+}
+
+export interface ReplacementDocumentItem {
+  replacement_document_id: number;
+  replacement_filename: string;
+  mime_type: string;
+  file_size: number;
+  submission_status: string;
+  submitted_at: string;
+}
+
+export interface ApplicationComplianceItem {
+  compliance_id: number;
+  compliance_code: string;
+  application_id: number;
+  requirement_title: string;
+  compliance_type: string;
+  instructions?: string | null;
+  requested_at: string;
+  due_at?: string | null;
+  status: 'Pending' | 'Overdue' | 'Submitted' | 'Complied' | string;
+  complied_at?: string | null;
+  target_document?: TargetDocumentItem | null;
+  replacement_document?: ReplacementDocumentItem | null;
+}
+
+export interface ApplicationComplianceSummary {
+  actionable_count: number;
+  awaiting_review_count: number;
+  resolved_count: number;
+  cancelled_count: number;
+  total_history_count: number;
+}
+
+export interface ApplicationComplianceData {
+  application_id: number | null;
+  application_code: string | null;
+  application_status: string | null;
+  summary?: ApplicationComplianceSummary;
+  compliance_requests: ApplicationComplianceItem[];
+}
+
+export interface ApplicationComplianceResponse {
+  status: 'success' | 'error';
+  message: string;
+  data: ApplicationComplianceData | null;
+}
+
+export async function fetchApplicationCompliance(): Promise<ApplicationComplianceData> {
+  const session = await AuthService.getCurrentUser();
+  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
+  const token = session?.token || session?.user?.token;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (citizenUserId) {
+    headers['X-Citizen-User-Id'] = String(citizenUserId);
+    headers['X-User-Id'] = String(citizenUserId);
+  }
+
+  const res = await fetch(`${EDUCATION_API_BASE_URL}/education/citizen/application-compliance`, {
+    headers,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch application compliance (HTTP ${res.status})`);
+  }
+
+  const json: ApplicationComplianceResponse = await res.json();
+  if (json.status !== 'success' || !json.data) {
+    throw new Error(json.message || 'Unable to retrieve application compliance.');
+  }
+
+  return json.data;
+}
+
+export async function submitApplicationComplianceReplacement(
+  complianceId: number,
+  file: { uri: string; name: string; type: string }
+): Promise<ApplicationComplianceData> {
+  const session = await AuthService.getCurrentUser();
+  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
+  const token = session?.token || session?.user?.token;
+
+  const formData = new FormData();
+  formData.append('compliance_id', String(complianceId));
+  formData.append('replacement_file', {
+    uri: file.uri,
+    name: file.name,
+    type: file.type || 'application/octet-stream',
+  } as any);
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (citizenUserId) {
+    headers['X-Citizen-User-Id'] = String(citizenUserId);
+    headers['X-User-Id'] = String(citizenUserId);
+  }
+
+  const res = await fetch(`${EDUCATION_API_BASE_URL}/education/citizen/application-compliance/submit`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    let parsedMsg = `Unable to submit replacement document (HTTP ${res.status}).`;
+    try {
+      const errJson = JSON.parse(errText);
+      if (errJson.message) parsedMsg = errJson.message;
+    } catch {}
+    throw new Error(parsedMsg);
+  }
+
+  const json: ApplicationComplianceResponse = await res.json();
+  if (json.status !== 'success' || !json.data) {
+    throw new Error(json.message || 'Unable to complete document replacement submission.');
+  }
+
+  return json.data;
+}
