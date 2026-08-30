@@ -1,4 +1,4 @@
-import { AuthService } from '@/src/services/auth-service';
+import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
 import { EDUCATION_API_BASE_URL } from '../../new-applicant/api/ScholarshipProgramApi';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as WebBrowser from 'expo-web-browser';
@@ -88,25 +88,17 @@ function getMimeType(filename: string): string {
 }
 
 export async function fetchCitizenScholarshipDocuments(): Promise<CitizenScholarshipDocumentsData> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {
+  const headers = await getEducationAuthHeaders({
     'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  });
 
   const res = await fetch(`${EDUCATION_API_BASE_URL}/education/citizen/scholarship-documents`, {
     headers,
   });
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   if (!res.ok) {
     throw new Error(`Failed to fetch citizen documents (HTTP ${res.status})`);
@@ -121,25 +113,17 @@ export async function fetchCitizenScholarshipDocuments(): Promise<CitizenScholar
 }
 
 export async function fetchCitizenOfficialDocuments(): Promise<CitizenOfficialDocumentsData> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {
+  const headers = await getEducationAuthHeaders({
     'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  });
 
   const res = await fetch(`${EDUCATION_API_BASE_URL}/education/citizen/scholarship-official-documents`, {
     headers,
   });
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   if (!res.ok) {
     throw new Error(`Failed to fetch official documents (HTTP ${res.status})`);
@@ -159,18 +143,7 @@ export async function downloadOrViewCitizenDocument(
   originalFilename: string,
   mode: 'view' | 'download'
 ): Promise<{ success: boolean; localUri: string; filename: string }> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  const headers = await getEducationAuthHeaders();
 
   const endpointPath = docType === 'application' ? 'application' : 'renewal';
   const queryParam = mode === 'download' ? '?download=1' : '';
@@ -182,6 +155,10 @@ export async function downloadOrViewCitizenDocument(
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
   });
+
+  if (downloadResult.status === 401) {
+    await handleEducationResponse(new Response(null, { status: 401 }));
+  }
 
   if (downloadResult.status !== 200) {
     throw new Error(`Unable to fetch file (HTTP ${downloadResult.status}).`);
@@ -205,18 +182,7 @@ export async function downloadOrViewCitizenInitialCertificate(
   certNumber: string,
   mode: 'view' | 'download'
 ): Promise<{ success: boolean; localUri: string; filename: string }> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  const headers = await getEducationAuthHeaders();
 
   const queryParam = mode === 'download' ? '?download=1' : '';
   const fileUrl = `${EDUCATION_API_BASE_URL}/education/citizen/scholarship-documents/initial-certificate/${applicationId}/file${queryParam}`;
@@ -227,6 +193,10 @@ export async function downloadOrViewCitizenInitialCertificate(
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
   });
+
+  if (downloadResult.status === 401) {
+    await handleEducationResponse(new Response(null, { status: 401 }));
+  }
 
   if (downloadResult.status !== 200) {
     throw new Error(`Unable to fetch certificate PDF (HTTP ${downloadResult.status}).`);
@@ -250,18 +220,7 @@ export async function downloadOrViewCitizenContract(
   docNumber: string,
   mode: 'view' | 'download'
 ): Promise<{ success: boolean; localUri: string; filename: string }> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  const headers = await getEducationAuthHeaders();
 
   const queryParam = mode === 'download' ? '?download=1' : '';
   const fileUrl = `${EDUCATION_API_BASE_URL}/education/citizen/scholarship-documents/contract/${applicationId}/file${queryParam}`;
@@ -272,6 +231,10 @@ export async function downloadOrViewCitizenContract(
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
   });
+
+  if (downloadResult.status === 401) {
+    await handleEducationResponse(new Response(null, { status: 401 }));
+  }
 
   if (downloadResult.status !== 200) {
     throw new Error(`Unable to fetch contract PDF (HTTP ${downloadResult.status}).`);
@@ -295,18 +258,7 @@ export async function downloadOrViewCitizenUndertaking(
   docNumber: string,
   mode: 'view' | 'download'
 ): Promise<{ success: boolean; localUri: string; filename: string }> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  const headers = await getEducationAuthHeaders();
 
   const queryParam = mode === 'download' ? '?download=1' : '';
   const fileUrl = `${EDUCATION_API_BASE_URL}/education/citizen/scholarship-documents/undertaking/${applicationId}/file${queryParam}`;
@@ -317,6 +269,10 @@ export async function downloadOrViewCitizenUndertaking(
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
   });
+
+  if (downloadResult.status === 401) {
+    await handleEducationResponse(new Response(null, { status: 401 }));
+  }
 
   if (downloadResult.status !== 200) {
     throw new Error(`Unable to fetch undertaking PDF (HTTP ${downloadResult.status}).`);
@@ -340,18 +296,7 @@ export async function downloadOrViewCitizenRenewalCertificate(
   certNumber: string,
   mode: 'view' | 'download'
 ): Promise<{ success: boolean; localUri: string; filename: string }> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  const headers = await getEducationAuthHeaders();
 
   const queryParam = mode === 'download' ? '?download=1' : '';
   const fileUrl = `${EDUCATION_API_BASE_URL}/scholarship-renewals/citizen/certificate/${renewalId}/pdf${queryParam}`;
@@ -362,6 +307,10 @@ export async function downloadOrViewCitizenRenewalCertificate(
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
   });
+
+  if (downloadResult.status === 401) {
+    await handleEducationResponse(new Response(null, { status: 401 }));
+  }
 
   if (downloadResult.status !== 200) {
     throw new Error(`Unable to fetch renewal certificate PDF (HTTP ${downloadResult.status}).`);

@@ -202,7 +202,7 @@ export async function fetchMatchingEducationLevels(): Promise<string[]> {
   return ['Senior High School', 'Tertiary', 'Continuing Education/Vocational'];
 }
 
-import { AuthService } from '@/src/services/auth-service';
+import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
 
 export interface SubmitApplicationResult {
   application_id: number;
@@ -231,52 +231,23 @@ export async function submitNewScholarshipApplication(
   formData: FormData
 ): Promise<SubmitApplicationResult> {
   const postUrl = `${EDUCATION_API_BASE_URL}/scholarship-applications/citizen/submit`;
-  console.log('[NewApplication] POST URL =', postUrl);
-  console.log('[NewApplication] request started =', new Date().toISOString());
 
-  console.log('[NewApplication] before AuthService.getCurrentUser');
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId =
-    session?.citizen_user_id ||
-    session?.user?.citizen_user_id ||
-    session?.user?.user_id;
-
-  const token = session?.token || session?.user?.token;
-
-  console.log('[NewApplication] after AuthService.getCurrentUser', {
-    hasUser: !!session,
-    hasToken: !!token,
-    isGuest: session?.isGuest,
-    citizenUserId,
+  const headers = await getEducationAuthHeaders({
+    Accept: 'application/json',
   });
 
-  const headers: Record<string, string> = {
-    'Accept': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    // Local development fallback authentication matching renewalApi.ts contract
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
-
   try {
-    console.log('[NewApplication] before expo/fetch to:', postUrl);
-    const fetchStartTime = Date.now();
     const res = await expoFetch(postUrl, {
       method: 'POST',
       headers,
       body: formData,
     });
-    const fetchDuration = Date.now() - fetchStartTime;
-    console.log('[NewApplication] expo/fetch resolved in', fetchDuration, 'ms. HTTP Status:', res.status);
+
+    if (res.status === 401) {
+      await handleEducationResponse(res);
+    }
 
     const rawText = await res.text();
-    console.log('[NewApplication] body received length:', rawText.length, 'snippet:', rawText.slice(0, 200));
-
     let json: any = null;
 
     if (rawText && rawText.trim().length > 0) {
@@ -307,10 +278,7 @@ export async function submitNewScholarshipApplication(
 
     return json.data;
   } catch (err: any) {
-    console.error('[NewApplication] submit error caught:', err);
     throw err;
-  } finally {
-    console.log('[NewApplication] submitNewScholarshipApplication finally block executed');
   }
 }
 

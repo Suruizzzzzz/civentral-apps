@@ -1,4 +1,4 @@
-import { AuthService } from '@/src/services/auth-service';
+import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
 import { EDUCATION_API_BASE_URL } from '../../new-applicant/api/ScholarshipProgramApi';
 
 export interface DashboardScholar {
@@ -69,25 +69,17 @@ export interface CitizenDashboardResponse {
 }
 
 export async function fetchCitizenDashboard(): Promise<CitizenDashboardData> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {
+  const headers = await getEducationAuthHeaders({
     'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  });
 
   const res = await fetch(`${EDUCATION_API_BASE_URL}/education/citizen/scholarship-dashboard`, {
     headers,
   });
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   if (!res.ok) {
     throw new Error(`Failed to fetch dashboard overview (HTTP ${res.status})`);

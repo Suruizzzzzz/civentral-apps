@@ -1,4 +1,4 @@
-﻿import { AuthService } from '@/src/services/auth-service';
+import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
 import { EDUCATION_API_BASE_URL } from '../../new-applicant/api/ScholarshipProgramApi';
 
 export interface TargetDocumentItem {
@@ -61,25 +61,17 @@ export interface ApplicationComplianceResponse {
 }
 
 export async function fetchApplicationCompliance(): Promise<ApplicationComplianceData> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {
+  const headers = await getEducationAuthHeaders({
     'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  });
 
   const res = await fetch(`${EDUCATION_API_BASE_URL}/education/citizen/application-compliance`, {
     headers,
   });
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   if (!res.ok) {
     throw new Error(`Failed to fetch application compliance (HTTP ${res.status})`);
@@ -97,10 +89,6 @@ export async function submitApplicationComplianceReplacement(
   complianceId: number,
   file: { uri: string; name: string; type: string }
 ): Promise<ApplicationComplianceData> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId = session?.citizen_user_id || session?.user?.citizen_user_id || session?.user?.user_id;
-  const token = session?.token || session?.user?.token;
-
   const formData = new FormData();
   formData.append('compliance_id', String(complianceId));
   formData.append('replacement_file', {
@@ -109,20 +97,17 @@ export async function submitApplicationComplianceReplacement(
     type: file.type || 'application/octet-stream',
   } as any);
 
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers['X-Citizen-User-Id'] = String(citizenUserId);
-    headers['X-User-Id'] = String(citizenUserId);
-  }
+  const headers = await getEducationAuthHeaders();
 
   const res = await fetch(`${EDUCATION_API_BASE_URL}/education/citizen/application-compliance/submit`, {
     method: 'POST',
     headers,
     body: formData,
   });
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   if (!res.ok) {
     const errText = await res.text();

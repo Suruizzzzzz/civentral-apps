@@ -1,4 +1,4 @@
-import { AuthService } from "@/src/services/auth-service";
+import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
 import { EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
 
 export type RenewalState =
@@ -31,8 +31,6 @@ export interface AcademicPeriodInfo {
   start_date?: string | null;
   end_date?: string | null;
   status?: string | null;
-
-  // Legacy optional aliases kept temporarily so older renewal screens do not break.
   application_period_id?: number;
   period_code?: string;
 }
@@ -108,7 +106,6 @@ export interface SubmitRenewalResult {
   submitted_at: string;
 }
 
-// C3 COMPLIANCE INTERFACES
 export interface AffectedDocumentInfo {
   renewal_document_id: number;
   document_type: "COR" | "COG" | "SOA";
@@ -165,25 +162,9 @@ export interface SubmitComplianceResponseResult {
 }
 
 export async function fetchCitizenRenewalOverview(): Promise<CitizenRenewalOverviewData> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId =
-    session?.citizen_user_id ||
-    session?.user?.citizen_user_id ||
-    session?.user?.user_id;
-
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {
+  const headers = await getEducationAuthHeaders({
     "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers["X-Citizen-User-Id"] = String(citizenUserId);
-    headers["X-User-Id"] = String(citizenUserId);
-  }
+  });
 
   const res = await fetch(
     `${EDUCATION_API_BASE_URL}/scholarship-renewals/citizen/overview`,
@@ -193,7 +174,7 @@ export async function fetchCitizenRenewalOverview(): Promise<CitizenRenewalOverv
   );
 
   if (res.status === 401) {
-    throw new Error("Unauthorized. Authentication required.");
+    await handleEducationResponse(res);
   }
 
   if (!res.ok) {
@@ -211,23 +192,7 @@ export async function fetchCitizenRenewalOverview(): Promise<CitizenRenewalOverv
 export async function submitCitizenRenewal(
   formData: FormData,
 ): Promise<SubmitRenewalResult> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId =
-    session?.citizen_user_id ||
-    session?.user?.citizen_user_id ||
-    session?.user?.user_id;
-
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {};
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers["X-Citizen-User-Id"] = String(citizenUserId);
-    headers["X-User-Id"] = String(citizenUserId);
-  }
+  const headers = await getEducationAuthHeaders();
 
   const res = await fetch(
     `${EDUCATION_API_BASE_URL}/scholarship-renewals/citizen/submit`,
@@ -237,6 +202,10 @@ export async function submitCitizenRenewal(
       body: formData,
     },
   );
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   const json = await res.json();
 
@@ -252,25 +221,9 @@ export async function submitCitizenRenewal(
 }
 
 export async function fetchCitizenRenewalCompliance(): Promise<CitizenComplianceDetailsData> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId =
-    session?.citizen_user_id ||
-    session?.user?.citizen_user_id ||
-    session?.user?.user_id;
-
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {
+  const headers = await getEducationAuthHeaders({
     "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers["X-Citizen-User-Id"] = String(citizenUserId);
-    headers["X-User-Id"] = String(citizenUserId);
-  }
+  });
 
   const res = await fetch(
     `${EDUCATION_API_BASE_URL}/scholarship-renewals/citizen/compliance`,
@@ -280,7 +233,7 @@ export async function fetchCitizenRenewalCompliance(): Promise<CitizenCompliance
   );
 
   if (res.status === 401) {
-    throw new Error("Unauthorized. Authentication required.");
+    await handleEducationResponse(res);
   }
 
   if (!res.ok) {
@@ -301,23 +254,7 @@ export async function fetchCitizenRenewalCompliance(): Promise<CitizenCompliance
 export async function submitCitizenComplianceResponse(
   formData: FormData,
 ): Promise<SubmitComplianceResponseResult> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId =
-    session?.citizen_user_id ||
-    session?.user?.citizen_user_id ||
-    session?.user?.user_id;
-
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {};
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers["X-Citizen-User-Id"] = String(citizenUserId);
-    headers["X-User-Id"] = String(citizenUserId);
-  }
+  const headers = await getEducationAuthHeaders();
 
   const res = await fetch(
     `${EDUCATION_API_BASE_URL}/scholarship-renewals/citizen/compliance-response`,
@@ -327,6 +264,10 @@ export async function submitCitizenComplianceResponse(
       body: formData,
     },
   );
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   const json = await res.json();
 

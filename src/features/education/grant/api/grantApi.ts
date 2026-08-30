@@ -1,4 +1,4 @@
-import { AuthService } from "@/src/services/auth-service";
+import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
 import { Platform } from "react-native";
 
 const EDUCATION_API_BASE_URL =
@@ -91,38 +91,17 @@ export interface CitizenGrantOverviewData {
   current_academic_period?: AcademicPeriodInfo | null;
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const session = await AuthService.getCurrentUser();
-  const citizenUserId =
-    session?.citizen_user_id ||
-    session?.user?.citizen_user_id ||
-    session?.user?.user_id;
-
-  const token = session?.token || session?.user?.token;
-
-  const headers: Record<string, string> = {};
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  if (citizenUserId) {
-    headers["X-Citizen-User-Id"] = String(citizenUserId);
-    headers["X-User-Id"] = String(citizenUserId);
-  }
-
-  return headers;
-}
-
 export async function fetchCitizenGrantOverview(): Promise<CitizenGrantOverviewData> {
-  const headers = await getAuthHeaders();
-  headers["Content-Type"] = "application/json";
+  const headers = await getEducationAuthHeaders({
+    "Content-Type": "application/json",
+  });
 
   const res = await fetch(`${EDUCATION_API_BASE_URL}/grants/citizen/overview`, {
     headers,
   });
 
   if (res.status === 401) {
-    throw new Error("Unauthorized. Authentication required.");
+    await handleEducationResponse(res);
   }
 
   if (!res.ok) {
@@ -141,8 +120,9 @@ export async function fetchPartnerSchoolsLookup(
   programId?: number,
   search?: string,
 ): Promise<PartnerSchoolInfo[]> {
-  const headers = await getAuthHeaders();
-  headers["Content-Type"] = "application/json";
+  const headers = await getEducationAuthHeaders({
+    "Content-Type": "application/json",
+  });
 
   const params = new URLSearchParams();
   if (programId) params.append("program_id", String(programId));
@@ -150,6 +130,10 @@ export async function fetchPartnerSchoolsLookup(
 
   const url = `${EDUCATION_API_BASE_URL}/grants/lookups/partner-schools?${params.toString()}`;
   const res = await fetch(url, { headers });
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   if (!res.ok) {
     throw new Error(`Failed to fetch partner schools (HTTP ${res.status})`);
@@ -162,8 +146,9 @@ export async function fetchPartnerSchoolsLookup(
 export async function createGrantApplication(
   institutionId?: number,
 ): Promise<GrantApplicationDetail> {
-  const headers = await getAuthHeaders();
-  headers["Content-Type"] = "application/json";
+  const headers = await getEducationAuthHeaders({
+    "Content-Type": "application/json",
+  });
 
   const bodyData: Record<string, any> = {};
   if (institutionId) {
@@ -175,6 +160,10 @@ export async function createGrantApplication(
     headers,
     body: JSON.stringify(bodyData),
   });
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   const json = await res.json();
   if (!res.ok || json.status === "error") {
@@ -191,7 +180,7 @@ export async function uploadGrantDocument(
   fileName: string,
   mimeType: string,
 ): Promise<GrantApplicationDetail> {
-  const headers = await getAuthHeaders();
+  const headers = await getEducationAuthHeaders();
   
   const formData = new FormData();
   formData.append("document_type", documentType);
@@ -212,6 +201,10 @@ export async function uploadGrantDocument(
     },
   );
 
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
+
   const json = await res.json();
   if (!res.ok || json.status === "error") {
     throw new Error(json.message || `Document upload failed (HTTP ${res.status})`);
@@ -223,8 +216,9 @@ export async function uploadGrantDocument(
 export async function submitGrantApplication(
   applicationId: number,
 ): Promise<GrantApplicationDetail> {
-  const headers = await getAuthHeaders();
-  headers["Content-Type"] = "application/json";
+  const headers = await getEducationAuthHeaders({
+    "Content-Type": "application/json",
+  });
 
   const res = await fetch(
     `${EDUCATION_API_BASE_URL}/grants/applications/${applicationId}/submit`,
@@ -233,6 +227,10 @@ export async function submitGrantApplication(
       headers,
     },
   );
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
 
   const json = await res.json();
   if (!res.ok || json.status === "error") {
