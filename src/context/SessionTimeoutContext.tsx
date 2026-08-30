@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Alert, Modal, PanResponder, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, Modal, PanResponder, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { AuthService } from '@/src/services/auth-service';
@@ -41,28 +41,67 @@ export function SessionTimeoutProvider({ children }: { children: React.ReactNode
   // Absolute Expiration Timestamp (Date.now() + 30 mins)
   const expirationTimestampRef = useRef<number>(Date.now() + TOTAL_INACTIVITY_MS);
   const isWarningModalOpenRef = useRef<boolean>(false);
+  const isLoggingOutRef = useRef<boolean>(false);
   const masterIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleSessionTimeout = useCallback(() => {
+  const handleSessionTimeout = useCallback(async () => {
+    if (isLoggingOutRef.current) return;
+    isLoggingOutRef.current = true;
     isWarningModalOpenRef.current = false;
     setIsWarningVisible(false);
-    AuthService.clearCurrentUser();
+    await AuthService.logout();
     setIsLoggedIn(false);
+
+    router.replace('/(auth)' as any);
 
     Alert.alert(
       'Session Expired',
       'You have been logged out due to 30 minutes of inactivity for account security.',
       [
         {
-          text: 'Sign In Again',
-          onPress: () => {
-            router.replace('/(auth)' as any);
-          },
+          text: 'OK',
         },
       ]
     );
-    router.replace('/(auth)' as any);
   }, [router]);
+
+  const checkTimeoutStatus = useCallback(() => {
+    const session = AuthService.getCurrentUser();
+    const activeUser = !session.isGuest && !!(session.email || session.phone || session.citizen_user_id);
+    setIsLoggedIn(activeUser);
+
+    if (!activeUser) {
+      isWarningModalOpenRef.current = false;
+      setIsWarningVisible(false);
+      return;
+    }
+
+    const now = Date.now();
+    const remainingMs = Math.max(0, expirationTimestampRef.current - now);
+    const remainingSecs = Math.ceil(remainingMs / 1000);
+
+    setRemainingSeconds(remainingSecs);
+
+    // Trigger Warning Modal when 15 minutes or less remain (<= 900 seconds)
+    const warningSecs = Math.floor(WARNING_THRESHOLD_MS / 1000);
+    if (remainingSecs <= warningSecs && remainingSecs > 0) {
+      if (!isWarningModalOpenRef.current) {
+        isWarningModalOpenRef.current = true;
+        setIsWarningVisible(true);
+      }
+    } else if (remainingSecs > warningSecs) {
+      if (isWarningModalOpenRef.current) {
+        isWarningModalOpenRef.current = false;
+        setIsWarningVisible(false);
+      }
+    }
+
+    // Automatic Logout when timer reaches 0
+    if (remainingMs <= 0) {
+      if (masterIntervalRef.current) clearInterval(masterIntervalRef.current);
+      handleSessionTimeout();
+    }
+  }, [handleSessionTimeout]);
 
   // Reset session timer back to 30 minutes (only if warning modal is not active)
   const resetTimer = useCallback(() => {
@@ -73,6 +112,7 @@ export function SessionTimeoutProvider({ children }: { children: React.ReactNode
     setIsLoggedIn(activeUser);
 
     if (activeUser) {
+      isLoggingOutRef.current = false;
       expirationTimestampRef.current = Date.now() + timeoutMs;
       const secs = Math.max(0, Math.ceil((expirationTimestampRef.current - Date.now()) / 1000));
       setRemainingSeconds(secs);
@@ -84,6 +124,7 @@ export function SessionTimeoutProvider({ children }: { children: React.ReactNode
 
   // Explicitly extends session back to full 30 minutes when user taps "Keep Me Signed In"
   const handleKeepSignedIn = () => {
+    isLoggingOutRef.current = false;
     isWarningModalOpenRef.current = false;
     setIsWarningVisible(false);
     expirationTimestampRef.current = Date.now() + timeoutMs;
@@ -91,45 +132,29 @@ export function SessionTimeoutProvider({ children }: { children: React.ReactNode
     setRemainingSeconds(secs);
   };
 
-  // MASTER 1-SECOND TICKER (Relies on Date.now() timestamp so it NEVER freezes)
+  // MASTER 1-SECOND TICKER
   useEffect(() => {
     masterIntervalRef.current = setInterval(() => {
-      const session = AuthService.getCurrentUser();
-      const activeUser = !session.isGuest && !!(session.email || session.phone || session.citizen_user_id);
-      setIsLoggedIn(activeUser);
-
-      if (!activeUser) {
-        isWarningModalOpenRef.current = false;
-        setIsWarningVisible(false);
-        return;
-      }
-
-      const now = Date.now();
-      const remainingMs = Math.max(0, expirationTimestampRef.current - now);
-      const remainingSecs = Math.ceil(remainingMs / 1000);
-
-      setRemainingSeconds(remainingSecs);
-
-      // Trigger Warning Modal when 15 minutes or less remain (<= 900 seconds)
-      const warningSecs = Math.floor(WARNING_THRESHOLD_MS / 1000);
-      if (remainingSecs <= warningSecs && remainingSecs > 0) {
-        if (!isWarningModalOpenRef.current) {
-          isWarningModalOpenRef.current = true;
-          setIsWarningVisible(true);
-        }
-      }
-
-      // Automatic Logout when timer reaches 0
-      if (remainingMs <= 0) {
-        if (masterIntervalRef.current) clearInterval(masterIntervalRef.current);
-        handleSessionTimeout();
-      }
+      checkTimeoutStatus();
     }, 1000);
 
     return () => {
       if (masterIntervalRef.current) clearInterval(masterIntervalRef.current);
     };
-  }, [handleSessionTimeout]);
+  }, [checkTimeoutStatus]);
+
+  // AppState Listener: Immediate wall-clock evaluation when app transitions to active
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkTimeoutStatus();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [checkTimeoutStatus]);
 
   // Initialize timer on component mount
   useEffect(() => {
