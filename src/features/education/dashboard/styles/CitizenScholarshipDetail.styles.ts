@@ -201,36 +201,98 @@ export const styles = StyleSheet.create({
     marginTop: 3,
   },
 
-  /* TIMELINE ITEM */
+  /* TIMELINE ITEM & CONNECTING LINES */
   timelineItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 14,
+    alignItems: 'stretch',
+    marginBottom: 0,
+  },
+
+  timelineItemRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginBottom: 0,
   },
 
   timelineLeft: {
     alignItems: 'center',
-    width: 28,
-    marginRight: 8,
+    width: 32,
+    marginRight: 12,
+  },
+
+  timelineLeftColumn: {
+    width: 32,
+    alignItems: 'center',
+    marginRight: 12,
   },
 
   timelineIconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    zIndex: 2,
+  },
+
+  timelineConnectorLine: {
+    width: 3,
+    flex: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 3,
+    borderRadius: 1.5,
+    zIndex: 1,
+    minHeight: 24,
+  },
+
+  timelineContentCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+  },
+
+  timelineContentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+
+  timelineStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+
+  timelineStatusPillText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   timelineTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
+    flex: 1,
   },
 
   timelineDate: {
     fontSize: 12,
     marginTop: 2,
+  },
+
+  timelineDateText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 
   /* DOCUMENT CARDS */

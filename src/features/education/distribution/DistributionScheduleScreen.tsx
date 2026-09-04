@@ -111,12 +111,18 @@ export function DistributionScheduleScreen() {
         onPress={() => router.back()}
         activeOpacity={0.7}
       >
-        <IconSymbol
-          name="chevron.right"
-          size={16}
-          color={isDarkMode ? "#FB923C" : "#EA580C"}
-          style={styles.backIcon}
-        />
+        <View
+          style={[
+            styles.backIconCircle,
+            isDarkMode && { backgroundColor: "#1C2541", borderColor: "#3A506B" },
+          ]}
+        >
+          <IconSymbol
+            name="chevron.left"
+            size={18}
+            color={isDarkMode ? "#FB923C" : "#EA580C"}
+          />
+        </View>
         <Text style={[styles.backText, isDarkMode && { color: "#FB923C" }]}>
           Back to Education Hub
         </Text>
@@ -124,12 +130,21 @@ export function DistributionScheduleScreen() {
 
       {/* PAGE HEADER */}
       <View style={styles.header}>
-        <Text style={[styles.title, isDarkMode && { color: "#F8FAFC" }]}>
-          Distribution Schedule
-        </Text>
-        <Text style={[styles.subtitle, isDarkMode && { color: "#94A3B8" }]}>
-          Educational stipend payouts & tuition release status
-        </Text>
+        <View
+          style={[
+            styles.heroBanner,
+            isDarkMode && { backgroundColor: "#1C2541", borderWidth: 1, borderColor: "#3A506B" },
+          ]}
+        >
+          <View style={styles.heroBadge}>
+            <IconSymbol name="location.fill" size={14} color="#FFFFFF" />
+            <Text style={styles.heroBadgeText}>PAYOUT CALENDAR</Text>
+          </View>
+          <Text style={styles.title}>Distribution Schedule</Text>
+          <Text style={styles.subtitle}>
+            Educational stipend payouts, barangay venues & tuition release status
+          </Text>
+        </View>
       </View>
 
       {/* ERROR STATE */}
@@ -138,6 +153,7 @@ export function DistributionScheduleScreen() {
           style={[
             styles.card,
             { borderColor: "#EF4444", borderWidth: 1, padding: 16, marginBottom: 16 },
+            isDarkMode && { backgroundColor: "#1C2541" },
           ]}
         >
           <Text
@@ -248,41 +264,28 @@ export function DistributionScheduleScreen() {
 
               {/* AUTHORITATIVE FINANCIAL SUMMARY BREAKDOWN */}
               <View
-                style={{
-                  backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
-                  borderRadius: 12,
-                  padding: 12,
-                  marginBottom: 14,
-                  borderWidth: 1,
-                  borderColor: isDarkMode ? "#334155" : "#E2E8F0",
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
+                style={[
+                  styles.financialCard,
+                  isDarkMode && { backgroundColor: "#0F172A", borderColor: "#334155" },
+                ]}
               >
-                <View style={{ flex: 1, alignItems: "center" }}>
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748B", textTransform: "uppercase" }}>
-                    Total Approved
-                  </Text>
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: isDarkMode ? "#F8FAFC" : "#0F172A", marginTop: 2 }}>
+                <View style={styles.financialCol}>
+                  <Text style={styles.financialLabel}>Total Approved</Text>
+                  <Text style={[styles.financialVal, isDarkMode && { color: "#F8FAFC" }]}>
                     {formatCurrency(rel.authorized_amount)}
                   </Text>
                 </View>
-                <View style={{ width: 1, height: 24, backgroundColor: isDarkMode ? "#334155" : "#CBD5E1" }} />
-                <View style={{ flex: 1, alignItems: "center" }}>
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748B", textTransform: "uppercase" }}>
-                    Released
-                  </Text>
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#16A34A", marginTop: 2 }}>
+                <View style={[styles.financialDivider, isDarkMode && { backgroundColor: "#334155" }]} />
+                <View style={styles.financialCol}>
+                  <Text style={styles.financialLabel}>Released</Text>
+                  <Text style={[styles.financialVal, { color: "#16A34A" }]}>
                     {formatCurrency(rel.total_released_amount)}
                   </Text>
                 </View>
-                <View style={{ width: 1, height: 24, backgroundColor: isDarkMode ? "#334155" : "#CBD5E1" }} />
-                <View style={{ flex: 1, alignItems: "center" }}>
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: "#64748B", textTransform: "uppercase" }}>
-                    Remaining
-                  </Text>
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: isDarkMode ? "#FB923C" : "#EA580C", marginTop: 2 }}>
+                <View style={[styles.financialDivider, isDarkMode && { backgroundColor: "#334155" }]} />
+                <View style={styles.financialCol}>
+                  <Text style={styles.financialLabel}>Remaining</Text>
+                  <Text style={[styles.financialVal, { color: isDarkMode ? "#FB923C" : "#EA580C" }]}>
                     {formatCurrency(rel.remaining_amount)}
                   </Text>
                 </View>
@@ -299,45 +302,33 @@ export function DistributionScheduleScreen() {
                   return (
                     <View
                       key={comp.component_id}
-                      style={{
-                        backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
-                        borderRadius: 14,
-                        padding: 14,
-                        borderWidth: 1,
-                        borderColor: isDarkMode ? "#334155" : "#E2E8F0",
-                        gap: 8,
-                      }}
+                      style={[
+                        styles.componentBox,
+                        isDarkMode && { backgroundColor: "#0F172A", borderColor: "#334155" },
+                      ]}
                     >
                       {/* COMPONENT TOP ROW */}
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <View style={styles.componentTopRow}>
+                        <View style={styles.componentBadges}>
                           <Badge
                             label={comp.component_type}
                             variant={comp.component_type === "Stipend" ? "success" : "info"}
                           />
                           <Text
-                            style={{
-                              fontSize: 12,
-                              color: isDarkMode ? "#94A3B8" : "#64748B",
-                              fontWeight: "600",
-                            }}
+                            style={[
+                              styles.componentMethod,
+                              isDarkMode && { color: "#94A3B8" },
+                            ]}
                           >
                             {comp.release_method}
                           </Text>
                         </View>
 
                         <Text
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "800",
-                            color: isDarkMode ? "#38BDF8" : "#176B87",
-                          }}
+                          style={[
+                            styles.componentAmount,
+                            isDarkMode && { color: "#38BDF8" },
+                          ]}
                         >
                           {formatCurrency(comp.amount)}
                         </Text>
@@ -588,20 +579,20 @@ export function DistributionScheduleScreen() {
         </View>
 
         <View style={styles.reqList}>
-          <View style={styles.reqItem}>
+          <View style={[styles.reqItem, isDarkMode && { backgroundColor: "#0F172A", borderColor: "#334155" }]}>
             <IconSymbol
               name="checkmark.circle.fill"
-              size={15}
+              size={18}
               color={isDarkMode ? "#34D399" : "#16A34A"}
             />
             <Text style={[styles.reqText, isDarkMode && { color: "#CBD5E1" }]}>
               Valid Student ID or Citizen ID
             </Text>
           </View>
-          <View style={styles.reqItem}>
+          <View style={[styles.reqItem, isDarkMode && { backgroundColor: "#0F172A", borderColor: "#334155" }]}>
             <IconSymbol
               name="checkmark.circle.fill"
-              size={15}
+              size={18}
               color={isDarkMode ? "#34D399" : "#16A34A"}
             />
             <Text style={[styles.reqText, isDarkMode && { color: "#CBD5E1" }]}>

@@ -12,17 +12,26 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "flex-start",
     marginBottom: 18,
-    gap: 4,
+    gap: 10,
   },
 
-  backIcon: {
-    transform: [{ rotate: "180deg" }],
+  backIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#E0F2FE",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
   },
+
+  backIcon: {},
 
   backText: {
-    color: "#2563EB",
+    color: "#0284C7",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   header: {

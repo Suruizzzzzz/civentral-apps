@@ -65,12 +65,18 @@ export function NewApplicantScreen() {
         onPress={() => router.back()}
         activeOpacity={0.7}
       >
-        <IconSymbol
-          name="chevron.right"
-          size={16}
-          color={isDarkMode ? "#38BDF8" : "#2563EB"}
-          style={styles.backIcon}
-        />
+        <View
+          style={[
+            styles.backIconCircle,
+            isDarkMode && { backgroundColor: "#1C2541", borderColor: "#3A506B" },
+          ]}
+        >
+          <IconSymbol
+            name="chevron.left"
+            size={18}
+            color={isDarkMode ? "#38BDF8" : "#0284C7"}
+          />
+        </View>
         <Text
           style={[
             styles.backText,

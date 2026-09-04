@@ -331,19 +331,39 @@ export async function downloadOrViewCitizenRenewalCertificate(
 
 async function handleViewFile(localUri: string, filename: string): Promise<void> {
   try {
-    if (Platform.OS === 'android') {
-      const contentUri = await FileSystem.getContentUriAsync(localUri);
-      await Linking.openURL(contentUri);
-    } else {
+    if (localUri.startsWith('http://') || localUri.startsWith('https://')) {
       await WebBrowser.openBrowserAsync(localUri);
+      return;
+    }
+
+    if (Platform.OS === 'android') {
+      try {
+        const contentUri = await FileSystem.getContentUriAsync(localUri);
+        const supported = await Linking.canOpenURL(contentUri);
+        if (supported) {
+          await Linking.openURL(contentUri);
+          return;
+        }
+      } catch (e) {
+        console.warn('[handleViewFile] getContentUriAsync / Linking failed:', e);
+      }
+      try {
+        await Linking.openURL(localUri);
+      } catch (directErr) {
+        await WebBrowser.openBrowserAsync(localUri);
+      }
+    } else if (Platform.OS === 'ios') {
+      try {
+        await WebBrowser.openBrowserAsync(localUri);
+      } catch (iosWebErr) {
+        await Linking.openURL(localUri);
+      }
+    } else {
+      await Linking.openURL(localUri);
     }
   } catch (err: any) {
-    console.warn('[handleViewFile] Linking openURL warning, trying WebBrowser:', err);
-    try {
-      await WebBrowser.openBrowserAsync(localUri);
-    } catch (webErr) {
-      Alert.alert('Unable to Open File', 'No compatible application is available to open this file.');
-    }
+    console.warn('[handleViewFile] final open error:', err);
+    throw new Error(`Unable to open preview for ${filename}. Default app viewer unavailable.`);
   }
 }
 

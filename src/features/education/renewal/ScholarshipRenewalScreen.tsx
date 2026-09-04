@@ -86,8 +86,8 @@ export function ScholarshipRenewalScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={isDarkMode ? "#C084FC" : "#9333EA"}
-          colors={["#9333EA"]}
+          tintColor={isDarkMode ? "#4ADE80" : "#15803D"}
+          colors={["#15803D"]}
         />
       }
     >
@@ -97,21 +97,39 @@ export function ScholarshipRenewalScreen() {
         onPress={() => router.back()}
         activeOpacity={0.7}
       >
-        <IconSymbol
-          name="chevron.right"
-          size={16}
-          color={isDarkMode ? "#C084FC" : "#9333EA"}
-          style={styles.backIcon}
-        />
-        <Text style={[styles.backText, isDarkMode && { color: "#C084FC" }]}>
+        <View
+          style={[
+            styles.backIconCircle,
+            isDarkMode && { backgroundColor: "#1C2541", borderColor: "#3A506B" },
+          ]}
+        >
+          <IconSymbol
+            name="chevron.left"
+            size={18}
+            color={isDarkMode ? "#4ADE80" : "#15803D"}
+          />
+        </View>
+        <Text style={[styles.backText, isDarkMode && { color: "#4ADE80" }]}>
           Back to Education Hub
         </Text>
       </TouchableOpacity>
 
       {/* HEADER */}
-      <Text style={[styles.title, isDarkMode && { color: "#F8FAFC" }]}>
-        Scholarship Renewal
-      </Text>
+      <View
+        style={[
+          styles.headerBanner,
+          isDarkMode && { backgroundColor: "#1C2541", borderWidth: 1, borderColor: "#3A506B" },
+        ]}
+      >
+        <View style={styles.headerBadge}>
+          <IconSymbol name="pencil" size={14} color="#FFFFFF" />
+          <Text style={styles.headerBadgeText}>FOR SCHOLARS</Text>
+        </View>
+        <Text style={styles.title}>Scholarship Renewal</Text>
+        <Text style={styles.sub}>
+          Submit renewal requirements, view active grant status & certificate issuance.
+        </Text>
+      </View>
 
       {/* LOADING STATE */}
       {loading ? (
@@ -241,7 +259,7 @@ export function ScholarshipRenewalScreen() {
 
               <TouchableOpacity
                 style={{
-                  backgroundColor: "#9333EA",
+                  backgroundColor: "#15803D",
                   borderRadius: 14,
                   paddingVertical: 14,
                   paddingHorizontal: 20,
@@ -273,22 +291,22 @@ export function ScholarshipRenewalScreen() {
                 style={[
                   styles.banner,
                   {
-                    backgroundColor: "#F5F3FF",
-                    borderColor: "#DDD6FE",
+                    backgroundColor: "#F0FDF4",
+                    borderColor: "#BBF7D0",
                     borderWidth: 1,
                   },
                 ]}
               >
-                <IconSymbol name="doc.text.fill" size={24} color="#7C3AED" />
+                <IconSymbol name="doc.text.fill" size={24} color="#16A34A" />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.bannerTitle, { color: "#5B21B6" }]}>
+                  <Text style={[styles.bannerTitle, { color: "#166534" }]}>
                     {data.renewal?.renewal_status === "Completed"
                       ? "Renewal Completed"
                       : data.renewal?.renewal_status === "For Certificate"
                         ? "Certificate Processing"
                         : "Renewal Submitted"}
                   </Text>
-                  <Text style={[styles.bannerText, { color: "#4C1D95" }]}>
+                  <Text style={[styles.bannerText, { color: "#14532D" }]}>
                     {data.renewal?.renewal_status === "Completed"
                       ? `Your scholarship renewal (${data.renewal?.renewal_code}) has been completed successfully.`
                       : data.renewal?.renewal_status === "For Certificate"
@@ -396,7 +414,7 @@ export function ScholarshipRenewalScreen() {
                           data.renewal.certificate.certificate_status ===
                           "Issued"
                             ? "#16A34A"
-                            : "#7C3AED"
+                            : "#16A34A"
                         }
                       />
                       <View style={{ flex: 1 }}>

@@ -229,8 +229,8 @@ export function ScholarshipDetailsScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={isDarkMode ? '#FB923C' : '#EA580C'}
-          colors={['#EA580C']}
+          tintColor={isDarkMode ? '#38BDF8' : '#0284C7'}
+          colors={['#0284C7']}
         />
       }
     >
@@ -240,13 +240,19 @@ export function ScholarshipDetailsScreen() {
         onPress={() => router.back()}
         activeOpacity={0.7}
       >
-        <IconSymbol
-          name="chevron.right"
-          size={16}
-          color={isDarkMode ? '#FB923C' : '#EA580C'}
-          style={styles.backIcon}
-        />
-        <Text style={[styles.backText, isDarkMode && { color: '#FB923C' }]}>
+        <View
+          style={[
+            styles.backIconCircle,
+            isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+          ]}
+        >
+          <IconSymbol
+            name="chevron.left"
+            size={18}
+            color={isDarkMode ? '#38BDF8' : '#0284C7'}
+          />
+        </View>
+        <Text style={[styles.backText, isDarkMode && { color: '#38BDF8' }]}>
           {isDashboardSource ? 'Back to Dashboard' : 'Back'}
         </Text>
       </TouchableOpacity>
@@ -259,7 +265,7 @@ export function ScholarshipDetailsScreen() {
           </Text>
           <TouchableOpacity
             style={{
-              backgroundColor: '#EA580C',
+              backgroundColor: '#0284C7',
               paddingVertical: 8,
               paddingHorizontal: 16,
               borderRadius: 8,
@@ -381,7 +387,7 @@ export function ScholarshipDetailsScreen() {
             {program.required_documents && program.required_documents.length > 0 ? (
               program.required_documents.map((doc: any, idx: number) => (
                 <View key={doc.document_requirement_id || idx} style={styles.listItem}>
-                  <IconSymbol name="doc.text.fill" size={18} color="#EA580C" />
+                  <IconSymbol name="doc.text.fill" size={18} color="#0284C7" />
                   <View style={styles.listContent}>
                     <Text style={[styles.listTitle, isDarkMode && { color: '#F8FAFC' }]}>
                       {doc.document_name} ({doc.requirement_level})
@@ -457,7 +463,7 @@ export function ScholarshipDetailsScreen() {
             <View style={[styles.sectionCard, styles.applyContainer, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
               {ctaState.canApply ? (
                 <TouchableOpacity
-                  style={[styles.activeApplyBtn, isDarkMode && { backgroundColor: '#FB923C' }]}
+                  style={[styles.activeApplyBtn, isDarkMode && { backgroundColor: '#38BDF8' }]}
                   onPress={handleApplyPress}
                   activeOpacity={0.8}
                 >

@@ -295,7 +295,7 @@ export function NewApplicantApplicationScreen() {
           <View style={[styles.metaBox, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
             <View style={styles.metaRow}>
               <Text style={[styles.metaLabel, isDarkMode && { color: '#94A3B8' }]}>Application Code</Text>
-              <Text style={[styles.metaValue, { color: '#EA580C' }]}>{submitResult.application_code}</Text>
+              <Text style={[styles.metaValue, { color: '#0284C7' }]}>{submitResult.application_code}</Text>
             </View>
 
             <View style={styles.metaRow}>
@@ -343,8 +343,8 @@ export function NewApplicantApplicationScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={isDarkMode ? '#FB923C' : '#EA580C'}
-          colors={['#EA580C']}
+          tintColor={isDarkMode ? '#38BDF8' : '#0284C7'}
+          colors={['#0284C7']}
         />
       }
     >
@@ -354,13 +354,19 @@ export function NewApplicantApplicationScreen() {
         onPress={() => router.back()}
         activeOpacity={0.7}
       >
-        <IconSymbol
-          name="chevron.right"
-          size={16}
-          color={isDarkMode ? '#FB923C' : '#EA580C'}
-          style={styles.backIcon}
-        />
-        <Text style={[styles.backText, isDarkMode && { color: '#FB923C' }]}>
+        <View
+          style={[
+            styles.backIconCircle,
+            isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+          ]}
+        >
+          <IconSymbol
+            name="chevron.left"
+            size={18}
+            color={isDarkMode ? '#38BDF8' : '#0284C7'}
+          />
+        </View>
+        <Text style={[styles.backText, isDarkMode && { color: '#38BDF8' }]}>
           Back to Details
         </Text>
       </TouchableOpacity>
@@ -373,7 +379,7 @@ export function NewApplicantApplicationScreen() {
           </Text>
           <TouchableOpacity
             style={{
-              backgroundColor: '#EA580C',
+              backgroundColor: '#0284C7',
               paddingVertical: 8,
               paddingHorizontal: 16,
               borderRadius: 8,
@@ -508,14 +514,14 @@ export function NewApplicantApplicationScreen() {
                   ) : null}
 
                   <TouchableOpacity
-                    style={[styles.uploadBox, selectedFile && styles.uploadBoxSuccess, isDarkMode && !selectedFile && { backgroundColor: '#1E293B', borderColor: '#EA580C' }]}
+                    style={[styles.uploadBox, selectedFile && styles.uploadBoxSuccess, isDarkMode && !selectedFile && { backgroundColor: '#1E293B', borderColor: '#0284C7' }]}
                     onPress={() => handlePickDocument(doc)}
                     activeOpacity={0.75}
                   >
                     <IconSymbol
                       name={selectedFile ? 'checkmark.circle.fill' : 'arrow.clockwise.circle'}
                       size={18}
-                      color={selectedFile ? '#16A34A' : '#EA580C'}
+                      color={selectedFile ? '#16A34A' : '#0284C7'}
                     />
                     <Text style={[styles.uploadText, selectedFile && styles.fileNameText]}>
                       {selectedFile
@@ -572,7 +578,7 @@ export function NewApplicantApplicationScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#EA580C', opacity: isSubmitting ? 0.7 : 1, minWidth: 140, alignItems: 'center', justifyContent: 'center' }}
+                style={{ paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#0284C7', opacity: isSubmitting ? 0.7 : 1, minWidth: 140, alignItems: 'center', justifyContent: 'center' }}
                 onPress={handleConfirmSubmit}
                 disabled={isSubmitting}
               >

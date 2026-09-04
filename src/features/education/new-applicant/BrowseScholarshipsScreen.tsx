@@ -55,8 +55,8 @@ export function BrowseScholarshipsScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={isDarkMode ? '#FB923C' : '#EA580C'}
-          colors={['#EA580C']}
+          tintColor={isDarkMode ? '#38BDF8' : '#0284C7'}
+          colors={['#0284C7']}
         />
       }
     >
@@ -66,14 +66,20 @@ export function BrowseScholarshipsScreen() {
         onPress={() => router.back()}
         activeOpacity={0.7}
       >
-        <IconSymbol
-          name="chevron.right"
-          size={16}
-          color={isDarkMode ? '#FB923C' : '#EA580C'}
-          style={styles.backIcon}
-        />
-        <Text style={[styles.backText, isDarkMode && { color: '#FB923C' }]}>
-          Back
+        <View
+          style={[
+            styles.backIconCircle,
+            isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+          ]}
+        >
+          <IconSymbol
+            name="chevron.left"
+            size={18}
+            color={isDarkMode ? '#38BDF8' : '#0284C7'}
+          />
+        </View>
+        <Text style={[styles.backText, isDarkMode && { color: '#38BDF8' }]}>
+          Back to Education Hub
         </Text>
       </TouchableOpacity>
 

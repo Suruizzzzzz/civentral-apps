@@ -6,6 +6,7 @@ import {
     CitizenProfileData,
     ProfileService,
 } from "@/src/services/profile-service";
+import { CivicApiService, SummaryCounts } from "@/src/services/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -189,6 +190,10 @@ export function HomeScreen() {
     useState<AnnouncementItem | null>(null);
   const [isQrModalVisible, setIsQrModalVisible] = useState(false);
 
+  const [summaryCounts, setSummaryCounts] = useState<SummaryCounts | null>(null);
+  const [isSummaryError, setIsSummaryError] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+
   const loadProfile = async () => {
     if (isGuestMode) return;
     const emailToUse = activeEmail || userProfile.email;
@@ -211,6 +216,45 @@ export function HomeScreen() {
     }
   };
 
+  const loadDashboardMetrics = async () => {
+    if (isGuestMode) {
+      setSummaryCounts({ active_requests_count: 0, ready_documents_count: 0, grant_release_count: 0 });
+      setIsSummaryError(false);
+      setRecentActivity([]);
+      return;
+    }
+
+    try {
+      const counts = await CivicApiService.getCitizenSummaryCounts();
+      if (counts !== null) {
+        setSummaryCounts(counts);
+        setIsSummaryError(false);
+      } else {
+        setIsSummaryError(true);
+      }
+    } catch {
+      setIsSummaryError(true);
+    }
+
+    try {
+      const items = await CivicApiService.getTrackedItems();
+      if (items && items.length > 0) {
+        const mapped: ActivityItem[] = items.slice(0, 3).map((item) => ({
+          id: item.id,
+          serviceTitle: item.serviceTitle,
+          status: (item.displayStatus as any) || 'Processing',
+          updatedAt: item.updatedAt ? item.updatedAt.split(' ')[0] : 'Recently',
+          domainId: 'education',
+        }));
+        setRecentActivity(mapped);
+      } else {
+        setRecentActivity([]);
+      }
+    } catch {
+      setRecentActivity([]);
+    }
+  };
+
   useEffect(() => {
     async function initData() {
       if (isGuestMode) {
@@ -225,7 +269,7 @@ export function HomeScreen() {
         });
       }
       setIsLoadingProfile(true);
-      await loadProfile();
+      await Promise.all([loadProfile(), loadDashboardMetrics()]);
       setIsLoadingProfile(false);
     }
     initData();
@@ -234,7 +278,7 @@ export function HomeScreen() {
   const handleRefresh = async () => {
     if (isGuestMode) return;
     setIsRefreshing(true);
-    await loadProfile();
+    await Promise.all([loadProfile(), loadDashboardMetrics()]);
     setIsRefreshing(false);
   };
 
@@ -338,7 +382,9 @@ export function HomeScreen() {
                 <View style={[styles.pillarIconBadge, { backgroundColor: "#2563EB" }]}>
                   <IconSymbol name="doc.text.fill" size={20} color="#FFFFFF" />
                 </View>
-                <Text style={[styles.pillarValue, { color: C.textPrimary }]}>3</Text>
+                <Text style={[styles.pillarValue, { color: C.textPrimary }]}>
+                  {summaryCounts !== null ? summaryCounts.active_requests_count : (isSummaryError ? "--" : "...")}
+                </Text>
                 <Text style={[styles.pillarLabel, { color: C.textSecondary }]}>
                   Active{"\n"}Requests
                 </Text>
@@ -356,13 +402,15 @@ export function HomeScreen() {
                 <View style={[styles.pillarIconBadge, { backgroundColor: "#16A34A", borderRadius: 20 }]}>
                   <IconSymbol name="checkmark.circle.fill" size={20} color="#FFFFFF" />
                 </View>
-                <Text style={[styles.pillarValue, { color: C.textPrimary }]}>2</Text>
+                <Text style={[styles.pillarValue, { color: C.textPrimary }]}>
+                  {summaryCounts !== null ? summaryCounts.ready_documents_count : (isSummaryError ? "--" : "...")}
+                </Text>
                 <Text style={[styles.pillarLabel, { color: C.textSecondary }]}>
                   Ready{"\n"}Documents
                 </Text>
               </TouchableOpacity>
 
-              {/* PILLAR 3: Pending Payment */}
+              {/* PILLAR 3: Grant Release */}
               <TouchableOpacity
                 style={[
                   styles.pillarCard,
@@ -374,9 +422,11 @@ export function HomeScreen() {
                 <View style={[styles.pillarIconBadge, { backgroundColor: "#EA580C" }]}>
                   <IconSymbol name="wallet.pass.fill" size={20} color="#FFFFFF" />
                 </View>
-                <Text style={[styles.pillarValue, { color: C.textPrimary }]}>1</Text>
+                <Text style={[styles.pillarValue, { color: C.textPrimary }]}>
+                  {summaryCounts !== null ? summaryCounts.grant_release_count : (isSummaryError ? "--" : "...")}
+                </Text>
                 <Text style={[styles.pillarLabel, { color: C.textSecondary }]}>
-                  Pending{"\n"}Payment
+                  Grant{"\n"}Release
                 </Text>
               </TouchableOpacity>
 
@@ -656,68 +706,76 @@ export function HomeScreen() {
               { backgroundColor: C.surface, borderColor: C.border },
             ]}
           >
-            {RECENT_ACTIVITY.map((item, index) => {
-              const statusColor = getStatusColor(item.status);
-              const isLast = index === RECENT_ACTIVITY.length - 1;
-              return (
-                <View key={item.id}>
-                  <TouchableOpacity
-                    style={styles.activityRow}
-                    onPress={() => router.push("/(tabs)/tracker")}
-                    activeOpacity={0.8}
-                  >
-                    <View
-                      style={[
-                        styles.activityIconBox,
-                        { backgroundColor: C.blueLight },
-                      ]}
+            {recentActivity.length > 0 ? (
+              recentActivity.map((item, index) => {
+                const statusColor = getStatusColor(item.status);
+                const isLast = index === recentActivity.length - 1;
+                return (
+                  <View key={item.id}>
+                    <TouchableOpacity
+                      style={styles.activityRow}
+                      onPress={() => router.push("/(tabs)/tracker")}
+                      activeOpacity={0.8}
                     >
-                      <IconSymbol
-                        name={getActivityIcon(item.domainId) as any}
-                        size={16}
-                        color={C.blue}
+                      <View
+                        style={[
+                          styles.activityIconBox,
+                          { backgroundColor: C.blueLight },
+                        ]}
+                      >
+                        <IconSymbol
+                          name={getActivityIcon(item.domainId) as any}
+                          size={16}
+                          color={C.blue}
+                        />
+                      </View>
+                      <View style={styles.activityInfo}>
+                        <Text
+                          style={[styles.activityTitle, { color: C.textPrimary }]}
+                          numberOfLines={1}
+                        >
+                          {item.serviceTitle}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.activityMeta,
+                            { color: C.textSecondary },
+                          ]}
+                        >
+                          Updated {item.updatedAt}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          { backgroundColor: statusColor.bg },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusBadgeText,
+                            { color: statusColor.text },
+                          ]}
+                        >
+                          {item.status}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    {!isLast && (
+                      <View
+                        style={[styles.rowDivider, { backgroundColor: C.border }]}
                       />
-                    </View>
-                    <View style={styles.activityInfo}>
-                      <Text
-                        style={[styles.activityTitle, { color: C.textPrimary }]}
-                        numberOfLines={1}
-                      >
-                        {item.serviceTitle}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.activityMeta,
-                          { color: C.textSecondary },
-                        ]}
-                      >
-                        Updated {item.updatedAt}
-                      </Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        { backgroundColor: statusColor.bg },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusBadgeText,
-                          { color: statusColor.text },
-                        ]}
-                      >
-                        {item.status}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                  {!isLast && (
-                    <View
-                      style={[styles.rowDivider, { backgroundColor: C.border }]}
-                    />
-                  )}
-                </View>
-              );
-            })}
+                    )}
+                  </View>
+                );
+              })
+            ) : (
+              <View style={{ padding: 20, alignItems: "center" }}>
+                <Text style={{ color: C.textSecondary, fontSize: 13 }}>
+                  No recent scholarship activity.
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 

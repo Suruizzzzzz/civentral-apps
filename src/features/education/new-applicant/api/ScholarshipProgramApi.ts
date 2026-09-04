@@ -1,10 +1,12 @@
 import { fetch as expoFetch } from 'expo/fetch';
 import { Platform } from 'react-native';
 
-export const EDUCATION_API_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2/civentral-education-backend/api/v1',
-  default: 'http://localhost/civentral-education-backend/api/v1',
-});
+export const EDUCATION_API_BASE_URL =
+  process.env.EXPO_PUBLIC_EDUCATION_API_BASE_URL ||
+  Platform.select({
+    android: 'http://10.0.2.2/civentral-education-backend/api/v1',
+    default: 'http://localhost/civentral-education-backend/api/v1',
+  })!;
 
 export interface ScholarshipCategory {
   category_id: number;

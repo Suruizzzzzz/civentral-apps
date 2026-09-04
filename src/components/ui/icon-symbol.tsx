@@ -72,6 +72,12 @@ const MAPPING: IconMapping = {
   'circle-check': 'check-circle',
   'circle-xmark': 'cancel',
   'circle-info': 'info',
+  'arrow.down.circle.fill': 'file-download',
+  'arrow.down.circle': 'arrow-circle-down',
+  'arrow.down': 'arrow-downward',
+  'arrow.down.to.line': 'file-download',
+  'download': 'file-download',
+  'folder.fill': 'folder',
 };
 
 export type IconSymbolName = keyof typeof MAPPING;

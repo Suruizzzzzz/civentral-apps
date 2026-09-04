@@ -13,10 +13,9 @@ import { useRouter } from 'expo-router';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Badge } from '@/src/components/ui/Badge';
 import { useTheme } from '@/src/context/ThemeContext';
-import { CivicApiService } from '@/src/services/api';
+import { CivicApiService, TrackedItem } from '@/src/services/api';
 import { AuthService } from '@/src/services/auth-service';
 import { styles } from './styles/TrackerScreen.styles';
-import { DomainApplication } from '@/types/domain';
 
 export function TrackerScreen() {
   const router = useRouter();
@@ -27,51 +26,30 @@ export function TrackerScreen() {
   const activeEmail = session.email || '';
 
   // States
-  const [applications, setApplications] = useState<DomainApplication[]>([]);
+  const [applications, setApplications] = useState<TrackedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isError, setIsError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Under Review' | 'Approved' | 'Completed'>('All');
 
   // Modal State for Selected Application Timeline Details
-  const [selectedApp, setSelectedApp] = useState<DomainApplication | null>(null);
+  const [selectedApp, setSelectedApp] = useState<TrackedItem | null>(null);
 
-  // Fetch Applications
+  // Fetch Applications from Real Education Backend
   const fetchApplications = async () => {
-    const data = await CivicApiService.getApplications(activeEmail);
-    // If backend returns empty list, provide clean dynamic initial tracked applications for demonstration
-    if (!data || data.length === 0) {
-      setApplications([
-        {
-          id: 'APP-2026-001',
-          domainId: 'identity',
-          serviceTitle: 'Barangay Clearance & Citizen ID',
-          applicantId: activeEmail || 'CIT-88490',
-          status: 'Under Review',
-          createdAt: '2026-07-20',
-          updatedAt: '2026-07-25',
-        },
-        {
-          id: 'APP-2026-042',
-          domainId: 'business',
-          serviceTitle: 'New Business Permit Application',
-          applicantId: activeEmail || 'CIT-88490',
-          status: 'Approved',
-          createdAt: '2026-07-15',
-          updatedAt: '2026-07-22',
-        },
-        {
-          id: 'APP-2026-109',
-          domainId: 'treasury',
-          serviceTitle: 'Real Property Tax Payment (Q3)',
-          applicantId: activeEmail || 'CIT-88490',
-          status: 'Completed',
-          createdAt: '2026-07-10',
-          updatedAt: '2026-07-10',
-        },
-      ]);
-    } else {
-      setApplications(data);
+    try {
+      const data = await CivicApiService.getTrackedItems();
+      if (data !== null) {
+        setApplications(data);
+        setIsError(false);
+      } else {
+        setApplications([]);
+        setIsError(true);
+      }
+    } catch {
+      setApplications([]);
+      setIsError(true);
     }
   };
 
@@ -92,10 +70,12 @@ export function TrackerScreen() {
 
   // Filtered Applications List
   const filteredApps = applications.filter((app) => {
-    const matchesFilter = selectedFilter === 'All' || app.status === selectedFilter;
+    const statusMatch = app.displayStatus || app.status;
+    const matchesFilter = selectedFilter === 'All' || statusMatch === selectedFilter;
     const matchesQuery =
       searchQuery.trim() === '' ||
       app.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       app.serviceTitle.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesQuery;
   });
@@ -135,7 +115,7 @@ export function TrackerScreen() {
           <IconSymbol name="magnifyingglass" size={18} color={isDarkMode ? '#94A3B8' : '#64748B'} />
           <TextInput
             style={[styles.searchInput, isDarkMode && { color: '#F8FAFC' }]}
-            placeholder="Search by Application ID or Service..."
+            placeholder="Search by Reference Code or Program..."
             placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -181,16 +161,32 @@ export function TrackerScreen() {
         ) : null}
 
         {/* Applications List */}
-        {!isLoading && filteredApps.length === 0 ? (
+        {!isLoading && isError ? (
+          <View style={[styles.emptyContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+            <View style={styles.emptyIconBox}>
+              <IconSymbol name="exclamationmark.triangle.fill" size={32} color="#EA580C" />
+            </View>
+            <Text style={[styles.emptyTitle, isDarkMode && { color: '#F8FAFC' }]}>Unable to Load Tracker</Text>
+            <Text style={[styles.emptySub, isDarkMode && { color: '#94A3B8' }]}>
+              We encountered a problem reaching the server. Please pull down to refresh or try again later.
+            </Text>
+            <TouchableOpacity
+              style={styles.applyCtaBtn}
+              onPress={handleRefresh}
+              activeOpacity={0.85}>
+              <Text style={styles.applyCtaText}>Retry Loading</Text>
+            </TouchableOpacity>
+          </View>
+        ) : !isLoading && filteredApps.length === 0 ? (
           <View style={[styles.emptyContainer, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
             <View style={styles.emptyIconBox}>
               <IconSymbol name="doc.text.fill" size={32} color="#94A3B8" />
             </View>
-            <Text style={[styles.emptyTitle, isDarkMode && { color: '#F8FAFC' }]}>No Tracked Applications</Text>
+            <Text style={[styles.emptyTitle, isDarkMode && { color: '#F8FAFC' }]}>No applications to track yet.</Text>
             <Text style={[styles.emptySub, isDarkMode && { color: '#94A3B8' }]}>
               {searchQuery
                 ? `No applications matching "${searchQuery}" found.`
-                : 'You currently have no active permit or document requests being tracked.'}
+                : 'You currently have no active scholarship applications, renewals, or grant releases being tracked.'}
             </Text>
             <TouchableOpacity
               style={styles.applyCtaBtn}
@@ -212,13 +208,16 @@ export function TrackerScreen() {
                 <View style={styles.cardTopRow}>
                   <View style={[styles.appIdBadge, isDarkMode && { backgroundColor: '#0F2942' }]}>
                     <IconSymbol name="doc.text.fill" size={14} color={isDarkMode ? '#38BDF8' : '#176B87'} />
-                    <Text style={[styles.appIdText, isDarkMode && { color: '#38BDF8' }]}>{app.id}</Text>
+                    <Text style={[styles.appIdText, isDarkMode && { color: '#38BDF8' }]}>{app.code || app.id}</Text>
                   </View>
-                  <Badge label={app.status.toUpperCase()} variant={getStatusVariant(app.status)} />
+                  <Badge label={(app.displayStatus || app.status).toUpperCase()} variant={getStatusVariant(app.displayStatus || app.status)} />
                 </View>
 
-                {/* Service Title */}
+                {/* Service Title & Type Subtitle */}
                 <Text style={[styles.appTitleText, isDarkMode && { color: '#F8FAFC' }]}>{app.serviceTitle}</Text>
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginBottom: 8, fontWeight: '600' }}>
+                  {app.type} {app.details?.academic_period ? `• ${app.details.academic_period}` : ''}
+                </Text>
 
                 {/* Timeline Progress Bar Summary */}
                 <View style={styles.timelineSummaryBox}>
@@ -227,54 +226,52 @@ export function TrackerScreen() {
                     <View
                       style={[
                         styles.timelineLine,
-                        app.status !== 'Under Review' ? styles.timelineLineDone : null,
+                        (app.displayStatus || app.status) !== 'Under Review' ? styles.timelineLineDone : null,
                       ]}
                     />
                     <View
                       style={[
                         styles.timelineDot,
-                        app.status !== 'Under Review' ? styles.timelineDotDone : styles.timelineDotActive,
+                        (app.displayStatus || app.status) !== 'Under Review' ? styles.timelineDotDone : styles.timelineDotActive,
                       ]}
                     />
                     <View
                       style={[
                         styles.timelineLine,
-                        app.status === 'Completed' ? styles.timelineLineDone : null,
+                        (app.displayStatus || app.status) === 'Completed' ? styles.timelineLineDone : null,
                       ]}
                     />
                     <View
                       style={[
                         styles.timelineDot,
-                        app.status === 'Completed' ? styles.timelineDotDone : styles.timelineDotPending,
+                        (app.displayStatus || app.status) === 'Completed' ? styles.timelineDotDone : styles.timelineDotPending,
                       ]}
                     />
                   </View>
                   <View style={styles.timelineLabelsRow}>
                     <Text style={styles.timelineLabelText}>Submitted</Text>
-
                     <Text
                       style={[
                         styles.timelineLabelText,
                         { textAlign: 'center' },
-                        app.status === 'Under Review' && { color: '#176B87', fontWeight: '800' },
+                        (app.displayStatus || app.status) === 'Under Review' && { color: '#176B87', fontWeight: '800' },
                       ]}>
                       In Review
                     </Text>
-
                     <Text
                       style={[
                         styles.timelineLabelText,
                         { textAlign: 'right' },
-                        app.status === 'Completed' && { color: '#16A34A', fontWeight: '800' },
+                        (app.displayStatus || app.status) === 'Completed' && { color: '#16A34A', fontWeight: '800' },
                       ]}>
-                      {app.status === 'Completed' ? 'Completed' : 'Release'}
+                      {(app.displayStatus || app.status) === 'Completed' ? 'Completed' : 'Release'}
                     </Text>
                   </View>
                 </View>
 
                 {/* Card Footer */}
                 <View style={styles.cardFooterRow}>
-                  <Text style={styles.updatedDateText}>Updated: {app.updatedAt}</Text>
+                  <Text style={styles.updatedDateText}>Updated: {app.updatedAt ? app.updatedAt.split(' ')[0] : 'Recently'}</Text>
                   <View style={styles.viewTimelineBtn}>
                     <Text style={styles.viewTimelineText}>View Details</Text>
                     <IconSymbol name="chevron.right" size={14} color="#176B87" />
@@ -296,9 +293,10 @@ export function TrackerScreen() {
           {selectedApp ? (
             <View style={[styles.modalCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
               <View style={styles.modalHeaderRow}>
-                <View>
-                  <Text style={[styles.modalIdText, isDarkMode && { color: '#38BDF8' }]}>{selectedApp.id}</Text>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={[styles.modalIdText, isDarkMode && { color: '#38BDF8' }]}>{selectedApp.code || selectedApp.id}</Text>
                   <Text style={[styles.modalTitleText, isDarkMode && { color: '#F8FAFC' }]}>{selectedApp.serviceTitle}</Text>
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2 }}>{selectedApp.type}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setSelectedApp(null)} style={[styles.closeBtn, isDarkMode && { backgroundColor: '#0B132B' }]}>
                   <Text style={[styles.closeBtnText, isDarkMode && { color: '#F8FAFC' }]}>✕</Text>
@@ -306,73 +304,81 @@ export function TrackerScreen() {
               </View>
 
               <View style={styles.modalBadgeRow}>
-                <Badge label={selectedApp.status.toUpperCase()} variant={getStatusVariant(selectedApp.status)} />
-                <Text style={[styles.modalSubmittedText, isDarkMode && { color: '#94A3B8' }]}>Filed on {selectedApp.createdAt}</Text>
+                <Badge label={(selectedApp.displayStatus || selectedApp.status).toUpperCase()} variant={getStatusVariant(selectedApp.displayStatus || selectedApp.status)} />
+                <Text style={[styles.modalSubmittedText, isDarkMode && { color: '#94A3B8' }]}>Updated on {selectedApp.updatedAt ? selectedApp.updatedAt.split(' ')[0] : 'Recently'}</Text>
               </View>
+
+              {selectedApp.details?.total_amount ? (
+                <View style={{ marginTop: 8, padding: 10, borderRadius: 8, backgroundColor: isDarkMode ? '#0F2942' : '#F0F9FF' }}>
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#38BDF8' : '#0284C7', fontWeight: '700' }}>
+                    Authorized Amount: ₱{Number(selectedApp.details.total_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              ) : null}
 
               <View style={[styles.modalDivider, isDarkMode && { backgroundColor: '#3A506B' }]} />
 
               <Text style={[styles.timelineHeaderTitle, isDarkMode && { color: '#F8FAFC' }]}>Processing Milestones</Text>
 
-              {/* Step 1 */}
+              {/* Milestone 1 */}
               <View style={styles.milestoneRow}>
                 <View style={styles.milestoneIconDone}>
                   <IconSymbol name="checkmark.seal.fill" size={16} color="#FFFFFF" />
                 </View>
                 <View style={styles.milestoneContent}>
-                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>1. Application Received & Encoded</Text>
-                  <Text style={[styles.milestoneSub, isDarkMode && { color: '#94A3B8' }]}>Application data recorded on {selectedApp.createdAt}</Text>
+                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>1. Request Received & Logged</Text>
+                  <Text style={[styles.milestoneSub, isDarkMode && { color: '#94A3B8' }]}>Record created on {selectedApp.createdAt ? selectedApp.createdAt.split(' ')[0] : 'Recorded'}</Text>
                 </View>
               </View>
 
-              {/* Step 2 */}
+              {/* Milestone 2 */}
               <View style={styles.milestoneRow}>
                 <View
                   style={
-                    selectedApp.status === 'Under Review'
+                    (selectedApp.displayStatus || selectedApp.status) === 'Under Review'
                       ? styles.milestoneIconActive
                       : styles.milestoneIconDone
                   }>
                   <IconSymbol
-                    name={selectedApp.status === 'Under Review' ? 'pencil' : 'checkmark.seal.fill'}
+                    name={(selectedApp.displayStatus || selectedApp.status) === 'Under Review' ? 'pencil' : 'checkmark.seal.fill'}
                     size={16}
                     color="#FFFFFF"
                   />
                 </View>
                 <View style={styles.milestoneContent}>
-                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>2. Document Verification & Evaluation</Text>
+                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>2. Review & Document Verification</Text>
                   <Text style={[styles.milestoneSub, isDarkMode && { color: '#94A3B8' }]}>
-                    {selectedApp.status === 'Under Review'
-                      ? 'Currently being evaluated by Department Officer'
-                      : `Verified & Approved on ${selectedApp.updatedAt}`}
+                    {(selectedApp.displayStatus || selectedApp.status) === 'Under Review'
+                      ? 'Under active evaluation by Education Department Officers'
+                      : `Verified & Approved`}
                   </Text>
                 </View>
               </View>
 
-              {/* Step 3 */}
+              {/* Milestone 3 */}
               <View style={styles.milestoneRow}>
                 <View
                   style={
-                    selectedApp.status === 'Completed'
+                    (selectedApp.displayStatus || selectedApp.status) === 'Completed'
                       ? styles.milestoneIconDone
-                      : selectedApp.status === 'Approved'
+                      : (selectedApp.displayStatus || selectedApp.status) === 'Approved'
                       ? styles.milestoneIconActive
                       : [styles.milestoneIconPending, isDarkMode && { backgroundColor: '#334155' }]
                   }>
                   <IconSymbol
-                    name={selectedApp.status === 'Completed' ? 'checkmark.seal.fill' : 'doc.text.fill'}
+                    name={(selectedApp.displayStatus || selectedApp.status) === 'Completed' ? 'checkmark.seal.fill' : 'doc.text.fill'}
                     size={16}
-                    color={selectedApp.status === 'Under Review' ? (isDarkMode ? '#64748B' : '#94A3B8') : '#FFFFFF'}
+                    color={(selectedApp.displayStatus || selectedApp.status) === 'Under Review' ? (isDarkMode ? '#64748B' : '#94A3B8') : '#FFFFFF'}
                   />
                 </View>
                 <View style={styles.milestoneContent}>
-                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>3. Official E-Permit Release / Completion</Text>
+                  <Text style={[styles.milestoneTitle, isDarkMode && { color: '#F8FAFC' }]}>3. Grant Disbursal / Release</Text>
                   <Text style={[styles.milestoneSub, isDarkMode && { color: '#94A3B8' }]}>
-                    {selectedApp.status === 'Completed'
-                      ? 'Digital Clearance Issued & Archived'
-                      : selectedApp.status === 'Approved'
-                      ? 'Approved. Final clearance ready for download'
-                      : 'Pending completion of document review'}
+                    {(selectedApp.displayStatus || selectedApp.status) === 'Completed'
+                      ? 'Disbursed & Processed Successfully'
+                      : (selectedApp.displayStatus || selectedApp.status) === 'Approved'
+                      ? 'Approved for Release / Grant Disbursal'
+                      : 'Pending completion of evaluation'}
                   </Text>
                 </View>
               </View>
@@ -390,3 +396,4 @@ export function TrackerScreen() {
     </View>
   );
 }
+

@@ -88,6 +88,28 @@ export const styles = StyleSheet.create({
   sectionStack: {
     gap: 14,
   },
+  simpleBackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 10,
+    marginBottom: 14,
+  },
+  backIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  simpleBackText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#176B87",
+  },
   backToMenuBtn: {
     flexDirection: 'row',
     alignItems: 'center',

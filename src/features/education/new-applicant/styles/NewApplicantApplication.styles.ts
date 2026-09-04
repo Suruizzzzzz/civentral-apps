@@ -12,17 +12,26 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "flex-start",
     marginBottom: 18,
-    gap: 4,
+    gap: 10,
   },
 
-  backIcon: {
-    transform: [{ rotate: "180deg" }],
+  backIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#E0F2FE",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
   },
+
+  backIcon: {},
 
   backText: {
-    color: "#EA580C",
+    color: "#0284C7",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 
   headerCard: {
@@ -134,8 +143,8 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#EA580C",
-    backgroundColor: "#FFF7ED",
+    borderColor: "#0284C7",
+    backgroundColor: "#F0F9FF",
     gap: 8,
   },
 
@@ -147,7 +156,7 @@ export const styles = StyleSheet.create({
   uploadText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#EA580C",
+    color: "#0284C7",
   },
 
   fileNameText: {
@@ -157,7 +166,7 @@ export const styles = StyleSheet.create({
   },
 
   submitButton: {
-    backgroundColor: "#EA580C",
+    backgroundColor: "#0284C7",
     borderRadius: 24,
     height: 50,
     justifyContent: "center",

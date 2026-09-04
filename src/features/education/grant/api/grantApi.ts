@@ -1,12 +1,5 @@
 import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
-import { Platform } from "react-native";
-
-const EDUCATION_API_BASE_URL =
-  process.env.EXPO_PUBLIC_EDUCATION_API_BASE_URL ||
-  Platform.select({
-    android: "http://10.0.2.2/civentral-education-backend/api/v1",
-    default: "http://localhost/civentral-education-backend/api/v1",
-  })!;
+import { EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
 
 export interface ScholarInfo {
   scholar_id: number;

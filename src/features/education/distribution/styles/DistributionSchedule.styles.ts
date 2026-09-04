@@ -7,200 +7,203 @@ export const styles = StyleSheet.create({
     paddingBottom: 160,
   },
 
-  /* Back Button - copied from dashboard design */
+  /* Back Button - matching the user-approved frameless style */
   backButton: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 6,
+    gap: 10,
     marginBottom: 16,
   },
 
-  backIcon: {
-    transform: [{ rotate: "180deg" }],
+  backIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#FFEDD5",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#FED7AA",
   },
 
   backText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     color: "#EA580C",
   },
 
-  /* Header */
+  /* Hero Banner / Header */
   header: {
-    alignItems: "center",
     marginBottom: 20,
   },
 
-  title: {
-    fontSize: 26,
+  heroBanner: {
+    backgroundColor: "#EA580C",
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 4,
+    shadowColor: "#EA580C",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+
+  heroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+
+  heroBadgeText: {
+    fontSize: 11,
     fontWeight: "800",
-    color: "#0F172A",
-    textAlign: "center",
-    letterSpacing: -0.5,
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
 
   subtitle: {
     fontSize: 13,
-    color: "#64748B",
-    textAlign: "center",
-    marginTop: 4,
+    color: "#FFEDD5",
+    lineHeight: 18,
   },
 
   /* Main Card */
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     padding: 18,
     marginBottom: 16,
-
     shadowColor: "#0F172A",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
 
-  cardTopHeader: {
+  /* Financial Summary Card */
+  financialCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 14,
-    marginBottom: 18,
   },
 
-  topIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#DCFCE7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  topHeaderText: {
+  financialCol: {
     flex: 1,
+    alignItems: "center",
   },
 
-  topHeaderTitle: {
-    fontSize: 17,
+  financialDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: "#CBD5E1",
+  },
+
+  financialLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#64748B",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+
+  financialVal: {
+    fontSize: 14,
     fontWeight: "800",
     color: "#0F172A",
-    marginBottom: 2,
+    marginTop: 2,
   },
 
-  topHeaderSub: {
-    fontSize: 12,
-    color: "#64748B",
-  },
-
-  tableContainer: {
-    borderRadius: 14,
+  /* Component Container */
+  componentBox: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
-    overflow: "hidden",
+    borderColor: "#E2E8F0",
+    gap: 8,
   },
 
-  tableRow: {
+  componentTopRow: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    alignItems: "center",
   },
 
-  rowLeft: {
+  componentBadges: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
 
-  rowLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#64748B",
-  },
-
-  rowValue: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#0F172A",
-    textAlign: "right",
-  },
-
-  tableDivider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-    marginHorizontal: 14,
-  },
-
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  statusPillText: {
+  componentMethod: {
     fontSize: 12,
-    fontWeight: "700",
-    color: "#16A34A",
+    color: "#64748B",
+    fontWeight: "600",
+  },
+
+  componentAmount: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#176B87",
   },
 
   /* Requirements to Bring Card */
   reqCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 16,
+    padding: 18,
     marginBottom: 16,
-
     shadowColor: "#0F172A",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
 
-  reqGrid: {
-    flexDirection: "row",
-    gap: 14,
-    alignItems: "stretch",
-  },
-
-  reqLeftCol: {
-    flex: 1,
-  },
-
   reqHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 14,
   },
 
   reqIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "#DCFCE7",
     alignItems: "center",
     justifyContent: "center",
   },
 
   reqTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "800",
     color: "#0F172A",
   },
@@ -211,206 +214,40 @@ export const styles = StyleSheet.create({
 
   reqItem: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F8FAFC",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
   },
 
   reqText: {
-    fontSize: 12,
-    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#334155",
     flex: 1,
-    lineHeight: 16,
   },
 
-  /* QR Box */
-  qrBox: {
-    width: 125,
-    backgroundColor: "#F0FDF4",
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-    borderRadius: 16,
-    padding: 10,
+  /* Empty State Icons */
+  topIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
   },
 
-  qrIconBox: {
-    width: 80,
-    height: 80,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  qrRefText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#16A34A",
-    marginTop: 6,
-  },
-
-  qrTapHint: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: "#16A34A",
-    marginTop: 2,
-    opacity: 0.8,
-  },
-
-  /* Modal Overlay */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.65)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-
-  modalCard: {
-    width: "100%",
-    maxWidth: 340,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 24,
-    alignItems: "center",
-
-    shadowColor: "#0F172A",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 5,
-  },
-
-  modalHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    gap: 10,
-    marginBottom: 8,
-  },
-
-  modalShieldIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#DCFCE7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  modalTitle: {
-    fontSize: 18,
+  topHeaderTitle: {
+    fontSize: 16,
     fontWeight: "800",
     color: "#0F172A",
-    flex: 1,
   },
 
-  modalCloseX: {
-    fontSize: 18,
-    color: "#64748B",
-    fontWeight: "700",
-  },
-
-  modalSub: {
-    fontSize: 12,
-    color: "#64748B",
-    textAlign: "left",
-    marginBottom: 16,
-    lineHeight: 17,
-  },
-
-  modalQrContainer: {
-    backgroundColor: "#F0FDF4",
-    borderWidth: 1.5,
-    borderColor: "#BBF7D0",
-    borderRadius: 20,
-    padding: 20,
-    alignItems: "center",
-    marginBottom: 16,
-    width: "100%",
-  },
-
-  modalRefCode: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#16A34A",
-    marginTop: 10,
-    letterSpacing: 0.5,
-  },
-
-  modalDetailBox: {
-    width: "100%",
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 18,
-    gap: 4,
-  },
-
-  modalDetailLabel: {
-    fontSize: 12,
-    color: "#64748B",
-  },
-
-  modalCloseBtn: {
-    width: "100%",
-    backgroundColor: "#16A34A",
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-
-  modalCloseBtnText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  /* Action Buttons */
-  actionBtn: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-
-    shadowColor: "#0F172A",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-
-  actionIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-
-  actionContent: {
-    flex: 1,
-  },
-
-  actionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 2,
-  },
-
-  actionSub: {
+  topHeaderSub: {
     fontSize: 12,
     color: "#64748B",
   },

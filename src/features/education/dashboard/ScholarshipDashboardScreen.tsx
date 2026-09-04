@@ -304,12 +304,18 @@ export function ScholarshipDashboardScreen() {
         onPress={() => router.back()}
         activeOpacity={0.7}
       >
-        <IconSymbol
-          name="chevron.right"
-          size={16}
-          color={isDarkMode ? '#C084FC' : '#7E22CE'}
-          style={styles.backIcon}
-        />
+        <View
+          style={[
+            styles.backIconCircle,
+            isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+          ]}
+        >
+          <IconSymbol
+            name="chevron.left"
+            size={18}
+            color={isDarkMode ? '#C084FC' : '#7E22CE'}
+          />
+        </View>
         <Text style={[styles.backText, isDarkMode && { color: '#C084FC' }]}>
           Back to Education Hub
         </Text>
@@ -560,7 +566,7 @@ export function ScholarshipDashboardScreen() {
               },
             ]}
           >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>CURRENT GRANT</Text>
               {cardConfig.badgeText ? (
                 <Badge label={cardConfig.badgeText} variant={cardConfig.badgeVariant} />
@@ -581,9 +587,9 @@ export function ScholarshipDashboardScreen() {
                 <TouchableOpacity
                   style={{
                     backgroundColor: isDarkMode ? '#0F172A' : '#F1F5F9',
-                    paddingVertical: 6,
-                    paddingHorizontal: 12,
-                    borderRadius: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 14,
+                    borderRadius: 10,
                     alignSelf: 'flex-start',
                     borderWidth: 1,
                     borderColor: isDarkMode ? '#334155' : '#CBD5E1',
@@ -596,9 +602,9 @@ export function ScholarshipDashboardScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={{ gap: 12 }}>
+              <View style={{ gap: 14 }}>
                 {/* MAIN CONTENT ROW */}
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14 }}>
                   <View
                     style={[
                       styles.grantIconCircle,
@@ -613,10 +619,10 @@ export function ScholarshipDashboardScreen() {
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.updateTitle, isDarkMode && { color: '#F8FAFC' }, { fontSize: 15, marginBottom: 2 }]}>
+                    <Text style={[styles.updateTitle, isDarkMode && { color: '#F8FAFC' }, { fontSize: 16, fontWeight: '800', marginBottom: 3 }]}>
                       {cardConfig.title}
                     </Text>
-                    <Text style={{ fontSize: 13, color: isDarkMode ? '#CBD5E1' : '#64748B', lineHeight: 18 }}>
+                    <Text style={{ fontSize: 13, color: isDarkMode ? '#CBD5E1' : '#64748B', lineHeight: 19 }}>
                       {cardConfig.supportingText}
                     </Text>
 
@@ -625,26 +631,26 @@ export function ScholarshipDashboardScreen() {
                       <View
                         style={{
                           backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
-                          borderRadius: 10,
-                          padding: 10,
-                          marginTop: 10,
+                          borderRadius: 14,
+                          padding: 12,
+                          marginTop: 12,
                           borderWidth: 1,
                           borderColor: isDarkMode ? '#334155' : '#E2E8F0',
-                          gap: 6,
+                          gap: 8,
                         }}
                       >
                         {cardConfig.reference && (
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>Grant Reference</Text>
-                            <Text style={{ fontSize: 12, color: '#0284C7', fontWeight: '700' }}>
+                            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>Grant Reference</Text>
+                            <Text style={{ fontSize: 12, color: '#0284C7', fontWeight: '800' }}>
                               {cardConfig.reference}
                             </Text>
                           </View>
                         )}
                         {cardConfig.reqText && (
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>Requirements</Text>
-                            <Text style={{ fontSize: 12, color: isDarkMode ? '#F8FAFC' : '#0F172A', fontWeight: '600' }}>
+                            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>Requirements</Text>
+                            <Text style={{ fontSize: 12, color: isDarkMode ? '#F8FAFC' : '#0F172A', fontWeight: '700' }}>
                               {cardConfig.reqText}
                             </Text>
                           </View>
@@ -657,11 +663,11 @@ export function ScholarshipDashboardScreen() {
                 {/* PRIMARY CTA BUTTON */}
                 <TouchableOpacity
                   style={{
-                    marginTop: 4,
+                    marginTop: 2,
                     backgroundColor: '#0F766E',
-                    borderRadius: 10,
-                    paddingVertical: 11,
-                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -670,7 +676,7 @@ export function ScholarshipDashboardScreen() {
                   onPress={cardConfig.onCtaPress}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
                     {cardConfig.ctaText}
                   </Text>
                   <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
@@ -690,7 +696,7 @@ export function ScholarshipDashboardScreen() {
                 },
               ]}
             >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>DISTRIBUTION SCHEDULE</Text>
                 <Badge
                   label={
@@ -706,16 +712,16 @@ export function ScholarshipDashboardScreen() {
                 />
               </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginVertical: 4 }}>
                 <View style={[styles.grantIconCircle, { backgroundColor: isDarkMode ? '#451A03' : '#FEF3C7' }]}>
                   <IconSymbol name="location.fill" size={20} color={isDarkMode ? '#FBBF24' : '#B45309'} />
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.updateTitle, isDarkMode && { color: '#F8FAFC' }, { fontSize: 15 }]}>
+                  <Text style={[styles.updateTitle, isDarkMode && { color: '#F8FAFC' }, { fontSize: 16, fontWeight: '800' }]}>
                     {grantReleases[0].program_name}
                   </Text>
-                  <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#64748B', marginTop: 2 }}>
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#64748B', marginTop: 2, fontWeight: '500' }}>
                     AY {grantReleases[0].academic_year} • {grantReleases[0].academic_term}
                   </Text>
                   <Text style={{ fontSize: 13, fontWeight: '800', color: isDarkMode ? '#38BDF8' : '#0284C7', marginTop: 4 }}>
@@ -726,20 +732,20 @@ export function ScholarshipDashboardScreen() {
 
               <TouchableOpacity
                 style={{
-                  marginTop: 10,
+                  marginTop: 12,
                   backgroundColor: '#EA580C',
-                  borderRadius: 10,
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
+                  borderRadius: 14,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
+                  gap: 8,
                 }}
                 onPress={() => router.push('/education/distribution' as any)}
                 activeOpacity={0.8}
               >
-                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
                   View Distribution Schedule
                 </Text>
                 <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
@@ -758,7 +764,7 @@ export function ScholarshipDashboardScreen() {
                 },
               ]}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={styles.sectionLabel}>COMPLIANCE REQUESTS</Text>
                 <TouchableOpacity
                   onPress={() => router.push('/education/new-applicant/compliance' as any)}
@@ -772,31 +778,31 @@ export function ScholarshipDashboardScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={[styles.grantIconCircle, { backgroundColor: isDarkMode ? '#312E81' : '#F1F5F9' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                <View style={[styles.grantIconCircle, { backgroundColor: isDarkMode ? '#3B0764' : '#F3E8FF' }]}>
                   <IconSymbol name="doc.text.fill" size={20} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
                 </View>
 
                 <View style={{ flex: 1 }}>
                   {hasAppAction ? (
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
                       ⚠ {appActionableRequests.length} Action Required
                     </Text>
                   ) : appAwaitingReview.length > 0 ? (
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#0284C7' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#0284C7' }}>
                       ◷ {appAwaitingReview.length} Awaiting Review
                     </Text>
                   ) : appResolved.length > 0 ? (
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#16A34A' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#16A34A' }}>
                       ✓ {appResolved.length} Resolved
                     </Text>
                   ) : (
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
                       Compliance History
                     </Text>
                   )}
 
-                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 3, lineHeight: 17 }}>
                     {appResolved.length > 0
                       ? 'Your submitted corrections were reviewed and accepted.'
                       : appAwaitingReview.length > 0
@@ -812,7 +818,7 @@ export function ScholarshipDashboardScreen() {
           {(hasAppAction || hasRenewalAction) && (
             <View style={{ gap: 12 }}>
               {totalActionCount > 1 && (
-                <Text style={{ fontSize: 12, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A', marginLeft: 4 }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: isDarkMode ? '#F8FAFC' : '#0F172A', marginLeft: 4, letterSpacing: 0.5 }}>
                   ACTION REQUIRED ({totalActionCount} REQUESTS)
                 </Text>
               )}
@@ -896,23 +902,32 @@ export function ScholarshipDashboardScreen() {
               ]}
             >
               <Text style={styles.sectionLabel}>LATEST UPDATE</Text>
-              <Text
-                style={[
-                  styles.updateTitle,
-                  isDarkMode && { color: "#F8FAFC" },
-                ]}
-              >
-                {latestUpdate.title}
-              </Text>
-              {latestUpdate.timestamp ? (
-                <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#64748B', marginTop: 4 }}>
-                  {new Date(latestUpdate.timestamp).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </Text>
-              ) : null}
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 4 }}>
+                <View style={[styles.grantIconCircle, { backgroundColor: isDarkMode ? '#3B0764' : '#F3E8FF' }]}>
+                  <IconSymbol name="bell.fill" size={20} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.updateTitle,
+                      isDarkMode && { color: "#F8FAFC" },
+                      { fontSize: 15, fontWeight: '800', marginBottom: 4 }
+                    ]}
+                  >
+                    {latestUpdate.title}
+                  </Text>
+                  {latestUpdate.timestamp ? (
+                    <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#64748B', fontWeight: '500' }}>
+                      {new Date(latestUpdate.timestamp).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
             </View>
           ) : null}
         </View>
