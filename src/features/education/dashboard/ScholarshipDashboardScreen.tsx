@@ -9,6 +9,7 @@ import { CitizenDashboardData, fetchCitizenDashboard } from './api/scholarshipDa
 import { CitizenComplianceDetailsData, fetchCitizenRenewalCompliance } from '@/src/features/education/renewal/api/renewalApi';
 import { ApplicationComplianceData, fetchApplicationCompliance } from '../compliance/api/newApplicantComplianceApi';
 import { CitizenGrantOverviewData, fetchCitizenGrantOverview } from '../grant/api/grantApi';
+import { CitizenGrantReleaseItem, fetchCitizenGrantReleases } from '../grant/api/grantReleaseApi';
 import { styles } from './styles/ScholarshipDashboard.styles';
 
 const scholarshipBg = require("@/assets/images/scholarship-bg.png");
@@ -193,6 +194,7 @@ export function ScholarshipDashboardScreen() {
   const [grantOverview, setGrantOverview] = useState<CitizenGrantOverviewData | null>(null);
   const [grantOverviewLoading, setGrantOverviewLoading] = useState(true);
   const [grantOverviewError, setGrantOverviewError] = useState<string | null>(null);
+  const [grantReleases, setGrantReleases] = useState<CitizenGrantReleaseItem[]>([]);
 
   const loadGrantOverview = useCallback(async () => {
     try {
@@ -223,6 +225,10 @@ export function ScholarshipDashboardScreen() {
     }
 
     loadGrantOverview();
+
+    fetchCitizenGrantReleases()
+      .then((rels) => setGrantReleases(rels))
+      .catch(() => setGrantReleases([]));
 
     // Safely fetch compliance status without blocking dashboard loading
     fetchCitizenRenewalCompliance()
@@ -672,6 +678,74 @@ export function ScholarshipDashboardScreen() {
               </View>
             )}
           </View>
+
+          {/* GRANT RELEASE DISTRIBUTION SCHEDULE SUMMARY CARD */}
+          {grantReleases.length > 0 && (
+            <View
+              style={[
+                styles.card,
+                isDarkMode && {
+                  backgroundColor: '#1C2541',
+                  borderColor: '#3A506B',
+                },
+              ]}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>DISTRIBUTION SCHEDULE</Text>
+                <Badge
+                  label={
+                    grantReleases[0].release_status === 'Completed' || grantReleases[0].release_status === 'Released'
+                      ? 'RELEASED'
+                      : 'ACTIVE RELEASE'
+                  }
+                  variant={
+                    grantReleases[0].release_status === 'Completed' || grantReleases[0].release_status === 'Released'
+                      ? 'success'
+                      : 'warning'
+                  }
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 }}>
+                <View style={[styles.grantIconCircle, { backgroundColor: isDarkMode ? '#451A03' : '#FEF3C7' }]}>
+                  <IconSymbol name="location.fill" size={20} color={isDarkMode ? '#FBBF24' : '#B45309'} />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.updateTitle, isDarkMode && { color: '#F8FAFC' }, { fontSize: 15 }]}>
+                    {grantReleases[0].program_name}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#64748B', marginTop: 2 }}>
+                    AY {grantReleases[0].academic_year} • {grantReleases[0].academic_term}
+                  </Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: isDarkMode ? '#38BDF8' : '#0284C7', marginTop: 4 }}>
+                    Approved Grant Amount: ₱{grantReleases[0].authorized_amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={{
+                  marginTop: 10,
+                  backgroundColor: '#EA580C',
+                  borderRadius: 10,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+                onPress={() => router.push('/education/distribution' as any)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                  View Distribution Schedule
+                </Text>
+                <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* PERSISTENT COMPLIANCE REQUESTS HISTORY CARD */}
           {(hasComplianceHistory || hasRenewalComplianceHistory) && (
