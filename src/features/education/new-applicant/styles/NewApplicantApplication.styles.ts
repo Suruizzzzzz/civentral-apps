@@ -249,4 +249,136 @@ export const styles = StyleSheet.create({
     color: "#0F172A",
     fontWeight: "700",
   },
+
+  // Video Declaration Guide Styles
+  videoGuideCard: {
+    backgroundColor: "#F0F9FF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+    padding: 12,
+    marginBottom: 12,
+  },
+
+  videoGuideHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    gap: 6,
+  },
+
+  videoGuideTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0369A1",
+  },
+
+  videoGuideSubtitle: {
+    fontSize: 12,
+    color: "#0284C7",
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+
+  videoGuideImageWrapper: {
+    borderRadius: 10,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+    backgroundColor: "#FFFFFF",
+    marginBottom: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  videoGuideImage: {
+    width: "100%",
+    height: 180,
+  },
+
+  viewFullGuideBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#0284C7",
+    alignSelf: "flex-start",
+    marginBottom: 10,
+    gap: 6,
+  },
+
+  viewFullGuideBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+
+  videoGuideFooter: {
+    fontSize: 11,
+    color: "#475569",
+    lineHeight: 15,
+    fontStyle: "italic",
+  },
+
+  // Full Guide Image Modal Styles
+  fullImageModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+
+  fullImageModalCard: {
+    width: "100%",
+    maxHeight: "88%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+  },
+
+  fullImageModalHeader: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+
+  fullImageModalTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+
+  fullImageModalCloseBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  fullImageModalCloseText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+  },
+
+  fullImageModalScroll: {
+    width: "100%",
+  },
+
+  fullImageModalImage: {
+    width: "100%",
+    height: 480,
+  },
 });

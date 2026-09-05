@@ -2,7 +2,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File as ExpoFile } from 'expo-file-system';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
@@ -10,6 +10,8 @@ import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { getScholarshipProgramDetails, ScholarshipProgram, ScholarshipRequiredDocument, submitNewScholarshipApplication, SubmitApplicationResult } from './api/ScholarshipProgramApi';
 import { styles } from './styles/NewApplicantApplication.styles';
+
+const videoDeclarationGuideImg = require('@/assets/images/video-inter.png');
 
 interface SelectedFileState {
   name: string;
@@ -40,6 +42,7 @@ export function NewApplicantApplicationScreen() {
   const [files, setFiles] = useState<Record<string, SelectedFileState>>({});
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showFullGuideModal, setShowFullGuideModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitResult, setSubmitResult] = useState<SubmitApplicationResult | null>(null);
@@ -497,6 +500,9 @@ export function NewApplicantApplicationScreen() {
                 ? `doc_${doc.program_document_id}`
                 : `doc_${doc.document_requirement_id}`;
               const selectedFile = files[key];
+              const isVideoDoc =
+                doc.document_code?.toUpperCase().includes('VIDEO') ||
+                doc.document_name?.toUpperCase().includes('VIDEO');
 
               return (
                 <View key={key} style={[styles.docItemCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
@@ -513,13 +519,54 @@ export function NewApplicantApplicationScreen() {
                     </Text>
                   ) : null}
 
+                  {isVideoDoc ? (
+                    <View style={[styles.videoGuideCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#0369A1' }]}>
+                      <View style={styles.videoGuideHeader}>
+                        <IconSymbol name="info.circle.fill" size={16} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+                        <Text style={[styles.videoGuideTitle, isDarkMode && { color: '#38BDF8' }]}>
+                          Video Declaration Guide
+                        </Text>
+                      </View>
+
+                      <Text style={[styles.videoGuideSubtitle, isDarkMode && { color: '#94A3B8' }]}>
+                        Use the guide below as your script when recording your video declaration.
+                      </Text>
+
+                      <View style={[styles.videoGuideImageWrapper, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+                        <Image
+                          source={videoDeclarationGuideImg}
+                          style={styles.videoGuideImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.viewFullGuideBtn}
+                        onPress={() => setShowFullGuideModal(true)}
+                        activeOpacity={0.8}
+                      >
+                        <IconSymbol name="eye.fill" size={14} color="#FFFFFF" />
+                        <Text style={styles.viewFullGuideBtnText}>View Full Guide</Text>
+                      </TouchableOpacity>
+
+                      <Text style={[styles.videoGuideFooter, isDarkMode && { color: '#CBD5E1' }]}>
+                        Record your video clearly, show your valid ID when instructed, and upload the completed recording below.
+                      </Text>
+                    </View>
+                  ) : null}
                   <TouchableOpacity
                     style={[styles.uploadBox, selectedFile && styles.uploadBoxSuccess, isDarkMode && !selectedFile && { backgroundColor: '#1E293B', borderColor: '#0284C7' }]}
                     onPress={() => handlePickDocument(doc)}
                     activeOpacity={0.75}
                   >
                     <IconSymbol
-                      name={selectedFile ? 'checkmark.circle.fill' : 'arrow.clockwise.circle'}
+                      name={
+                        selectedFile
+                          ? 'checkmark.circle.fill'
+                          : isVideoDoc
+                            ? 'video.fill'
+                            : 'doc.badge.plus'
+                      }
                       size={18}
                       color={selectedFile ? '#16A34A' : '#0284C7'}
                     />
@@ -589,6 +636,40 @@ export function NewApplicantApplicationScreen() {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* FULL VIDEO GUIDE MODAL */}
+      <Modal
+        visible={showFullGuideModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFullGuideModal(false)}
+      >
+        <View style={styles.fullImageModalOverlay}>
+          <View style={[styles.fullImageModalCard, isDarkMode && { backgroundColor: '#1E293B' }]}>
+            <View style={styles.fullImageModalHeader}>
+              <Text style={[styles.fullImageModalTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                Video Declaration Guide
+              </Text>
+              <TouchableOpacity
+                style={[styles.fullImageModalCloseBtn, isDarkMode && { backgroundColor: '#334155' }]}
+                onPress={() => setShowFullGuideModal(false)}
+                activeOpacity={0.7}
+              >
+                <IconSymbol name="xmark.circle.fill" size={14} color={isDarkMode ? '#F8FAFC' : '#475569'} />
+                <Text style={[styles.fullImageModalCloseText, isDarkMode && { color: '#F8FAFC' }]}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.fullImageModalScroll} showsVerticalScrollIndicator={true}>
+              <Image
+                source={videoDeclarationGuideImg}
+                style={styles.fullImageModalImage}
+                resizeMode="contain"
+              />
+            </ScrollView>
           </View>
         </View>
       </Modal>

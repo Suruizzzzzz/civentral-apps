@@ -49,6 +49,8 @@ const MAPPING: IconMapping = {
   'wallet.pass.fill': 'account-balance-wallet',
   'qrcode.viewfinder': 'qr-code-scanner',
   'doc.text.fill': 'assignment',
+  'video.fill': 'videocam',
+  'doc.badge.plus': 'file-upload',
   'eye.fill': 'visibility',
   'eye.slash.fill': 'visibility-off',
   'moon.stars.fill': 'nights-stay',
