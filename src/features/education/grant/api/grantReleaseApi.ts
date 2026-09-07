@@ -29,10 +29,11 @@ export interface CitizenGrantReleaseComponent {
   component_type: GrantComponentType;
   release_method: GrantReleaseMethod;
   amount: number;
-  component_status: GrantComponentStatus;
+  component_status: GrantComponentStatus | string;
   released_at?: string | null;
   f2f_schedule?: CitizenF2FScheduleInfo | null;
   institutional_payment?: CitizenInstitutionalPaymentInfo | null;
+  status_explanation?: string | null;
 }
 
 export interface CitizenGrantReleaseItem {

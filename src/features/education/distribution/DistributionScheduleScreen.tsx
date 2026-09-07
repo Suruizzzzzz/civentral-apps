@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -29,12 +30,13 @@ function getF2FClaimBadgeVariant(
   claimStatus?: string
 ): "info" | "success" | "warning" | "danger" | "neutral" {
   switch (claimStatus) {
+    case "Available for Processing":
     case "Ready for Claim":
-      return "success";
-    case "Scheduled":
-      return "info";
     case "Released":
       return "success";
+    case "Scheduled":
+    case "Processing":
+      return "info";
     default:
       return "neutral";
   }
@@ -45,10 +47,16 @@ function getInstitutionalBadgeVariant(
 ): "info" | "success" | "warning" | "danger" | "neutral" {
   switch (instStatus) {
     case "Released to Partner Institution":
+    case "Released":
+    case "Paid":
+    case "Verified / Linked":
       return "success";
     case "Partner School Notified":
+    case "Ready for Processing":
       return "info";
     case "Institutional Payment Processing":
+    case "On Hold — Institution Verification Required":
+    case "Institution Verification Required":
       return "warning";
     case "Preparing for Release":
       return "neutral";
@@ -83,6 +91,13 @@ export function DistributionScheduleScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Screen focus auto-refresh (Phase 4D Post-link refresh support)
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

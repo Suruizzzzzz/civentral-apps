@@ -93,7 +93,9 @@ export const styles = StyleSheet.create({
   docHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 8,
   },
   docTypeTitle: {

@@ -24,11 +24,21 @@ export interface DashboardAcademicPeriod {
   term: string;
 }
 
+export interface DashboardInterview {
+  status: string;
+  method: string;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  venue_or_link: string | null;
+}
+
 export interface DashboardApplication {
   application_id: number;
   application_code: string;
   application_status: string;
   submitted_at: string;
+  requires_interview?: number;
+  interview?: DashboardInterview | null;
 }
 
 export interface TimelineItem {

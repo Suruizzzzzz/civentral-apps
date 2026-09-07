@@ -623,6 +623,52 @@ export function CitizenScholarshipDetailScreen() {
           {/* TAB 2: STATUS */}
           {activeTab === 'status' && (
             <View style={{ gap: 16 }}>
+              {/* SCHEDULED INTERVIEW NOTICE CARD */}
+              {application?.interview ? (
+                <View style={[styles.sectionCard, { backgroundColor: isDarkMode ? '#1E293B' : '#F0F9FF', borderColor: isDarkMode ? '#0284C7' : '#BAE6FD', borderWidth: 1 }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={[styles.sectionTitle, { color: isDarkMode ? '#38BDF8' : '#0284C7', marginBottom: 0 }]}>
+                      Scheduled Live Interview Notice
+                    </Text>
+                    <Badge label={application.interview.status || 'Pending'} variant="info" />
+                  </View>
+
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#475569', marginBottom: 12 }}>
+                    Your scholarship application requires a live interview. Please be guided by the official schedule below:
+                  </Text>
+
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date</Text>
+                      <Text style={[styles.infoValue, { fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>
+                        {application.interview.scheduled_date || 'TBA'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Time</Text>
+                      <Text style={[styles.infoValue, { fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>
+                        {application.interview.scheduled_time || 'TBA'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Method</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {application.interview.method || 'Face-to-Face'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Venue / Link</Text>
+                      <Text style={[styles.infoValue, { color: isDarkMode ? '#38BDF8' : '#0284C7', fontWeight: '600' }]}>
+                        {application.interview.venue_or_link || 'Education & Scholarship Office'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
               {/* APPLICATION LIFECYCLE TIMELINE */}
               <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>

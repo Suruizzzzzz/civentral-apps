@@ -57,10 +57,12 @@ export interface GrantApplicationDetail {
   program_id: number;
   program_code: string;
   program_name: string;
-  institution_id: number;
-  school_code: string;
-  institution_name: string;
-  institution_type: "Public" | "Private";
+  institution_id?: number | null;
+  school_code?: string | null;
+  institution_name?: string | null;
+  institution_name_snapshot?: string | null;
+  institution_type?: "Public" | "Private" | null;
+  institution_verification_status?: string | null;
   grant_status: string;
   submitted_at?: string | null;
   created_at: string;
@@ -71,6 +73,14 @@ export interface GrantApplicationDetail {
     submitted_count: number;
     summary_label: string;
   };
+
+  // Phase 4D: Tuition figures & status breakdown provided by backend
+  assessed_eligible_tuition?: number | null;
+  program_tuition_maximum?: number | null;
+  actual_tuition_grant_entitlement?: number | null;
+  stipend_status?: string | null;
+  tuition_status?: string | null;
+  hold_explanation?: string | null;
 }
 
 export interface CitizenGrantOverviewData {
@@ -82,6 +92,14 @@ export interface CitizenGrantOverviewData {
   institution?: PartnerSchoolInfo | null;
   scholar?: ScholarInfo | null;
   current_academic_period?: AcademicPeriodInfo | null;
+
+  // Phase 4D: Tuition figures & component status fields at overview level
+  assessed_eligible_tuition?: number | null;
+  program_tuition_maximum?: number | null;
+  actual_tuition_grant_entitlement?: number | null;
+  stipend_status?: string | null;
+  tuition_status?: string | null;
+  hold_explanation?: string | null;
 }
 
 export async function fetchCitizenGrantOverview(): Promise<CitizenGrantOverviewData> {

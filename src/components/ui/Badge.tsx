@@ -37,6 +37,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
   text: {
     fontSize: 11,
