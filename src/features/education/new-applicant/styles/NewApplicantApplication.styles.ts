@@ -78,7 +78,14 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
     color: "#0F172A",
-    marginBottom: 12,
+    marginBottom: 4,
+  },
+
+  sectionSubtitle: {
+    fontSize: 13,
+    color: "#64748B",
+    marginBottom: 16,
+    lineHeight: 18,
   },
 
   inputGroup: {

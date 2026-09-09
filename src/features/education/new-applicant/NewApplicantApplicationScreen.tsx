@@ -303,6 +303,11 @@ export function NewApplicantApplicationScreen() {
     setIsYearDropdownOpen(false);
   };
 
+  const selectedPartnerSchool = useMemo(() => {
+    if (selectedPartnerSchoolId === null) return null;
+    return partnerSchools.find((s) => s.institution_id === selectedPartnerSchoolId) || null;
+  }, [selectedPartnerSchoolId, partnerSchools]);
+
   const filteredCourseSuggestions = useMemo(() => {
     const query = courseProgram.trim().toLowerCase();
     if (query.length < 2) return [];
@@ -634,12 +639,16 @@ export function NewApplicantApplicationScreen() {
           {/* 1. ACADEMIC INFORMATION */}
           <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
             <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
-              1. Academic & School Information
+              Academic & School Information
+            </Text>
+            <Text style={[styles.sectionSubtitle, isDarkMode && { color: '#94A3B8' }]}>
+              Provide your current school, academic program, and year level.
             </Text>
 
+            {/* SCHOOL / INSTITUTION */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                School / Institution Name *
+                School / Institution *
               </Text>
               <TextInput
                 style={[styles.textInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }]}
@@ -650,22 +659,27 @@ export function NewApplicantApplicationScreen() {
                     setIsSchoolDropdownOpen(true);
                   }
                 }}
-                placeholder="e.g. Bestlink College of the Philippines"
+                placeholder="Search your school..."
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
                 editable={!isSubmitting}
               />
-              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                Type to search registered partner schools or enter your school name.
-              </Text>
 
-              {selectedPartnerSchoolId !== null ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 }}>
-                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+              {selectedPartnerSchool ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
+                  <IconSymbol name="checkmark.circle.fill" size={13} color="#16A34A" />
                   <Text style={{ fontSize: 12, fontWeight: '600', color: '#16A34A' }}>
-                    ✓ Partner School Selected
+                    {selectedPartnerSchool.institution_code} · Registered Partner School
                   </Text>
                 </View>
-              ) : null}
+              ) : institutionName.trim().length >= 3 && filteredPartnerSchools.length === 0 && selectedPartnerSchoolId === null ? (
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                  School not listed? You can continue with your school name.
+                </Text>
+              ) : (
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                  Type to search registered partner schools or enter your school name.
+                </Text>
+              )}
 
               {isSchoolDropdownOpen && filteredPartnerSchools.length > 0 && selectedPartnerSchoolId === null ? (
                 <View
@@ -678,23 +692,54 @@ export function NewApplicantApplicationScreen() {
                     overflow: 'hidden',
                   }}
                 >
-                  {filteredPartnerSchools.slice(0, 5).map((school) => (
+                  <View
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+                      borderBottomWidth: 1,
+                      borderBottomColor: isDarkMode ? '#334155' : '#E2E8F0',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontWeight: '700',
+                        color: isDarkMode ? '#94A3B8' : '#64748B',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.8,
+                      }}
+                    >
+                      Registered Partner Schools
+                    </Text>
+                  </View>
+
+                  {filteredPartnerSchools.slice(0, 5).map((school, idx) => (
                     <TouchableOpacity
                       key={school.institution_id}
                       style={{
-                        paddingHorizontal: 12,
+                        paddingHorizontal: 14,
                         paddingVertical: 10,
-                        borderBottomWidth: 1,
+                        borderBottomWidth: idx < Math.min(filteredPartnerSchools.length, 5) - 1 ? 1 : 0,
                         borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9',
                       }}
                       onPress={() => handleSelectPartnerSchool(school)}
                       activeOpacity={0.7}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: isDarkMode ? '#F8FAFC' : '#1E293B', flex: 1 }}>
-                          ✓ {school.institution_name}
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: isDarkMode ? '#F8FAFC' : '#1E293B',
+                            flex: 1,
+                            paddingRight: 8,
+                          }}
+                          numberOfLines={2}
+                        >
+                          {school.institution_name}
                         </Text>
-                        <Text style={{ fontSize: 11, fontWeight: '500', color: '#0284C7', marginLeft: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284C7', marginLeft: 8 }}>
                           {school.institution_code}
                         </Text>
                       </View>
@@ -705,18 +750,12 @@ export function NewApplicantApplicationScreen() {
                   ))}
                 </View>
               ) : null}
-
-              {institutionName.trim().length >= 3 && filteredPartnerSchools.length === 0 && selectedPartnerSchoolId === null ? (
-                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                  School not listed? You can continue with your school name.
-                </Text>
-              ) : null}
             </View>
 
-            {/* COURSE / PROGRAM / TRACK */}
+            {/* COURSE / PROGRAM */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                Course / Program / Track *
+                Course / Program *
               </Text>
               <TextInput
                 style={[
@@ -730,22 +769,27 @@ export function NewApplicantApplicationScreen() {
                     setIsCourseDropdownOpen(true);
                   }
                 }}
-                placeholder="e.g. Bachelor of Science in Information Technology"
+                placeholder="Search course or program..."
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
                 editable={!isSubmitting}
               />
-              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                Type to search common courses, or enter your course manually.
-              </Text>
 
               {isCourseSuggestionSelected ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 }}>
-                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
+                  <IconSymbol name="checkmark.circle.fill" size={13} color="#16A34A" />
                   <Text style={{ fontSize: 12, fontWeight: '600', color: '#16A34A' }}>
-                    ✓ Suggested course selected
+                    Suggested course selected
                   </Text>
                 </View>
-              ) : null}
+              ) : courseProgram.trim().length >= 2 && filteredCourseSuggestions.length === 0 && !isCourseSuggestionSelected ? (
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                  Can't find your course? You can enter it manually.
+                </Text>
+              ) : (
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                  Type to search common courses, or enter your course manually.
+                </Text>
+              )}
 
               {isCourseDropdownOpen && filteredCourseSuggestions.length > 0 && !isCourseSuggestionSelected ? (
                 <View
@@ -769,14 +813,14 @@ export function NewApplicantApplicationScreen() {
                   >
                     <Text
                       style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: '700',
                         color: isDarkMode ? '#94A3B8' : '#64748B',
                         textTransform: 'uppercase',
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.8,
                       }}
                     >
-                      Suggestions
+                      Course Suggestions
                     </Text>
                   </View>
 
@@ -784,7 +828,7 @@ export function NewApplicantApplicationScreen() {
                     <TouchableOpacity
                       key={`${item.name}_${item.code || idx}`}
                       style={{
-                        paddingHorizontal: 12,
+                        paddingHorizontal: 14,
                         paddingVertical: 10,
                         borderBottomWidth: idx < Math.min(filteredCourseSuggestions.length, 6) - 1 ? 1 : 0,
                         borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9',
@@ -792,46 +836,32 @@ export function NewApplicantApplicationScreen() {
                       onPress={() => handleSelectCourse(item)}
                       activeOpacity={0.7}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      {item.code ? (
                         <Text
                           style={{
-                            fontSize: 13,
-                            fontWeight: '600',
-                            color: isDarkMode ? '#F8FAFC' : '#1E293B',
-                            flex: 1,
-                            paddingRight: 8,
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: '#0284C7',
+                            marginBottom: 2,
                           }}
-                          numberOfLines={2}
                         >
-                          {item.name}
-                        </Text>
-                        {item.code ? (
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontWeight: '700',
-                              color: '#0284C7',
-                              marginLeft: 8,
-                            }}
-                          >
-                            {item.code}
-                          </Text>
-                        ) : null}
-                      </View>
-                      {item.category ? (
-                        <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2 }}>
-                          {item.category}
+                          {item.code}
                         </Text>
                       ) : null}
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: isDarkMode ? '#F8FAFC' : '#1E293B',
+                          lineHeight: 18,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {item.name}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-              ) : null}
-
-              {courseProgram.trim().length >= 2 && filteredCourseSuggestions.length === 0 && !isCourseSuggestionSelected ? (
-                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                  Can't find your course? You can enter it manually.
-                </Text>
               ) : null}
             </View>
 
@@ -874,7 +904,7 @@ export function NewApplicantApplicationScreen() {
                     </Text>
                     <IconSymbol
                       name={isYearDropdownOpen ? 'chevron.up' : 'chevron.down'}
-                      size={16}
+                      size={15}
                       color={isDarkMode ? '#94A3B8' : '#64748B'}
                     />
                   </TouchableOpacity>
@@ -901,11 +931,11 @@ export function NewApplicantApplicationScreen() {
                       >
                         <Text
                           style={{
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: '700',
                             color: isDarkMode ? '#94A3B8' : '#64748B',
                             textTransform: 'uppercase',
-                            letterSpacing: 0.5,
+                            letterSpacing: 0.8,
                           }}
                         >
                           Select Year Level
@@ -919,7 +949,7 @@ export function NewApplicantApplicationScreen() {
                             key={lvl}
                             style={{
                               paddingHorizontal: 14,
-                              paddingVertical: 12,
+                              paddingVertical: 11,
                               flexDirection: 'row',
                               alignItems: 'center',
                               justifyContent: 'space-between',
@@ -949,7 +979,7 @@ export function NewApplicantApplicationScreen() {
                             {isSelected ? (
                               <IconSymbol
                                 name="checkmark"
-                                size={16}
+                                size={15}
                                 color={isDarkMode ? '#38BDF8' : '#0284C7'}
                               />
                             ) : null}
@@ -958,44 +988,42 @@ export function NewApplicantApplicationScreen() {
                       })}
                     </View>
                   ) : null}
-
-                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                    Select your current academic year or grade level.
-                  </Text>
                 </>
               ) : (
-                <>
-                  <TextInput
-                    style={[
-                      styles.textInput,
-                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
-                    ]}
-                    value={yearLevel}
-                    onChangeText={setYearLevel}
-                    placeholder="e.g. 1st Year / Grade 11"
-                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
-                    editable={!isSubmitting}
-                  />
-                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                    Enter your current academic year or grade level.
-                  </Text>
-                </>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                  ]}
+                  value={yearLevel}
+                  onChangeText={setYearLevel}
+                  placeholder="e.g. 1st Year / Grade 11"
+                  placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                  editable={!isSubmitting}
+                />
               )}
             </View>
 
-            <View style={styles.inputGroup}>
+            {/* RESIDENTIAL ADDRESS */}
+            <View style={[styles.inputGroup, { marginBottom: 6 }]}>
               <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
                 Residential Address *
               </Text>
               <TextInput
-                style={[styles.textInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }]}
+                style={[
+                  styles.textInput,
+                  { minHeight: 52, textAlignVertical: 'top', paddingTop: 10 },
+                  isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                ]}
                 value={residentialAddress}
                 onChangeText={setResidentialAddress}
-                placeholder="Enter complete residential address"
+                placeholder="Enter your residential address..."
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                multiline={true}
+                editable={!isSubmitting}
               />
               <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                Enter your current residential address.
+                Enter complete residential address (e.g. Street, Barangay, City).
               </Text>
             </View>
           </View>
