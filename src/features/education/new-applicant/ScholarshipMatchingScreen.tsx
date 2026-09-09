@@ -201,11 +201,17 @@ export function ScholarshipMatchingScreen() {
                     <Text style={[styles.questionText, isDarkMode && { color: '#F8FAFC' }]}>
                       {idx + 1}. {q.question_text}
                     </Text>
-                    {q.helper_text ? (
-                      <Text style={[styles.helperText, isDarkMode && { color: '#94A3B8' }]}>
-                        {q.helper_text}
-                      </Text>
-                    ) : null}
+                    {(() => {
+                      const helperText =
+                        q.question_key === 'latest_gwa_grade'
+                          ? 'Enter your numeric GWA or equivalent grade (e.g. 1.50).'
+                          : q.helper_text;
+                      return helperText ? (
+                        <Text style={[styles.helperText, isDarkMode && { color: '#94A3B8' }]}>
+                          {helperText}
+                        </Text>
+                      ) : null;
+                    })()}
 
                     {(() => {
                       const qType = (q.question_type || '').toLowerCase();
@@ -287,6 +293,13 @@ export function ScholarshipMatchingScreen() {
 
                       // 3. Number / numeric / Currency / percentage / Text / string
                       const isNumeric = qType === 'number' || qType === 'numeric' || qType === 'currency' || qType === 'percentage';
+                      const placeholder =
+                        q.question_key === 'latest_gwa_grade'
+                          ? 'Enter value (e.g. 1.50)'
+                          : isNumeric
+                          ? 'Enter value (e.g. 95)'
+                          : 'Enter response';
+
                       return (
                         <View style={{ marginTop: 8 }}>
                           <TextInput
@@ -305,7 +318,7 @@ export function ScholarshipMatchingScreen() {
                             value={answers[q.question_key] || ''}
                             onChangeText={(val) => handleOptionSelect(q.question_key, val)}
                             keyboardType={isNumeric ? 'numeric' : 'default'}
-                            placeholder={isNumeric ? 'Enter value (e.g. 95)' : 'Enter response'}
+                            placeholder={placeholder}
                             placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
                           />
                         </View>

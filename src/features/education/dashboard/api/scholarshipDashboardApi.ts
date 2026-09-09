@@ -102,3 +102,32 @@ export async function fetchCitizenDashboard(): Promise<CitizenDashboardData> {
 
   return json.data;
 }
+
+export async function withdrawCitizenApplication(
+  applicationId: number,
+  reason: string
+): Promise<any> {
+  const headers = await getEducationAuthHeaders({
+    'Content-Type': 'application/json',
+  });
+
+  const res = await fetch(
+    `${EDUCATION_API_BASE_URL}/scholarship-applications/citizen/${applicationId}/withdraw`,
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ reason }),
+    }
+  );
+
+  if (res.status === 401) {
+    await handleEducationResponse(res);
+  }
+
+  const json = await res.json();
+  if (!res.ok || json.status !== 'success') {
+    throw new Error(json.message || 'Unable to withdraw scholarship application.');
+  }
+
+  return json.data;
+}

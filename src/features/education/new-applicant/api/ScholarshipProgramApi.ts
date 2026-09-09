@@ -142,6 +142,53 @@ export interface PreScreenResponse {
   programs: EvaluatedProgram[];
 }
 
+export function sanitizeScholarshipProgramContent(program: ScholarshipProgram): ScholarshipProgram {
+  if (!program) return program;
+
+  // Program-specific rule: apply overrides specifically to ACADEMIC-TER-001
+  if (program.program_code !== 'ACADEMIC-TER-001') {
+    return program;
+  }
+
+  return {
+    ...program,
+    required_documents: program.required_documents?.map((doc) => {
+      const code = (doc.document_code || '').toUpperCase();
+      const name = (doc.document_name || '').toUpperCase();
+
+      if (code === 'ACADEMIC_RECORD' || name.includes('ACADEMIC RECORD')) {
+        return {
+          ...doc,
+          description:
+            "Official Transcript of Records (TOR), Certificate of Grades, or equivalent academic record used to verify the applicant's tertiary academic performance.",
+          instructions:
+            doc.instructions && !doc.instructions.toLowerCase().includes('form 137')
+              ? doc.instructions
+              : "Submit Official Transcript of Records (TOR), Certificate of Grades, or equivalent academic record.",
+        };
+      }
+
+      if (
+        code === 'ENROLLMENT_PROOF' ||
+        name.includes('ENROLLMENT') ||
+        name.includes('REGISTRATION')
+      ) {
+        return {
+          ...doc,
+          description:
+            "Document confirming that the applicant is currently enrolled, registered, or accepted in a college or university.",
+          instructions:
+            doc.instructions && !doc.instructions.toLowerCase().includes('senior high')
+              ? doc.instructions
+              : "Submit proof of current college or university enrollment, registration, or acceptance.",
+        };
+      }
+
+      return doc;
+    }),
+  };
+}
+
 export async function fetchScholarshipCategories(): Promise<ScholarshipCategory[]> {
   const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-programs/categories`);
   const json = await res.json();
@@ -154,7 +201,8 @@ export async function fetchScholarshipPrograms(categoryId?: number): Promise<Sch
     : `${EDUCATION_API_BASE_URL}/scholarship-programs`;
   const res = await fetch(url);
   const json = await res.json();
-  return json.data || [];
+  const list: ScholarshipProgram[] = json.data || [];
+  return list.map(sanitizeScholarshipProgramContent);
 }
 
 export async function getScholarshipProgramDetails(programId: number): Promise<ScholarshipProgram | null> {
@@ -163,7 +211,8 @@ export async function getScholarshipProgramDetails(programId: number): Promise<S
   const res = await fetch(url);
   if (res.status === 404) return null;
   const json = await res.json();
-  return json.data || null;
+  const program: ScholarshipProgram | null = json.data || null;
+  return program ? sanitizeScholarshipProgramContent(program) : null;
 }
 
 export async function fetchPublicMatchingQuestions(educationLevel: string): Promise<MatchingQuestion[]> {
@@ -284,3 +333,44 @@ export async function submitNewScholarshipApplication(
   }
 }
 
+export interface PartnerSchoolLookupItem {
+  institution_id: number;
+  institution_name: string;
+  institution_code: string;
+  institution_type: string;
+  city_municipality?: string | null;
+  province_city?: string | null;
+  complete_address?: string | null;
+  school_status?: string;
+}
+
+export async function getPartnerSchoolsLookup(
+  programId?: number | null
+): Promise<PartnerSchoolLookupItem[]> {
+  const query = programId ? "?program_id=" + programId : "";
+  const url = EDUCATION_API_BASE_URL + "/grants/lookups/partner-schools" + query;
+  const headers = await getEducationAuthHeaders({
+    Accept: 'application/json',
+  });
+  try {
+    const res = await expoFetch(url, { method: 'GET', headers });
+    if (!res.ok) {
+      return [];
+    }
+    const json = await res.json();
+    const list = Array.isArray(json?.data) ? json.data : [];
+    return list.map((item: any) => ({
+      institution_id: Number(item.institution_id ?? item.partner_school_id),
+      institution_name: String(item.institution_name ?? ''),
+      institution_code: String(item.institution_code ?? item.school_code ?? ''),
+      institution_type: String(item.institution_type ?? ''),
+      city_municipality: item.city_municipality ?? null,
+      province_city: item.province_city ?? null,
+      complete_address: item.complete_address ?? null,
+      school_status: item.school_status ?? 'Active',
+    }));
+  } catch (err) {
+    console.error('[ScholarshipProgramApi] getPartnerSchoolsLookup error:', err);
+    return [];
+  }
+}

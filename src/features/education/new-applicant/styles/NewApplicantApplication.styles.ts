@@ -82,7 +82,7 @@ export const styles = StyleSheet.create({
   },
 
   inputGroup: {
-    marginBottom: 14,
+    marginBottom: 20,
   },
 
   inputLabel: {

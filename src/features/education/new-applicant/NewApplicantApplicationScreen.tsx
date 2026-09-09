@@ -1,14 +1,18 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File as ExpoFile } from 'expo-file-system';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
-import { getScholarshipProgramDetails, ScholarshipProgram, ScholarshipRequiredDocument, submitNewScholarshipApplication, SubmitApplicationResult } from './api/ScholarshipProgramApi';
+import { AuthService } from '@/src/services/auth-service';
+import { ProfileService } from '@/src/services/profile-service';
+import { getPartnerSchoolsLookup, getScholarshipProgramDetails, PartnerSchoolLookupItem, sanitizeScholarshipProgramContent, ScholarshipProgram, ScholarshipRequiredDocument, submitNewScholarshipApplication, SubmitApplicationResult } from './api/ScholarshipProgramApi';
+import { COMMON_COURSE_SUGGESTIONS, CourseSuggestion } from './constants/courseSuggestions';
+import { getAvailableYearLevels } from './constants/yearLevelOptions';
 import { styles } from './styles/NewApplicantApplication.styles';
 
 const videoDeclarationGuideImg = require('@/assets/images/video-inter.png');
@@ -34,8 +38,14 @@ export function NewApplicantApplicationScreen() {
 
   // Form input fields
   const [institutionName, setInstitutionName] = useState('');
+  const [partnerSchools, setPartnerSchools] = useState<PartnerSchoolLookupItem[]>([]);
+  const [selectedPartnerSchoolId, setSelectedPartnerSchoolId] = useState<number | null>(null);
+  const [isSchoolDropdownOpen, setIsSchoolDropdownOpen] = useState(false);
   const [courseProgram, setCourseProgram] = useState('');
+  const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false);
+  const [isCourseSuggestionSelected, setIsCourseSuggestionSelected] = useState(false);
   const [yearLevel, setYearLevel] = useState('');
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
   const [residentialAddress, setResidentialAddress] = useState('');
 
   // Dynamic file upload state mapped by document key
@@ -56,11 +66,15 @@ export function NewApplicantApplicationScreen() {
 
     try {
       setFetchError(null);
-      const data = await getScholarshipProgramDetails(programId);
+      const [data, schools] = await Promise.all([
+        getScholarshipProgramDetails(programId),
+        getPartnerSchoolsLookup(programId),
+      ]);
+      setPartnerSchools(schools);
       if (!data) {
         setFetchError('Scholarship program not found.');
       } else {
-        setProgram(data);
+        setProgram(sanitizeScholarshipProgramContent(data));
         console.log('[NewApplicantApplicationScreen] Program loaded:', {
           program_id: data.program_id,
           program_name: data.program_name,
@@ -87,6 +101,74 @@ export function NewApplicantApplicationScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Pre-fill Residential Address from Citizen Profile (convenience default)
+  useEffect(() => {
+    let isMounted = true;
+
+    async function prefillAddressFromProfile() {
+      try {
+        const currentUser = AuthService.getCurrentUser();
+        const activeUserId = currentUser?.citizen_user_id;
+        const activeEmail = currentUser?.email;
+        const activePhone = currentUser?.phone;
+        const cachedUser = currentUser?.user;
+
+        // Check if user object in session memory already has address or barangay
+        let candidateAddress = typeof cachedUser?.address === 'string' ? cachedUser.address.trim() : '';
+        let candidateBarangay = typeof cachedUser?.barangay === 'string' ? cachedUser.barangay.trim() : '';
+        let candidateCity = typeof cachedUser?.city === 'string' ? cachedUser.city.trim() : '';
+
+        // If address is not present in cached user and not in guest mode, fetch profile
+        if (!candidateAddress && !currentUser.isGuest) {
+          const profileRes = await ProfileService.getProfile(
+            activeEmail || undefined,
+            activeUserId || undefined,
+            activePhone || undefined
+          );
+          if (profileRes.status === 'success' && profileRes.data) {
+            if (typeof profileRes.data.address === 'string') {
+              candidateAddress = profileRes.data.address.trim();
+            }
+            if (!candidateBarangay && typeof profileRes.data.barangay === 'string') {
+              candidateBarangay = profileRes.data.barangay.trim();
+            }
+            if (!candidateCity && typeof profileRes.data.city === 'string') {
+              candidateCity = profileRes.data.city.trim();
+            }
+          }
+        }
+
+        if (!isMounted) return;
+
+        // Pre-fill only if residentialAddress is still empty (never overwrite manual input)
+        setResidentialAddress((prev) => {
+          if (prev && prev.trim().length > 0) {
+            return prev;
+          }
+
+          if (candidateAddress) {
+            return candidateAddress;
+          }
+
+          if (candidateBarangay) {
+            const cityPart = candidateCity ? `, ${candidateCity}` : '';
+            return `Barangay ${candidateBarangay}${cityPart}`;
+          }
+
+          return prev;
+        });
+      } catch (err) {
+        console.warn('[NewApplicantApplicationScreen] Could not pre-fill address:', err);
+      }
+    }
+
+    prefillAddressFromProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -157,23 +239,33 @@ export function NewApplicantApplicationScreen() {
     if (program?.required_documents && program.required_documents.length > 0) {
       return program.required_documents;
     }
+    const isTertiaryAcademic = program?.program_code === 'ACADEMIC-TER-001';
+
     // Default standard document list if none configured specifically for program
     return [
       {
         document_requirement_id: 1,
         document_code: 'ACADEMIC_RECORD',
         document_name: 'Academic Record / Transcript',
-        description: 'Official Grades, Form 137, Form 138, or Transcript of Records.',
+        description: isTertiaryAcademic
+          ? "Official Transcript of Records (TOR), Certificate of Grades, or equivalent academic record used to verify the applicant's tertiary academic performance."
+          : 'Official Grades, Form 137, Form 138, or Transcript of Records.',
         requirement_level: 'Required',
-        instructions: 'Upload your latest official academic record.',
+        instructions: isTertiaryAcademic
+          ? 'Upload your latest official Transcript of Records (TOR) or Certificate of Grades.'
+          : 'Upload your latest official academic record.',
       },
       {
         document_requirement_id: 2,
         document_code: 'ENROLLMENT_PROOF',
         document_name: 'Proof of Enrollment / Acceptance',
-        description: 'Certificate of Registration, Enrollment Assessment, or Admission Letter.',
+        description: isTertiaryAcademic
+          ? 'Document confirming that the applicant is currently enrolled, registered, or accepted in a college or university.'
+          : 'Certificate of Registration, Enrollment Assessment, or Admission Letter.',
         requirement_level: 'Required',
-        instructions: 'Upload proof of current enrollment or admission.',
+        instructions: isTertiaryAcademic
+          ? 'Upload document confirming current college or university enrollment or acceptance.'
+          : 'Upload proof of current enrollment or admission.',
       },
     ];
   }, [program]);
@@ -186,11 +278,117 @@ export function NewApplicantApplicationScreen() {
     return !files[key];
   });
 
-  const isFormValid = institutionName.trim().length > 0 && missingDocs.length === 0;
+  const filteredPartnerSchools =
+    institutionName.trim().length >= 2
+      ? partnerSchools.filter(
+          (s) =>
+            s.institution_name.toLowerCase().includes(institutionName.toLowerCase()) ||
+            s.institution_code.toLowerCase().includes(institutionName.toLowerCase())
+        )
+      : [];
+
+  const handleSchoolChangeText = (text: string) => {
+    setInstitutionName(text);
+    if (selectedPartnerSchoolId !== null) {
+      setSelectedPartnerSchoolId(null);
+    }
+    setIsSchoolDropdownOpen(text.trim().length >= 2);
+    setIsYearDropdownOpen(false);
+  };
+
+  const handleSelectPartnerSchool = (school: PartnerSchoolLookupItem) => {
+    setInstitutionName(school.institution_name);
+    setSelectedPartnerSchoolId(school.institution_id);
+    setIsSchoolDropdownOpen(false);
+    setIsYearDropdownOpen(false);
+  };
+
+  const filteredCourseSuggestions = useMemo(() => {
+    const query = courseProgram.trim().toLowerCase();
+    if (query.length < 2) return [];
+
+    const queryWords = query.split(/\s+/).filter((w) => w.length > 0);
+
+    const matches = COMMON_COURSE_SUGGESTIONS.filter((course) => {
+      const nameLower = course.name.toLowerCase();
+      const codeLower = course.code ? course.code.toLowerCase() : '';
+
+      // Direct code match or substring match in abbreviation
+      if (codeLower && (codeLower === query || codeLower.includes(query))) {
+        return true;
+      }
+
+      // Substring match in full name
+      if (nameLower.includes(query)) {
+        return true;
+      }
+
+      // Multi-word search (e.g. "Bachelor of Information" matches "Bachelor of Science in Information Technology")
+      if (queryWords.length > 1) {
+        const allWordsMatch = queryWords.every(
+          (word) => nameLower.includes(word) || codeLower.includes(word)
+        );
+        if (allWordsMatch) return true;
+      }
+
+      return false;
+    });
+
+    // Sort matches so exact code or name prefix comes first
+    matches.sort((a, b) => {
+      const aCode = (a.code || '').toLowerCase();
+      const bCode = (b.code || '').toLowerCase();
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+
+      if (aCode === query && bCode !== query) return -1;
+      if (bCode === query && aCode !== query) return 1;
+      if (aName.startsWith(query) && !bName.startsWith(query)) return -1;
+      if (bName.startsWith(query) && !aName.startsWith(query)) return 1;
+      return 0;
+    });
+
+    return matches.slice(0, 8);
+  }, [courseProgram]);
+
+  const availableYearLevels = useMemo(() => getAvailableYearLevels(program), [program]);
+
+  const handleCourseChangeText = (text: string) => {
+    setCourseProgram(text);
+    if (isCourseSuggestionSelected) {
+      setIsCourseSuggestionSelected(false);
+    }
+    setIsCourseDropdownOpen(text.trim().length >= 2);
+    setIsYearDropdownOpen(false);
+  };
+
+  const handleSelectCourse = (course: CourseSuggestion) => {
+    const selectedText = course.code ? `${course.name} (${course.code})` : course.name;
+    setCourseProgram(selectedText);
+    setIsCourseSuggestionSelected(true);
+    setIsCourseDropdownOpen(false);
+    setIsYearDropdownOpen(false);
+  };
+
+  const isFormValid =
+    institutionName.trim().length > 0 &&
+    yearLevel.trim().length > 0 &&
+    residentialAddress.trim().length > 0 &&
+    missingDocs.length === 0;
 
   const handleSubmitPress = () => {
     if (institutionName.trim().length === 0) {
       Alert.alert('Missing Field', 'Please enter your current School or Institution Name.');
+      return;
+    }
+
+    if (yearLevel.trim().length === 0) {
+      Alert.alert('Missing Field', 'Please select or enter your current Grade or Year Level.');
+      return;
+    }
+
+    if (residentialAddress.trim().length === 0) {
+      Alert.alert('Missing Field', 'Please enter your current Residential Address.');
       return;
     }
 
@@ -221,9 +419,12 @@ export function NewApplicantApplicationScreen() {
       const formData = new FormData();
       formData.append('program_id', String(programId));
       formData.append('institution_name', institutionName.trim());
+      if (selectedPartnerSchoolId !== null) {
+        formData.append('institution_id', String(selectedPartnerSchoolId));
+      }
       if (courseProgram.trim()) formData.append('course_program', courseProgram.trim());
       if (yearLevel.trim()) formData.append('year_level', yearLevel.trim());
-      if (residentialAddress.trim()) formData.append('residential_address', residentialAddress.trim());
+      formData.append('residential_address', residentialAddress.trim());
 
       // Append uploaded documents with Expo File objects expected by expo/fetch
       requiredDocsList.forEach((doc) => {
@@ -443,49 +644,359 @@ export function NewApplicantApplicationScreen() {
               <TextInput
                 style={[styles.textInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }]}
                 value={institutionName}
-                onChangeText={setInstitutionName}
-                placeholder="e.g. Caloocan City National High School"
+                onChangeText={handleSchoolChangeText}
+                onFocus={() => {
+                  if (institutionName.trim().length >= 2 && selectedPartnerSchoolId === null) {
+                    setIsSchoolDropdownOpen(true);
+                  }
+                }}
+                placeholder="e.g. Bestlink College of the Philippines"
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                editable={!isSubmitting}
               />
+              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                Type to search registered partner schools or enter your school name.
+              </Text>
+
+              {selectedPartnerSchoolId !== null ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 }}>
+                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#16A34A' }}>
+                    ✓ Partner School Selected
+                  </Text>
+                </View>
+              ) : null}
+
+              {isSchoolDropdownOpen && filteredPartnerSchools.length > 0 && selectedPartnerSchoolId === null ? (
+                <View
+                  style={{
+                    marginTop: 6,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: isDarkMode ? '#334155' : '#E2E8F0',
+                    backgroundColor: isDarkMode ? '#0F172A' : '#FFFFFF',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {filteredPartnerSchools.slice(0, 5).map((school) => (
+                    <TouchableOpacity
+                      key={school.institution_id}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        borderBottomWidth: 1,
+                        borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+                      }}
+                      onPress={() => handleSelectPartnerSchool(school)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: isDarkMode ? '#F8FAFC' : '#1E293B', flex: 1 }}>
+                          ✓ {school.institution_name}
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: '500', color: '#0284C7', marginLeft: 8 }}>
+                          {school.institution_code}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                        Registered Partner School
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
+
+              {institutionName.trim().length >= 3 && filteredPartnerSchools.length === 0 && selectedPartnerSchoolId === null ? (
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                  School not listed? You can continue with your school name.
+                </Text>
+              ) : null}
             </View>
 
+            {/* COURSE / PROGRAM / TRACK */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                Course / Program / Track
+                Course / Program / Track *
               </Text>
               <TextInput
-                style={[styles.textInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }]}
+                style={[
+                  styles.textInput,
+                  isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                ]}
                 value={courseProgram}
-                onChangeText={setCourseProgram}
-                placeholder="e.g. STEM / BS Information Technology"
+                onChangeText={handleCourseChangeText}
+                onFocus={() => {
+                  if (courseProgram.trim().length >= 2 && !isCourseSuggestionSelected) {
+                    setIsCourseDropdownOpen(true);
+                  }
+                }}
+                placeholder="e.g. Bachelor of Science in Information Technology"
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                editable={!isSubmitting}
               />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                Grade / Year Level
+              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                Type to search common courses, or enter your course manually.
               </Text>
-              <TextInput
-                style={[styles.textInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }]}
-                value={yearLevel}
-                onChangeText={setYearLevel}
-                placeholder="e.g. Grade 11 / 1st Year"
-                placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
-              />
+
+              {isCourseSuggestionSelected ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 4 }}>
+                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#16A34A' }}>
+                    ✓ Suggested course selected
+                  </Text>
+                </View>
+              ) : null}
+
+              {isCourseDropdownOpen && filteredCourseSuggestions.length > 0 && !isCourseSuggestionSelected ? (
+                <View
+                  style={{
+                    marginTop: 6,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: isDarkMode ? '#334155' : '#E2E8F0',
+                    backgroundColor: isDarkMode ? '#0F172A' : '#FFFFFF',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <View
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+                      borderBottomWidth: 1,
+                      borderBottomColor: isDarkMode ? '#334155' : '#E2E8F0',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: isDarkMode ? '#94A3B8' : '#64748B',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Suggestions
+                    </Text>
+                  </View>
+
+                  {filteredCourseSuggestions.slice(0, 6).map((item, idx) => (
+                    <TouchableOpacity
+                      key={`${item.name}_${item.code || idx}`}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        borderBottomWidth: idx < Math.min(filteredCourseSuggestions.length, 6) - 1 ? 1 : 0,
+                        borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+                      }}
+                      onPress={() => handleSelectCourse(item)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: isDarkMode ? '#F8FAFC' : '#1E293B',
+                            flex: 1,
+                            paddingRight: 8,
+                          }}
+                          numberOfLines={2}
+                        >
+                          {item.name}
+                        </Text>
+                        {item.code ? (
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '700',
+                              color: '#0284C7',
+                              marginLeft: 8,
+                            }}
+                          >
+                            {item.code}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {item.category ? (
+                        <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                          {item.category}
+                        </Text>
+                      ) : null}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
+
+              {courseProgram.trim().length >= 2 && filteredCourseSuggestions.length === 0 && !isCourseSuggestionSelected ? (
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                  Can't find your course? You can enter it manually.
+                </Text>
+              ) : null}
+            </View>
+
+            {/* GRADE / YEAR LEVEL */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
+                Grade / Year Level *
+              </Text>
+              {availableYearLevels.length > 0 ? (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.textInput,
+                      {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        minHeight: 44,
+                      },
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                    ]}
+                    onPress={() => {
+                      setIsSchoolDropdownOpen(false);
+                      setIsCourseDropdownOpen(false);
+                      setIsYearDropdownOpen((prev) => !prev);
+                    }}
+                    activeOpacity={0.7}
+                    disabled={isSubmitting}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: yearLevel ? '600' : '400',
+                        color: yearLevel
+                          ? (isDarkMode ? '#F8FAFC' : '#0F172A')
+                          : (isDarkMode ? '#64748B' : '#94A3B8'),
+                      }}
+                    >
+                      {yearLevel || 'Select year level'}
+                    </Text>
+                    <IconSymbol
+                      name={isYearDropdownOpen ? 'chevron.up' : 'chevron.down'}
+                      size={16}
+                      color={isDarkMode ? '#94A3B8' : '#64748B'}
+                    />
+                  </TouchableOpacity>
+
+                  {isYearDropdownOpen ? (
+                    <View
+                      style={{
+                        marginTop: 6,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: isDarkMode ? '#334155' : '#E2E8F0',
+                        backgroundColor: isDarkMode ? '#0F172A' : '#FFFFFF',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <View
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+                          borderBottomWidth: 1,
+                          borderBottomColor: isDarkMode ? '#334155' : '#E2E8F0',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: isDarkMode ? '#94A3B8' : '#64748B',
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Select Year Level
+                        </Text>
+                      </View>
+
+                      {availableYearLevels.map((lvl, idx) => {
+                        const isSelected = yearLevel === lvl;
+                        return (
+                          <TouchableOpacity
+                            key={lvl}
+                            style={{
+                              paddingHorizontal: 14,
+                              paddingVertical: 12,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              backgroundColor: isSelected
+                                ? (isDarkMode ? '#1E293B' : '#F0F9FF')
+                                : (isDarkMode ? '#0F172A' : '#FFFFFF'),
+                              borderBottomWidth: idx < availableYearLevels.length - 1 ? 1 : 0,
+                              borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+                            }}
+                            onPress={() => {
+                              setYearLevel(lvl);
+                              setIsYearDropdownOpen(false);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 14,
+                                fontWeight: isSelected ? '700' : '500',
+                                color: isSelected
+                                  ? (isDarkMode ? '#38BDF8' : '#0284C7')
+                                  : (isDarkMode ? '#F8FAFC' : '#1E293B'),
+                              }}
+                            >
+                              {lvl}
+                            </Text>
+                            {isSelected ? (
+                              <IconSymbol
+                                name="checkmark"
+                                size={16}
+                                color={isDarkMode ? '#38BDF8' : '#0284C7'}
+                              />
+                            ) : null}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                    Select your current academic year or grade level.
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                    ]}
+                    value={yearLevel}
+                    onChangeText={setYearLevel}
+                    placeholder="e.g. 1st Year / Grade 11"
+                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    editable={!isSubmitting}
+                  />
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                    Enter your current academic year or grade level.
+                  </Text>
+                </>
+              )}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                Residential Address
+                Residential Address *
               </Text>
               <TextInput
                 style={[styles.textInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }]}
                 value={residentialAddress}
                 onChangeText={setResidentialAddress}
-                placeholder="e.g. Barangay 12, Caloocan City"
+                placeholder="Enter complete residential address"
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
               />
+              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                Enter your current residential address.
+              </Text>
             </View>
           </View>
 
@@ -513,9 +1024,13 @@ export function NewApplicantApplicationScreen() {
                     <Badge variant={selectedFile ? 'success' : 'warning'} label={selectedFile ? 'Attached' : 'Required'} />
                   </View>
 
-                  {doc.instructions || doc.description ? (
+                  {doc.description ? (
                     <Text style={[styles.docInstructions, isDarkMode && { color: '#94A3B8' }]}>
-                      {doc.instructions || doc.description}
+                      {doc.description}
+                    </Text>
+                  ) : doc.instructions ? (
+                    <Text style={[styles.docInstructions, isDarkMode && { color: '#94A3B8' }]}>
+                      {doc.instructions}
                     </Text>
                   ) : null}
 

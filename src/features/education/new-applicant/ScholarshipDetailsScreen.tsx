@@ -7,7 +7,7 @@ import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { CitizenDashboardData, fetchCitizenDashboard } from '../dashboard/api/scholarshipDashboardApi';
-import { getScholarshipProgramDetails, ScholarshipProgram } from './api/ScholarshipProgramApi';
+import { getScholarshipProgramDetails, sanitizeScholarshipProgramContent, ScholarshipProgram } from './api/ScholarshipProgramApi';
 import { styles } from './styles/ScholarshipDetails.styles';
 
 interface ApplyCTAState {
@@ -178,7 +178,7 @@ export function ScholarshipDetailsScreen() {
       if (!data) {
         setError('Scholarship program not found.');
       } else {
-        setProgram(data);
+        setProgram(sanitizeScholarshipProgramContent(data));
       }
     } catch (err: any) {
       console.error('[ScholarshipDetailsScreen] fetch error:', err);
