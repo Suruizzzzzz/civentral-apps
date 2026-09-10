@@ -1,3 +1,5 @@
+import type * as DocumentPicker from 'expo-document-picker';
+import { File as ExpoFile } from 'expo-file-system';
 import { fetch as expoFetch } from 'expo/fetch';
 import { Platform } from 'react-native';
 
@@ -255,6 +257,20 @@ export async function fetchMatchingEducationLevels(): Promise<string[]> {
 
 import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
 
+
+export interface DocumentValidationResult {
+  result: 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE';
+  expected_document_code: string;
+  detected_document_code: string | null;
+  message: string;
+  confidence: number;
+}
+
+export interface ValidateDocumentResponse {
+  success: boolean;
+  validation: DocumentValidationResult;
+}
+
 export interface SubmitApplicationResult {
   application_id: number;
   application_code: string;
@@ -372,5 +388,81 @@ export async function getPartnerSchoolsLookup(
   } catch (err) {
     console.error('[ScholarshipProgramApi] getPartnerSchoolsLookup error:', err);
     return [];
+  }
+}
+
+
+export async function validateCitizenDocument(
+  fileAsset: DocumentPicker.DocumentPickerAsset,
+  programDocumentId: number,
+  programId: number
+): Promise<DocumentValidationResult | null> {
+  const postUrl = `${EDUCATION_API_BASE_URL}/scholarship-applications/citizen/validate-document`;
+
+  try {
+    const headers = await getEducationAuthHeaders({
+      Accept: 'application/json',
+    });
+
+    const formData = new FormData();
+    formData.append('program_document_id', String(programDocumentId));
+    formData.append('program_id', String(programId));
+
+    let expoFile: any;
+    if (fileAsset.uri) {
+      expoFile = new ExpoFile(fileAsset.uri);
+    } else {
+      expoFile = {
+        uri: fileAsset.uri,
+        name: fileAsset.name || 'document',
+        type: fileAsset.mimeType || 'application/pdf',
+      };
+    }
+    formData.append('file', expoFile as any);
+
+    const res = await expoFetch(postUrl, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (res.status === 401) {
+      await handleEducationResponse(res);
+    }
+
+    const rawText = await res.text();
+    let json: any = null;
+
+    if (rawText && rawText.trim().length > 0) {
+      try {
+        json = JSON.parse(rawText);
+      } catch {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            json = JSON.parse(jsonMatch[0]);
+          } catch {}
+        }
+      }
+    }
+
+    if (!res.ok || !json || !json.success || !json.validation) {
+      return null;
+    }
+
+    const val = json.validation;
+    const validEnums = ['MATCH', 'MISMATCH', 'INCONCLUSIVE'];
+    const resultEnum = validEnums.includes(val.result) ? val.result : 'INCONCLUSIVE';
+
+    return {
+      result: resultEnum,
+      expected_document_code: String(val.expected_document_code || ''),
+      detected_document_code: val.detected_document_code ? String(val.detected_document_code) : null,
+      message: String(val.message || ''),
+      confidence: typeof val.confidence === 'number' ? val.confidence : 0,
+    };
+  } catch (err) {
+    console.warn('[ScholarshipProgramApi] validateCitizenDocument error:', err);
+    return null;
   }
 }

@@ -10,7 +10,18 @@ import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 import { ProfileService } from '@/src/services/profile-service';
-import { getPartnerSchoolsLookup, getScholarshipProgramDetails, PartnerSchoolLookupItem, sanitizeScholarshipProgramContent, ScholarshipProgram, ScholarshipRequiredDocument, submitNewScholarshipApplication, SubmitApplicationResult } from './api/ScholarshipProgramApi';
+import {
+  DocumentValidationResult,
+  getPartnerSchoolsLookup,
+  getScholarshipProgramDetails,
+  PartnerSchoolLookupItem,
+  sanitizeScholarshipProgramContent,
+  ScholarshipProgram,
+  ScholarshipRequiredDocument,
+  submitNewScholarshipApplication,
+  SubmitApplicationResult,
+  validateCitizenDocument,
+} from './api/ScholarshipProgramApi';
 import { COMMON_COURSE_SUGGESTIONS, CourseSuggestion } from './constants/courseSuggestions';
 import { getAvailableYearLevels } from './constants/yearLevelOptions';
 import { styles } from './styles/NewApplicantApplication.styles';
@@ -23,6 +34,15 @@ interface SelectedFileState {
   uri: string;
   mimeType?: string;
   asset?: DocumentPicker.DocumentPickerAsset;
+}
+
+export interface DocumentValidationState {
+  status: 'idle' | 'validating' | 'validated';
+  result?: 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE';
+  message?: string;
+  expectedCode?: string;
+  detectedCode?: string | null;
+  confidence?: number;
 }
 
 export function NewApplicantApplicationScreen() {
@@ -50,6 +70,7 @@ export function NewApplicantApplicationScreen() {
 
   // Dynamic file upload state mapped by document key
   const [files, setFiles] = useState<Record<string, SelectedFileState>>({});
+  const [docValidations, setDocValidations] = useState<Record<string, DocumentValidationState>>({});
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showFullGuideModal, setShowFullGuideModal] = useState(false);
@@ -180,16 +201,21 @@ export function NewApplicantApplicationScreen() {
     const name = (doc.document_name || '').toUpperCase();
     const isVideo = code.includes('VIDEO') || name.includes('VIDEO');
 
+    const docKey = doc.program_document_id
+      ? `doc_${doc.program_document_id}`
+      : `doc_${doc.document_requirement_id}`;
+
+    // Prevent duplicate validation requests for the same document while it is already validating
+    if (docValidations[docKey]?.status === 'validating') {
+      return;
+    }
+
     const allowedTypes = isVideo
       ? ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/*']
       : ['application/pdf', 'image/jpeg', 'image/png'];
 
     const maxLimitMb = isVideo ? 20 : 10;
     const maxSizeBytes = maxLimitMb * 1024 * 1024;
-
-    const docKey = doc.program_document_id
-      ? `doc_${doc.program_document_id}`
-      : `doc_${doc.document_requirement_id}`;
 
     try {
       const res = await DocumentPicker.getDocumentAsync({
@@ -217,6 +243,14 @@ export function NewApplicantApplicationScreen() {
           return;
         }
 
+        // Replacing a document must clear its previous validation state before running validation again
+        setDocValidations((prev) => {
+          const next = { ...prev };
+          delete next[docKey];
+          return next;
+        });
+
+        // 1. Save/set the selected file using the existing state logic.
         setFiles((prev) => ({
           ...prev,
           [docKey]: {
@@ -227,6 +261,70 @@ export function NewApplicantApplicationScreen() {
             asset,
           },
         }));
+
+        // IF document is VIDEO:
+        // - Do NOT call OCR.
+        // - Do NOT show OCR validation.
+        // - Preserve existing video upload behavior.
+        if (isVideo) {
+          return;
+        }
+
+        // IF document is PDF/JPEG/PNG:
+        // 2. Set status: 'validating'
+        setDocValidations((prev) => ({
+          ...prev,
+          [docKey]: {
+            status: 'validating',
+          },
+        }));
+
+        // 3. Call validateCitizenDocument
+        const programDocId = doc.program_document_id || doc.document_requirement_id || 0;
+        const currentProgramId = programId || program?.program_id || 0;
+
+        try {
+          const validationResult = await validateCitizenDocument(
+            asset,
+            programDocId,
+            currentProgramId
+          );
+
+          // 4. Store the returned validation result for that specific document.
+          if (validationResult) {
+            setDocValidations((prev) => ({
+              ...prev,
+              [docKey]: {
+                status: 'validated',
+                result: validationResult.result,
+                message: validationResult.message,
+                expectedCode: validationResult.expected_document_code,
+                detectedCode: validationResult.detected_document_code,
+                confidence: validationResult.confidence,
+              },
+            }));
+          } else {
+            // Network or server failure
+            setDocValidations((prev) => ({
+              ...prev,
+              [docKey]: {
+                status: 'validated',
+                result: 'INCONCLUSIVE',
+                message: 'Automatic verification is unavailable. Your document can still be reviewed manually.',
+              },
+            }));
+          }
+        } catch (validationErr) {
+          console.error('[NewApplicantApplicationScreen] OCR validation error:', validationErr);
+          setDocValidations((prev) => ({
+            ...prev,
+            [docKey]: {
+              status: 'validated',
+              result: 'INCONCLUSIVE',
+              message: 'Automatic verification is unavailable. Your document can still be reviewed manually.',
+            },
+          }));
+        }
       }
     } catch (err) {
       console.error('[NewApplicantApplicationScreen] document picker error:', err);
@@ -1121,6 +1219,102 @@ export function NewApplicantApplicationScreen() {
                           : `Select ${doc.document_name} (PDF, PNG, JPG)`}
                     </Text>
                   </TouchableOpacity>
+
+                  {/* OCR Document Validation Feedback (non-video documents only) */}
+                  {!isVideoDoc && selectedFile && docValidations[key]?.status === 'validating' ? (
+                    <View
+                      style={[
+                        styles.ocrFeedbackBox,
+                        styles.ocrValidatingBox,
+                        isDarkMode && { backgroundColor: '#0F243A', borderColor: '#0369A1' },
+                      ]}
+                    >
+                      <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+                      <Text style={[styles.ocrValidatingText, isDarkMode && { color: '#38BDF8' }]}>
+                        Checking document with OCR pre-validation...
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {!isVideoDoc && selectedFile && docValidations[key]?.status === 'validated' && docValidations[key]?.result === 'MATCH' ? (
+                    <View
+                      style={[
+                        styles.ocrFeedbackBox,
+                        styles.ocrMatchBox,
+                        isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' },
+                      ]}
+                    >
+                      <IconSymbol
+                        name="checkmark.circle.fill"
+                        size={16}
+                        color={isDarkMode ? '#4ADE80' : '#16A34A'}
+                      />
+                      <Text style={[styles.ocrMatchText, isDarkMode && { color: '#86EFAC' }]}>
+                        {docValidations[key]?.message || `Document appears to be a ${doc.document_name}.`}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {!isVideoDoc && selectedFile && docValidations[key]?.status === 'validated' && docValidations[key]?.result === 'MISMATCH' ? (
+                    <View
+                      style={[
+                        styles.ocrFeedbackBox,
+                        styles.ocrMismatchBox,
+                        isDarkMode && { backgroundColor: '#451A03', borderColor: '#B45309' },
+                      ]}
+                    >
+                      <View style={styles.ocrMismatchContentRow}>
+                        <IconSymbol
+                          name="exclamationmark.triangle.fill"
+                          size={16}
+                          color={isDarkMode ? '#FBBF24' : '#D97706'}
+                        />
+                        <Text style={[styles.ocrMismatchText, isDarkMode && { color: '#FDE68A' }]}>
+                          {docValidations[key]?.message && docValidations[key]?.message?.includes('Please upload')
+                            ? docValidations[key]?.message
+                            : `${docValidations[key]?.message || 'This file does not appear to match the required document.'} Please upload the required ${doc.document_name}.`}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[
+                          styles.ocrChangeFileBtn,
+                          isDarkMode && { backgroundColor: '#78350F', borderColor: '#B45309' },
+                        ]}
+                        onPress={() => handlePickDocument(doc)}
+                        activeOpacity={0.8}
+                      >
+                        <IconSymbol
+                          name="pencil"
+                          size={12}
+                          color={isDarkMode ? '#FDE68A' : '#92400E'}
+                        />
+                        <Text style={[styles.ocrChangeFileBtnText, isDarkMode && { color: '#FDE68A' }]}>
+                          Change File
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+
+                  {!isVideoDoc && selectedFile && docValidations[key]?.status === 'validated' && docValidations[key]?.result === 'INCONCLUSIVE' ? (
+                    <View
+                      style={[
+                        styles.ocrFeedbackBox,
+                        styles.ocrInconclusiveBox,
+                        isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
+                      ]}
+                    >
+                      <IconSymbol
+                        name="info.circle.fill"
+                        size={16}
+                        color={isDarkMode ? '#94A3B8' : '#64748B'}
+                      />
+                      <Text style={[styles.ocrInconclusiveText, isDarkMode && { color: '#CBD5E1' }]}>
+                        {docValidations[key]?.message?.includes('unavailable') || docValidations[key]?.message?.includes('network')
+                          ? 'Automatic verification is unavailable. Your document can still be reviewed manually.'
+                          : 'Automatic identification was inconclusive. Your document can still be reviewed manually.'}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               );
             })}
