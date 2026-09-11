@@ -330,4 +330,73 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+
+  ocrFeedbackBox: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  ocrCheckingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+  },
+  ocrCheckingText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#0369A1',
+  },
+  ocrMatchBox: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+    gap: 3,
+  },
+  ocrHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ocrMatchHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  ocrMatchDetail: {
+    fontSize: 11,
+    color: '#166534',
+    marginLeft: 20,
+  },
+  ocrMismatchBox: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    gap: 3,
+  },
+  ocrMismatchHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  ocrMismatchDetail: {
+    fontSize: 11,
+    color: '#92400E',
+    marginLeft: 20,
+  },
+  ocrInconclusiveBox: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    gap: 2,
+  },
+  ocrInconclusiveHeader: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  ocrInconclusiveDetail: {
+    fontSize: 11,
+    color: '#64748B',
+    marginLeft: 20,
+  },
 });

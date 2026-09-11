@@ -83,6 +83,10 @@ const MAPPING: IconMapping = {
   'arrow.down.to.line': 'file-download',
   'download': 'file-download',
   'folder.fill': 'folder',
+  'arrow.triangle.2.circlepath': 'autorenew',
+  'arrow.clockwise': 'refresh',
+  'chart.bar.fill': 'bar-chart',
+  'receipt.fill': 'receipt',
 };
 
 export type IconSymbolName = keyof typeof MAPPING;

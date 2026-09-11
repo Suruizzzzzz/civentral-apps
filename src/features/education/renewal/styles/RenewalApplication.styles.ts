@@ -19,7 +19,7 @@ export const styles = StyleSheet.create({
   backText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#9333EA',
+    color: '#15803D',
   },
   header: {
     marginBottom: 20,
@@ -97,19 +97,36 @@ export const styles = StyleSheet.create({
   docHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
+  docHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  docIconWrapper: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#EAF8EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   docCodeBadge: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#EAF8EF',
+    borderWidth: 1,
+    borderColor: '#B7E4C7',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   docCodeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#7C3AED',
+    color: '#15803D',
   },
   docTitle: {
     fontSize: 15,
@@ -150,14 +167,15 @@ export const styles = StyleSheet.create({
   },
   fileSize: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#15803D',
     marginTop: 2,
+    fontWeight: '500',
   },
   pickBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#9333EA',
+    backgroundColor: '#16A34A',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -167,11 +185,27 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  replaceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EAF8EF',
+    borderWidth: 1,
+    borderColor: '#B7E4C7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  replaceBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803D',
+  },
   reviewCard: {
-    backgroundColor: '#FAF5FF',
+    backgroundColor: '#F0FDF4',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E9D5FF',
+    borderColor: '#BBF7D0',
     padding: 16,
     marginTop: 10,
     marginBottom: 20,
@@ -179,7 +213,7 @@ export const styles = StyleSheet.create({
   reviewTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#6B21A8',
+    color: '#15803D',
     marginBottom: 10,
   },
   reviewRow: {
@@ -190,7 +224,7 @@ export const styles = StyleSheet.create({
   },
   reviewLabel: {
     fontSize: 13,
-    color: '#581C87',
+    color: '#166534',
   },
   reviewBadge: {
     flexDirection: 'row',
@@ -202,7 +236,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   submitBtn: {
-    backgroundColor: '#9333EA',
+    backgroundColor: '#16A34A',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -211,7 +245,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   submitBtnDisabled: {
-    backgroundColor: '#D8B4FE',
+    backgroundColor: '#A7F3D0',
   },
   submitBtnText: {
     fontSize: 16,
@@ -265,12 +299,82 @@ export const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#9333EA',
+    backgroundColor: '#16A34A',
     alignItems: 'center',
   },
   modalConfirmText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  // Compact Inline OCR Feedback Styles
+  ocrFeedbackBox: {
+    marginTop: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  ocrCheckingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+  },
+  ocrCheckingText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#0369A1',
+  },
+  ocrMatchBox: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+    gap: 3,
+  },
+  ocrHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  ocrMatchHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  ocrMatchDetail: {
+    fontSize: 11,
+    color: '#166534',
+    marginLeft: 20,
+  },
+  ocrMismatchBox: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    gap: 3,
+  },
+  ocrMismatchHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  ocrMismatchDetail: {
+    fontSize: 11,
+    color: '#92400E',
+    marginLeft: 20,
+  },
+  ocrInconclusiveBox: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    gap: 2,
+  },
+  ocrInconclusiveHeader: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  ocrInconclusiveDetail: {
+    fontSize: 11,
+    color: '#64748B',
+    marginLeft: 20,
   },
 });

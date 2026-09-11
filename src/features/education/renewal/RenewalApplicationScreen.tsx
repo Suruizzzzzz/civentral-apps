@@ -8,7 +8,7 @@ import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
-import { CitizenRenewalOverview, fetchCitizenRenewalOverview, submitCitizenRenewal } from './api/renewalApi';
+import { CitizenRenewalOverview, fetchCitizenRenewalOverview, submitCitizenRenewal, validateCitizenRenewalDocument } from './api/renewalApi';
 import { styles } from './styles/RenewalApplication.styles';
 
 export interface SelectedFileState {
@@ -16,6 +16,32 @@ export interface SelectedFileState {
   size?: number;
   uri: string;
   mimeType?: string;
+}
+
+type DocumentValidationStatus = 'idle' | 'checking' | 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE' | 'error';
+
+interface DocumentValidationState {
+  status: DocumentValidationStatus;
+  result?: 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE';
+  detectedCode?: string | null;
+  expectedCode?: string;
+  message?: string;
+}
+
+function getDocumentLabel(code?: string | null): string {
+  if (!code) return 'Document';
+  switch (code.toUpperCase()) {
+    case 'COR':
+      return 'Certificate of Registration (COR)';
+    case 'COG':
+      return 'Certificate of Grades (COG)';
+    case 'SOA':
+      return 'Statement of Account (SOA)';
+    case 'TOR':
+      return 'Transcript of Records (TOR)';
+    default:
+      return code;
+  }
 }
 
 export function RenewalApplicationScreen() {
@@ -35,6 +61,16 @@ export function RenewalApplicationScreen() {
     cor: null,
     cog: null,
     soa: null,
+  });
+
+  const [docValidations, setDocValidations] = useState<{
+    cor: DocumentValidationState;
+    cog: DocumentValidationState;
+    soa: DocumentValidationState;
+  }>({
+    cor: { status: 'idle' },
+    cog: { status: 'idle' },
+    soa: { status: 'idle' },
   });
 
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
@@ -80,6 +116,11 @@ export function RenewalApplicationScreen() {
   }, [loadData]);
 
   const handlePickDocument = async (docType: 'cor' | 'cog' | 'soa') => {
+    // Prevent duplicate simultaneous requests for the same document
+    if (docValidations[docType].status === 'checking') {
+      return;
+    }
+
     try {
       const res = await DocumentPicker.getDocumentAsync({
         type: ['application/pdf', 'image/jpeg', 'image/png'],
@@ -95,6 +136,7 @@ export function RenewalApplicationScreen() {
           return;
         }
 
+        // Store selected file
         setFiles((prev) => ({
           ...prev,
           [docType]: {
@@ -104,6 +146,50 @@ export function RenewalApplicationScreen() {
             mimeType: asset.mimeType,
           },
         }));
+
+        // Set OCR state to checking
+        const expectedUpper = docType.toUpperCase() as 'COR' | 'COG' | 'SOA';
+        setDocValidations((prev) => ({
+          ...prev,
+          [docType]: {
+            status: 'checking',
+            expectedCode: expectedUpper,
+          },
+        }));
+
+        // Perform OCR pre-validation asynchronously
+        try {
+          const ocrResult = await validateCitizenRenewalDocument(asset, expectedUpper);
+          if (ocrResult) {
+            setDocValidations((prev) => ({
+              ...prev,
+              [docType]: {
+                status: ocrResult.result,
+                result: ocrResult.result,
+                detectedCode: ocrResult.detected_document_code,
+                expectedCode: ocrResult.expected_document_code,
+                message: ocrResult.message,
+              },
+            }));
+          } else {
+            setDocValidations((prev) => ({
+              ...prev,
+              [docType]: {
+                status: 'error',
+                message: 'Automatic document check is unavailable. You can still continue and the document can be reviewed manually.',
+              },
+            }));
+          }
+        } catch (ocrErr) {
+          console.warn(`[RenewalApplicationScreen] OCR validation error for ${docType}:`, ocrErr);
+          setDocValidations((prev) => ({
+            ...prev,
+            [docType]: {
+              status: 'error',
+              message: 'Automatic document check is unavailable. You can still continue and the document can be reviewed manually.',
+            },
+          }));
+        }
       }
     } catch (err) {
       console.error('[RenewalApplicationScreen] document picker error:', err);
@@ -157,6 +243,126 @@ export function RenewalApplicationScreen() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const renderOcrFeedback = (docType: 'cor' | 'cog' | 'soa', expectedLabel: string) => {
+    const validation = docValidations[docType];
+    const selectedFile = files[docType];
+    if (!selectedFile || validation.status === 'idle') {
+      return null;
+    }
+
+    if (validation.status === 'checking') {
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrCheckingBox,
+            isDarkMode && { backgroundColor: '#0F243A', borderColor: '#0369A1' },
+          ]}
+        >
+          <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+          <Text style={[styles.ocrCheckingText, isDarkMode && { color: '#38BDF8' }]}>
+            Checking document type...
+          </Text>
+        </View>
+      );
+    }
+
+    if (validation.status === 'MATCH') {
+      const detectedText = getDocumentLabel(validation.detectedCode || validation.expectedCode);
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrMatchBox,
+            isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' },
+          ]}
+        >
+          <View style={styles.ocrHeaderRow}>
+            <IconSymbol name="checkmark.circle.fill" size={14} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
+            <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
+              ✓ Document type appears correct
+            </Text>
+          </View>
+          <Text style={[styles.ocrMatchDetail, isDarkMode && { color: '#BBF7D0' }]}>
+            Detected: {detectedText}
+          </Text>
+        </View>
+      );
+    }
+
+    if (validation.status === 'MISMATCH') {
+      const detectedText = getDocumentLabel(validation.detectedCode);
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrMismatchBox,
+            isDarkMode && { backgroundColor: '#451A03', borderColor: '#B45309' },
+          ]}
+        >
+          <View style={styles.ocrHeaderRow}>
+            <IconSymbol name="exclamationmark.triangle.fill" size={14} color={isDarkMode ? '#FBBF24' : '#D97706'} />
+            <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FDE68A' }]}>
+              ⚠ Document type may not match
+            </Text>
+          </View>
+          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
+            Detected: {detectedText}
+          </Text>
+          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
+            Expected: {expectedLabel}
+          </Text>
+        </View>
+      );
+    }
+
+    if (validation.status === 'INCONCLUSIVE') {
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrInconclusiveBox,
+            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
+          ]}
+        >
+          <View style={styles.ocrHeaderRow}>
+            <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+            <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
+              Automatic document check was inconclusive.
+            </Text>
+          </View>
+          <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
+            Your document can still be reviewed manually.
+          </Text>
+        </View>
+      );
+    }
+
+    if (validation.status === 'error') {
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrInconclusiveBox,
+            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
+          ]}
+        >
+          <View style={styles.ocrHeaderRow}>
+            <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+            <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
+              Automatic document check is unavailable.
+            </Text>
+          </View>
+          <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
+            You can still continue and the document can be reviewed manually.
+          </Text>
+        </View>
+      );
+    }
+
+    return null;
   };
 
   const formatFileSize = (bytes?: number) => {
@@ -226,7 +432,7 @@ export function RenewalApplicationScreen() {
             {fetchError}
           </Text>
           <TouchableOpacity
-            style={{ backgroundColor: '#9333EA', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+            style={{ backgroundColor: '#16A34A', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
             onPress={loadData}
           >
             <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Retry</Text>
@@ -308,12 +514,17 @@ export function RenewalApplicationScreen() {
           {/* 1. COR CARD */}
           <View style={[styles.docCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
             <View style={styles.docHeader}>
-              <View style={styles.docCodeBadge}>
-                <Text style={styles.docCodeText}>COR</Text>
+              <View style={styles.docHeaderLeft}>
+                <View style={[styles.docIconWrapper, isDarkMode && { backgroundColor: '#064E3B' }]}>
+                  <IconSymbol name="doc.text.fill" size={16} color={isDarkMode ? '#4ADE80' : '#15803D'} />
+                </View>
+                <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                  Certificate of Registration
+                </Text>
               </View>
-              <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                Certificate of Registration
-              </Text>
+              <View style={[styles.docCodeBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
+                <Text style={[styles.docCodeText, isDarkMode && { color: '#A7F3D0' }]}>COR</Text>
+              </View>
             </View>
             <Text style={[styles.docDesc, isDarkMode && { color: '#94A3B8' }]}>
               Official proof of enrollment for the upcoming academic period (PDF, JPG, PNG up to 10MB).
@@ -337,27 +548,41 @@ export function RenewalApplicationScreen() {
               </View>
 
               <TouchableOpacity
-                style={styles.pickBtn}
+                style={[
+                  files.cor ? styles.replaceBtn : styles.pickBtn,
+                  isDarkMode && files.cor && { backgroundColor: '#064E3B', borderColor: '#059669' },
+                ]}
                 onPress={() => handlePickDocument('cor')}
                 activeOpacity={0.8}
               >
-                <IconSymbol name={files.cor ? 'arrow.triangle.2.circlepath' : 'doc.badge.plus'} size={14} color="#FFFFFF" />
-                <Text style={styles.pickBtnText}>
+                <IconSymbol
+                  name={files.cor ? 'arrow.triangle.2.circlepath' : 'doc.badge.plus'}
+                  size={14}
+                  color={files.cor ? (isDarkMode ? '#4ADE80' : '#15803D') : '#FFFFFF'}
+                />
+                <Text style={[files.cor ? styles.replaceBtnText : styles.pickBtnText, isDarkMode && files.cor && { color: '#4ADE80' }]}>
                   {files.cor ? 'Replace' : 'Select'}
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {renderOcrFeedback('cor', 'Certificate of Registration (COR)')}
           </View>
 
           {/* 2. COG CARD */}
           <View style={[styles.docCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
             <View style={styles.docHeader}>
-              <View style={styles.docCodeBadge}>
-                <Text style={styles.docCodeText}>COG</Text>
+              <View style={styles.docHeaderLeft}>
+                <View style={[styles.docIconWrapper, isDarkMode && { backgroundColor: '#064E3B' }]}>
+                  <IconSymbol name="chart.bar.fill" size={16} color={isDarkMode ? '#4ADE80' : '#15803D'} />
+                </View>
+                <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                  Certificate of Grades
+                </Text>
               </View>
-              <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                Certificate of Grades
-              </Text>
+              <View style={[styles.docCodeBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
+                <Text style={[styles.docCodeText, isDarkMode && { color: '#A7F3D0' }]}>COG</Text>
+              </View>
             </View>
             <Text style={[styles.docDesc, isDarkMode && { color: '#94A3B8' }]}>
               Official copy of grades or transcript from the preceding term (PDF, JPG, PNG up to 10MB).
@@ -381,27 +606,41 @@ export function RenewalApplicationScreen() {
               </View>
 
               <TouchableOpacity
-                style={styles.pickBtn}
+                style={[
+                  files.cog ? styles.replaceBtn : styles.pickBtn,
+                  isDarkMode && files.cog && { backgroundColor: '#064E3B', borderColor: '#059669' },
+                ]}
                 onPress={() => handlePickDocument('cog')}
                 activeOpacity={0.8}
               >
-                <IconSymbol name={files.cog ? 'arrow.triangle.2.circlepath' : 'doc.badge.plus'} size={14} color="#FFFFFF" />
-                <Text style={styles.pickBtnText}>
+                <IconSymbol
+                  name={files.cog ? 'arrow.triangle.2.circlepath' : 'doc.badge.plus'}
+                  size={14}
+                  color={files.cog ? (isDarkMode ? '#4ADE80' : '#15803D') : '#FFFFFF'}
+                />
+                <Text style={[files.cog ? styles.replaceBtnText : styles.pickBtnText, isDarkMode && files.cog && { color: '#4ADE80' }]}>
                   {files.cog ? 'Replace' : 'Select'}
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {renderOcrFeedback('cog', 'Certificate of Grades (COG)')}
           </View>
 
           {/* 3. SOA CARD */}
           <View style={[styles.docCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
             <View style={styles.docHeader}>
-              <View style={styles.docCodeBadge}>
-                <Text style={styles.docCodeText}>SOA</Text>
+              <View style={styles.docHeaderLeft}>
+                <View style={[styles.docIconWrapper, isDarkMode && { backgroundColor: '#064E3B' }]}>
+                  <IconSymbol name="receipt.fill" size={16} color={isDarkMode ? '#4ADE80' : '#15803D'} />
+                </View>
+                <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                  Statement of Account
+                </Text>
               </View>
-              <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                Statement of Account
-              </Text>
+              <View style={[styles.docCodeBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
+                <Text style={[styles.docCodeText, isDarkMode && { color: '#A7F3D0' }]}>SOA</Text>
+              </View>
             </View>
             <Text style={[styles.docDesc, isDarkMode && { color: '#94A3B8' }]}>
               Official statement of tuition fees or assessment slip (PDF, JPG, PNG up to 10MB).
@@ -425,49 +664,58 @@ export function RenewalApplicationScreen() {
               </View>
 
               <TouchableOpacity
-                style={styles.pickBtn}
+                style={[
+                  files.soa ? styles.replaceBtn : styles.pickBtn,
+                  isDarkMode && files.soa && { backgroundColor: '#064E3B', borderColor: '#059669' },
+                ]}
                 onPress={() => handlePickDocument('soa')}
                 activeOpacity={0.8}
               >
-                <IconSymbol name={files.soa ? 'arrow.triangle.2.circlepath' : 'doc.badge.plus'} size={14} color="#FFFFFF" />
-                <Text style={styles.pickBtnText}>
+                <IconSymbol
+                  name={files.soa ? 'arrow.triangle.2.circlepath' : 'doc.badge.plus'}
+                  size={14}
+                  color={files.soa ? (isDarkMode ? '#4ADE80' : '#15803D') : '#FFFFFF'}
+                />
+                <Text style={[files.soa ? styles.replaceBtnText : styles.pickBtnText, isDarkMode && files.soa && { color: '#4ADE80' }]}>
                   {files.soa ? 'Replace' : 'Select'}
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {renderOcrFeedback('soa', 'Statement of Account (SOA)')}
           </View>
 
           {/* REVIEW SUMMARY SECTION */}
-          <View style={[styles.reviewCard, isDarkMode && { backgroundColor: '#1E1B4B', borderColor: '#3730A3' }]}>
-            <Text style={[styles.reviewTitle, isDarkMode && { color: '#C084FC' }]}>
+          <View style={[styles.reviewCard, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
+            <Text style={[styles.reviewTitle, isDarkMode && { color: '#4ADE80' }]}>
               Submission Summary
             </Text>
 
             <View style={styles.reviewRow}>
-              <Text style={[styles.reviewLabel, isDarkMode && { color: '#E0E7FF' }]}>Certificate of Registration (COR)</Text>
+              <Text style={[styles.reviewLabel, isDarkMode && { color: '#A7F3D0' }]}>Certificate of Registration (COR)</Text>
               <View style={styles.reviewBadge}>
                 <IconSymbol name={files.cor ? 'checkmark.circle.fill' : 'xmark.circle.fill'} size={14} color={files.cor ? '#16A34A' : '#DC2626'} />
-                <Text style={[styles.reviewStatusText, { color: files.cor ? '#16A34A' : '#DC2626' }]}>
+                <Text style={[styles.reviewStatusText, { color: files.cor ? (isDarkMode ? '#4ADE80' : '#16A34A') : '#DC2626' }]}>
                   {files.cor ? 'Selected' : 'Missing'}
                 </Text>
               </View>
             </View>
 
             <View style={styles.reviewRow}>
-              <Text style={[styles.reviewLabel, isDarkMode && { color: '#E0E7FF' }]}>Certificate of Grades (COG)</Text>
+              <Text style={[styles.reviewLabel, isDarkMode && { color: '#A7F3D0' }]}>Certificate of Grades (COG)</Text>
               <View style={styles.reviewBadge}>
                 <IconSymbol name={files.cog ? 'checkmark.circle.fill' : 'xmark.circle.fill'} size={14} color={files.cog ? '#16A34A' : '#DC2626'} />
-                <Text style={[styles.reviewStatusText, { color: files.cog ? '#16A34A' : '#DC2626' }]}>
+                <Text style={[styles.reviewStatusText, { color: files.cog ? (isDarkMode ? '#4ADE80' : '#16A34A') : '#DC2626' }]}>
                   {files.cog ? 'Selected' : 'Missing'}
                 </Text>
               </View>
             </View>
 
             <View style={styles.reviewRow}>
-              <Text style={[styles.reviewLabel, isDarkMode && { color: '#E0E7FF' }]}>Statement of Account (SOA)</Text>
+              <Text style={[styles.reviewLabel, isDarkMode && { color: '#A7F3D0' }]}>Statement of Account (SOA)</Text>
               <View style={styles.reviewBadge}>
                 <IconSymbol name={files.soa ? 'checkmark.circle.fill' : 'xmark.circle.fill'} size={14} color={files.soa ? '#16A34A' : '#DC2626'} />
-                <Text style={[styles.reviewStatusText, { color: files.soa ? '#16A34A' : '#DC2626' }]}>
+                <Text style={[styles.reviewStatusText, { color: files.soa ? (isDarkMode ? '#4ADE80' : '#16A34A') : '#DC2626' }]}>
                   {files.soa ? 'Selected' : 'Missing'}
                 </Text>
               </View>

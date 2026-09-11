@@ -23,6 +23,7 @@ import {
   GrantApplicationDetail,
   submitGrantApplication,
   uploadGrantDocument,
+  validateCitizenGrantDocument,
 } from './api/grantApi';
 import { styles } from './styles/ScholarshipGrant.styles';
 
@@ -60,6 +61,14 @@ function getStatusBadgeVariant(status?: string): 'info' | 'success' | 'warning' 
   }
 }
 
+interface DocumentOcrValidation {
+  status: 'idle' | 'checking' | 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE' | 'error';
+  result?: 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE';
+  detectedCode?: string | null;
+  expectedCode?: string;
+  message?: string;
+}
+
 export default function ScholarshipGrantScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
@@ -68,6 +77,11 @@ export default function ScholarshipGrantScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState<'COR' | 'SOA' | null>(null);
+  const [docValidations, setDocValidations] = useState<Record<'COR' | 'SOA', DocumentOcrValidation>>({
+    COR: { status: 'idle' },
+    SOA: { status: 'idle' },
+  });
+
 
   const [overview, setOverview] = useState<CitizenGrantOverviewData | null>(null);
   const [application, setApplication] = useState<GrantApplicationDetail | null>(null);
@@ -150,7 +164,7 @@ export default function ScholarshipGrantScreen() {
     }
   };
 
-  // Upload Document (COR or SOA) with support for pre-submission replacement
+    // Upload Document (COR or SOA) with support for pre-submission replacement and OCR validation
   const handlePickAndUploadDocument = async (docType: 'COR' | 'SOA') => {
     if (!application) {
       Alert.alert('Error', 'Please start the grant application draft first.');
@@ -171,20 +185,77 @@ export default function ScholarshipGrantScreen() {
           return;
         }
 
+        // Reset OCR state to 'checking' immediately on selection/replacement
+        setDocValidations((prev) => ({
+          ...prev,
+          [docType]: {
+            status: 'checking',
+            expectedCode: docType,
+          },
+        }));
+
         setUploadingDoc(docType);
-        const updatedApp = await uploadGrantDocument(
-          application.grant_application_id,
-          docType,
-          asset.uri,
-          asset.name,
-          asset.mimeType || 'application/pdf',
-        );
-        setApplication(updatedApp);
-        Alert.alert('Upload Successful', `${docType} document uploaded successfully.`);
+
+        // 1. Authoritative document upload to server
+        try {
+          const updatedApp = await uploadGrantDocument(
+            application.grant_application_id,
+            docType,
+            asset.uri,
+            asset.name,
+            asset.mimeType || 'application/pdf',
+          );
+          setApplication(updatedApp);
+          Alert.alert('Upload Successful', `${docType} document uploaded successfully.`);
+        } catch (uploadErr: any) {
+          console.error('[ScholarshipGrantScreen] Document upload error:', uploadErr);
+          setDocValidations((prev) => ({
+            ...prev,
+            [docType]: { status: 'idle' },
+          }));
+          Alert.alert('Upload Error', uploadErr.message || `Failed to upload ${docType} document.`);
+          return;
+        } finally {
+          setUploadingDoc(null);
+        }
+
+        // 2. Independent advisory OCR document-type validation
+        try {
+          const ocrResult = await validateCitizenGrantDocument(asset, docType);
+          if (ocrResult) {
+            setDocValidations((prev) => ({
+              ...prev,
+              [docType]: {
+                status: ocrResult.result,
+                result: ocrResult.result,
+                detectedCode: ocrResult.detected_document_code,
+                expectedCode: ocrResult.expected_document_code,
+                message: ocrResult.message,
+              },
+            }));
+          } else {
+            setDocValidations((prev) => ({
+              ...prev,
+              [docType]: {
+                status: 'error',
+                message: 'Automatic document check is unavailable. You can still continue and the document can be reviewed manually.',
+              },
+            }));
+          }
+        } catch (ocrErr) {
+          console.warn(`[ScholarshipGrantScreen] OCR validation error for ${docType}:`, ocrErr);
+          setDocValidations((prev) => ({
+            ...prev,
+            [docType]: {
+              status: 'error',
+              message: 'Automatic document check is unavailable. You can still continue and the document can be reviewed manually.',
+            },
+          }));
+        }
       }
     } catch (err: any) {
-      console.error('[ScholarshipGrantScreen] Document upload error:', err);
-      Alert.alert('Upload Error', err.message || `Failed to upload ${docType} document.`);
+      console.error('[ScholarshipGrantScreen] Document picker error:', err);
+      Alert.alert('Error', 'Unable to pick document. Please try again.');
     } finally {
       setUploadingDoc(null);
     }
@@ -229,6 +300,146 @@ export default function ScholarshipGrantScreen() {
         },
       ],
     );
+  };
+
+
+  const getDocumentLabel = (code?: string | null) => {
+    switch (code) {
+      case 'COR':
+        return 'Certificate of Registration (COR)';
+      case 'SOA':
+        return 'Statement of Account (SOA)';
+      case 'COG':
+        return 'Certificate of Grades (COG)';
+      case 'TOR':
+        return 'Transcript of Records (TOR)';
+      default:
+        return code || 'Unknown';
+    }
+  };
+
+  const renderOcrFeedback = (docType: 'COR' | 'SOA', expectedLabel: string) => {
+    const validation = docValidations[docType];
+    if (validation.status === 'idle') {
+      return null;
+    }
+
+    if (validation.status === 'checking') {
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrCheckingBox,
+            { marginTop: 10 },
+            isDarkMode && { backgroundColor: '#0F243A', borderColor: '#0369A1' },
+          ]}
+        >
+          <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+          <Text style={[styles.ocrCheckingText, isDarkMode && { color: '#38BDF8' }]}>
+            Checking document type...
+          </Text>
+        </View>
+      );
+    }
+
+    if (validation.status === 'MATCH') {
+      const detectedText = getDocumentLabel(validation.detectedCode || validation.expectedCode);
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrMatchBox,
+            { marginTop: 10 },
+            isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' },
+          ]}
+        >
+          <View style={styles.ocrHeaderRow}>
+            <IconSymbol name="checkmark.circle.fill" size={14} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
+            <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
+              ✓ Document type appears correct
+            </Text>
+          </View>
+          <Text style={[styles.ocrMatchDetail, isDarkMode && { color: '#BBF7D0' }]}>
+            Detected: {detectedText}
+          </Text>
+        </View>
+      );
+    }
+
+    if (validation.status === 'MISMATCH') {
+      const detectedText = getDocumentLabel(validation.detectedCode);
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrMismatchBox,
+            { marginTop: 10 },
+            isDarkMode && { backgroundColor: '#451A03', borderColor: '#B45309' },
+          ]}
+        >
+          <View style={styles.ocrHeaderRow}>
+            <IconSymbol name="exclamationmark.triangle.fill" size={14} color={isDarkMode ? '#FBBF24' : '#D97706'} />
+            <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FDE68A' }]}>
+              ⚠️ Document type may not match
+            </Text>
+          </View>
+          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
+            Detected: {detectedText}
+          </Text>
+          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
+            Expected: {expectedLabel}
+          </Text>
+        </View>
+      );
+    }
+
+    if (validation.status === 'INCONCLUSIVE') {
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrInconclusiveBox,
+            { marginTop: 10 },
+            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
+          ]}
+        >
+          <View style={styles.ocrHeaderRow}>
+            <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+            <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
+              Automatic document check was inconclusive.
+            </Text>
+          </View>
+          <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
+            Your document can still be reviewed manually.
+          </Text>
+        </View>
+      );
+    }
+
+    if (validation.status === 'error') {
+      return (
+        <View
+          style={[
+            styles.ocrFeedbackBox,
+            styles.ocrInconclusiveBox,
+            { marginTop: 10 },
+            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
+          ]}
+        >
+          <View style={styles.ocrHeaderRow}>
+            <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+            <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
+              Automatic document check is unavailable.
+            </Text>
+          </View>
+          <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
+            You can still continue and the document can be reviewed manually.
+          </Text>
+        </View>
+      );
+    }
+
+    return null;
   };
 
   if (loading) {
@@ -575,6 +786,7 @@ export default function ScholarshipGrantScreen() {
                   </TouchableOpacity>
                 )
               )}
+              {renderOcrFeedback('COR', 'Certificate of Registration (COR)')}
             </View>
 
             {/* SOA Document Card (Private only) */}
@@ -637,6 +849,7 @@ export default function ScholarshipGrantScreen() {
                     </TouchableOpacity>
                   )
                 )}
+                {renderOcrFeedback('SOA', 'Statement of Account (SOA)')}
               </View>
             )}
 
