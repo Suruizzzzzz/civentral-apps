@@ -1,5 +1,8 @@
 import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
 import { EDUCATION_API_BASE_URL } from '../../new-applicant/api/ScholarshipProgramApi';
+import { CivicApiService, TrackedItem } from '@/src/services/api';
+
+export { TrackedItem };
 
 export interface DashboardScholar {
   scholar_id: number;
@@ -101,6 +104,11 @@ export async function fetchCitizenDashboard(): Promise<CitizenDashboardData> {
   }
 
   return json.data;
+}
+
+export async function fetchCitizenTrackedItems(): Promise<TrackedItem[]> {
+  const items = await CivicApiService.getTrackedItems();
+  return items || [];
 }
 
 export async function withdrawCitizenApplication(

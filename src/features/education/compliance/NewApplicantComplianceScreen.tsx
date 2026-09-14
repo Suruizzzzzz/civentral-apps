@@ -1,4 +1,4 @@
-﻿import * as DocumentPicker from 'expo-document-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -156,17 +156,34 @@ export function NewApplicantComplianceScreen() {
       {/* BACK BUTTON */}
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => router.back()}
+        onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/education/new-applicant' as any);
+          }
+        }}
         activeOpacity={0.7}
       >
-        <IconSymbol
-          name="chevron.right"
-          size={16}
-          color={isDarkMode ? '#C084FC' : '#7E22CE'}
-          style={styles.backIcon}
-        />
-        <Text style={[styles.backText, isDarkMode && { color: '#C084FC' }]}>
-          Back to Dashboard
+        <View
+          style={[
+            styles.backIconCircle,
+            isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+          ]}
+        >
+          <IconSymbol
+            name="chevron.left"
+            size={18}
+            color={isDarkMode ? '#38BDF8' : '#0284C7'}
+          />
+        </View>
+        <Text
+          style={[
+            styles.backText,
+            isDarkMode && { color: '#38BDF8' },
+          ]}
+        >
+          Back to New Applicant
         </Text>
       </TouchableOpacity>
 
@@ -188,7 +205,7 @@ export function NewApplicantComplianceScreen() {
           </Text>
           <TouchableOpacity
             style={{
-              backgroundColor: '#7E22CE',
+              backgroundColor: '#0284C7',
               paddingVertical: 8,
               paddingHorizontal: 16,
               borderRadius: 8,
@@ -208,13 +225,35 @@ export function NewApplicantComplianceScreen() {
           <Skeleton height={200} borderRadius={16} />
         </View>
       ) : requests.length === 0 ? (
-        <View style={[styles.card, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-          <IconSymbol name="checkmark.circle.fill" size={36} color="#16A34A" />
+        <View
+          style={[
+            styles.card,
+            isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+            { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
+          ]}
+        >
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 14,
+            }}
+          >
+            <IconSymbol
+              name="checkmark.circle.fill"
+              size={32}
+              color={isDarkMode ? '#34D399' : '#16A34A'}
+            />
+          </View>
           <Text style={[styles.emptyTitle, isDarkMode && { color: '#F8FAFC' }]}>
-            No Active Compliance Requests
+            No Compliance Required
           </Text>
           <Text style={[styles.emptySub, isDarkMode && { color: '#94A3B8' }]}>
-            Your scholarship application has no pending document replacement requests.
+            Your scholarship application has no outstanding document correction requests.
           </Text>
         </View>
       ) : (
@@ -338,13 +377,13 @@ export function NewApplicantComplianceScreen() {
                 <View style={styles.submittedBanner}>
                   <IconSymbol name="checkmark.circle.fill" size={20} color="#16A34A" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.submittedBannerTitle}>Replacement Submitted Ã¢â‚¬â€ Awaiting Review</Text>
+                    <Text style={styles.submittedBannerTitle}>Replacement Submitted — Awaiting Review</Text>
                     <Text style={styles.submittedBannerSub}>
                       Your replacement document has been submitted and is currently being validated by the Secretariat.
                     </Text>
                     {replDoc ? (
                       <Text style={styles.submittedFileMeta}>
-                        File: {replDoc.replacement_filename} Ã¢â‚¬Â¢ Submitted: {new Date(replDoc.submitted_at).toLocaleDateString()}
+                        File: {replDoc.replacement_filename} • Submitted: {new Date(replDoc.submitted_at).toLocaleDateString()}
                       </Text>
                     ) : null}
                   </View>
@@ -356,24 +395,29 @@ export function NewApplicantComplianceScreen() {
                   </Text>
 
                   <TouchableOpacity
-                    style={[styles.pickerBtn, pickedFile && styles.pickerBtnActive]}
+                    style={[
+                      styles.pickerBtn,
+                      pickedFile && styles.pickerBtnActive,
+                      isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+                      pickedFile && isDarkMode && { backgroundColor: '#0C4A6E', borderColor: '#38BDF8' },
+                    ]}
                     onPress={() => handlePickDocument(item.compliance_id)}
                     activeOpacity={0.8}
                   >
-                    <IconSymbol name="arrow.up.circle.fill" size={18} color="#7E22CE" />
-                    <Text style={styles.pickerBtnText}>
+                    <IconSymbol name="arrow.up.circle.fill" size={18} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+                    <Text style={[styles.pickerBtnText, isDarkMode && { color: '#38BDF8' }]}>
                       {pickedFile ? 'Change Selected File' : 'Select Replacement File (PDF / Image)'}
                     </Text>
                   </TouchableOpacity>
 
                   {pickedFile ? (
-                    <View style={styles.fileMetaBox}>
+                    <View style={[styles.fileMetaBox, isDarkMode && { backgroundColor: '#064E3B' }]}>
                       <IconSymbol name="doc.text.fill" size={16} color="#16A34A" />
-                      <Text style={styles.fileMetaName} numberOfLines={1}>
+                      <Text style={[styles.fileMetaName, isDarkMode && { color: '#A7F3D0' }]} numberOfLines={1}>
                         {pickedFile.name}
                       </Text>
                       {pickedFile.size ? (
-                        <Text style={styles.fileMetaSize}>
+                        <Text style={[styles.fileMetaSize, isDarkMode && { color: '#6EE7B7' }]}>
                           ({(pickedFile.size / 1024).toFixed(0)} KB)
                         </Text>
                       ) : null}
@@ -418,14 +462,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  backIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
   backIcon: {
     transform: [{ rotate: '180deg' }],
   },
   backText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#7E22CE',
-    marginLeft: 4,
+    color: '#0284C7',
   },
   screenTitle: {
     fontSize: 22,
@@ -524,7 +578,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#7E22CE',
+    backgroundColor: '#0284C7',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -583,13 +637,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   pickerBtnActive: {
-    borderColor: '#7E22CE',
-    backgroundColor: '#F3E8FF',
+    borderColor: '#0284C7',
+    backgroundColor: '#F0F9FF',
   },
   pickerBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#7E22CE',
+    color: '#0284C7',
   },
   fileMetaBox: {
     flexDirection: 'row',
@@ -616,7 +670,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#7E22CE',
+    backgroundColor: '#0284C7',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,

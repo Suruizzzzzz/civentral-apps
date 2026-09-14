@@ -140,6 +140,54 @@ export const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
 
+  warningBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  warningBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#B45309",
+  },
+
+  successBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  successBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#15803D",
+  },
+
+  neutralBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  neutralBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+
   cardTitle: {
     fontSize: 17,
     fontWeight: "800",

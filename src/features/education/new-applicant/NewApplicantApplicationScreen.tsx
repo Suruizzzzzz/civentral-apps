@@ -631,10 +631,10 @@ export function NewApplicantApplicationScreen() {
 
           <TouchableOpacity
             style={[styles.submitButton, { width: '100%' }]}
-            onPress={() => router.replace('/education' as any)}
+            onPress={() => router.replace('/education/new-applicant/my-application' as any)}
             activeOpacity={0.8}
           >
-            <Text style={styles.submitButtonText}>Return to Education Portal</Text>
+            <Text style={styles.submitButtonText}>Track My Application</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -881,7 +881,7 @@ export function NewApplicantApplicationScreen() {
                 </View>
               ) : courseProgram.trim().length >= 2 && filteredCourseSuggestions.length === 0 && !isCourseSuggestionSelected ? (
                 <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                  Can't find your course? You can enter it manually.
+                  {"Can't find your course? You can enter it manually."}
                 </Text>
               ) : (
                 <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
@@ -1349,7 +1349,7 @@ export function NewApplicantApplicationScreen() {
               Confirm Application Submission
             </Text>
             <Text style={[styles.docInstructions, { fontSize: 13, marginBottom: 16 }, isDarkMode && { color: '#CBD5E1' }]}>
-              Are you sure you want to submit your application for "{program?.program_name}"? Please verify that all uploaded documents are accurate and complete.
+              {`Are you sure you want to submit your application for "${program?.program_name}"? Please verify that all uploaded documents are accurate and complete.`}
             </Text>
 
             <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>

@@ -44,6 +44,8 @@ const MAPPING: IconMapping = {
   'rectangle.portrait.and.arrow.right': 'exit-to-app',
   'person.2.fill': 'people',
   'fingerprint': 'fingerprint',
+  'checkmark': 'check',
+  'check': 'check',
   'checkmark.seal.fill': 'verified',
   'checkmark.circle.fill': 'check-circle',
   'wallet.pass.fill': 'account-balance-wallet',
