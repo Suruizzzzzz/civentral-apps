@@ -254,7 +254,7 @@ export function EducationScreen() {
               </View>
             </TouchableOpacity>
 
-            {/* BUTTON 4: DISTRIBUTION SCHEDULE */}
+            {/* BUTTON 4: SCHOLARSHIP GRANT */}
             <TouchableOpacity
               style={[
                 styles.hubCardButton,
@@ -263,56 +263,69 @@ export function EducationScreen() {
                   borderColor: "#3A506B",
                 },
               ]}
-              onPress={() => router.push("/education/distribution" as any)}
+              onPress={() => router.push("/education/grant" as any)}
               activeOpacity={0.85}
             >
               <View style={styles.hubCardHeader}>
                 <View
                   style={[
-                    styles.hubIconCircle,
-                    { backgroundColor: isDarkMode ? "#451A03" : "#FEF3C7" },
+                    styles.grantIconCircle,
+                    isDarkMode && styles.grantIconCircleDark,
                   ]}
                 >
                   <IconSymbol
-                    name="location.fill"
+                    name="wallet.pass.fill"
                     size={24}
-                    color={isDarkMode ? "#FBBF24" : "#B45309"}
+                    color={isDarkMode ? "#FB923C" : "#EA580C"}
                   />
                 </View>
-                <Badge label="PAYOUT CALENDAR" variant="warning" />
+                <View
+                  style={[
+                    styles.grantBadge,
+                    isDarkMode && styles.grantBadgeDark,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.grantBadgeText,
+                      isDarkMode && styles.grantBadgeTextDark,
+                    ]}
+                  >
+                    GRANTS & PAYMENTS
+                  </Text>
+                </View>
               </View>
               <Text
                 style={[
-                  styles.hubCardTitle,
-                  isDarkMode && { color: "#F8FAFC" },
+                  styles.grantTitle,
+                  isDarkMode && styles.grantTitleDark,
                 ]}
               >
-                Distribution Schedule
+                Scholarship Grant
               </Text>
               <Text
                 style={[styles.hubCardSub, isDarkMode && { color: "#CBD5E1" }]}
               >
-                View educational cash allowance payout dates per Barangay
-                District, venues & claiming requirements.
+                Apply for and track your educational grant, requirements, and payment status.
               </Text>
               <View
                 style={[
                   styles.hubCardFooter,
-                  isDarkMode && { borderColor: "#293548" },
+                  isDarkMode && { borderTopColor: "#293548" },
                 ]}
               >
                 <Text
                   style={[
-                    styles.hubCardActionText,
-                    { color: isDarkMode ? "#FBBF24" : "#B45309" },
+                    styles.grantActionText,
+                    isDarkMode && styles.grantActionTextDark,
                   ]}
                 >
-                  View Schedule
+                  Open Grant
                 </Text>
                 <IconSymbol
                   name="chevron.right"
                   size={14}
-                  color={isDarkMode ? "#FBBF24" : "#B45309"}
+                  color={isDarkMode ? "#FB923C" : "#EA580C"}
                 />
               </View>
             </TouchableOpacity>

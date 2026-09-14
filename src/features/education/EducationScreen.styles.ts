@@ -271,4 +271,62 @@ export const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
+
+  /* ── SCHOLARSHIP GRANT (WHITE CARD + ORANGE ACCENTS) ── */
+  grantIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  grantIconCircleDark: {
+    backgroundColor: '#431407',
+    borderColor: '#7C2D12',
+  },
+  grantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  grantBadgeDark: {
+    backgroundColor: '#431407',
+    borderColor: '#7C2D12',
+  },
+  grantBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#C2410C',
+    letterSpacing: 0.5,
+  },
+  grantBadgeTextDark: {
+    color: '#FDBA74',
+  },
+  grantTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#EA580C',
+    marginBottom: 5,
+    letterSpacing: -0.2,
+  },
+  grantTitleDark: {
+    color: '#FB923C',
+  },
+  grantActionText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#EA580C',
+  },
+  grantActionTextDark: {
+    color: '#FB923C',
+  },
 });

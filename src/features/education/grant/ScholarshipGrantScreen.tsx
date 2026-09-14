@@ -25,6 +25,10 @@ import {
   uploadGrantDocument,
   validateCitizenGrantDocument,
 } from './api/grantApi';
+import {
+  CitizenGrantReleaseItem,
+  fetchCitizenGrantReleases,
+} from './api/grantReleaseApi';
 import { styles } from './styles/ScholarshipGrant.styles';
 
 function formatCurrency(amount?: number | null): string {
@@ -61,6 +65,37 @@ function getStatusBadgeVariant(status?: string): 'info' | 'success' | 'warning' 
   }
 }
 
+function getF2FClaimBadgeVariant(claimStatus?: string): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {
+  switch (claimStatus) {
+    case 'Ready for Claim':
+    case 'Released':
+      return 'success';
+    case 'Scheduled':
+      return 'info';
+    default:
+      return 'neutral';
+  }
+}
+
+function getInstitutionalBadgeVariant(instStatus?: string): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {
+  switch (instStatus) {
+    case 'Released to Partner Institution':
+    case 'Released':
+    case 'Paid':
+    case 'Verified / Linked':
+      return 'success';
+    case 'Partner School Notified':
+    case 'Ready for Processing':
+      return 'info';
+    case 'Institutional Payment Processing':
+    case 'On Hold — Institution Verification Required':
+    case 'Institution Verification Required':
+      return 'warning';
+    default:
+      return 'neutral';
+  }
+}
+
 interface DocumentOcrValidation {
   status: 'idle' | 'checking' | 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE' | 'error';
   result?: 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE';
@@ -82,11 +117,12 @@ export default function ScholarshipGrantScreen() {
     SOA: { status: 'idle' },
   });
 
-
   const [overview, setOverview] = useState<CitizenGrantOverviewData | null>(null);
   const [application, setApplication] = useState<GrantApplicationDetail | null>(null);
+  const [grantReleases, setGrantReleases] = useState<CitizenGrantReleaseItem[]>([]);
 
-  // Success Modal State
+  // Modal States
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [submittedResult, setSubmittedResult] = useState<GrantApplicationDetail | null>(null);
 
@@ -95,7 +131,7 @@ export default function ScholarshipGrantScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/education/dashboard' as any);
+      router.replace('/education' as any);
     }
   };
 
@@ -108,10 +144,10 @@ export default function ScholarshipGrantScreen() {
       <IconSymbol
         name="chevron.left"
         size={16}
-        color={isDarkMode ? '#38BDF8' : '#0284C7'}
+        color={isDarkMode ? '#CBD5E1' : '#475569'}
       />
-      <Text style={[styles.backText, isDarkMode && { color: '#38BDF8' }]}>
-        Back to Scholarship Dashboard
+      <Text style={[styles.backText, { color: isDarkMode ? '#CBD5E1' : '#475569' }]}>
+        Back to Education Hub
       </Text>
     </TouchableOpacity>
   );
@@ -119,8 +155,12 @@ export default function ScholarshipGrantScreen() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await fetchCitizenGrantOverview();
+      const [data, releases] = await Promise.all([
+        fetchCitizenGrantOverview(),
+        fetchCitizenGrantReleases().catch(() => []),
+      ]);
       setOverview(data);
+      setGrantReleases(releases);
 
       if (data.has_existing_application && data.application) {
         setApplication(data.application);
@@ -164,7 +204,7 @@ export default function ScholarshipGrantScreen() {
     }
   };
 
-    // Upload Document (COR or SOA) with support for pre-submission replacement and OCR validation
+  // Upload Document (COR or SOA) with support for pre-submission replacement and OCR validation
   const handlePickAndUploadDocument = async (docType: 'COR' | 'SOA') => {
     if (!application) {
       Alert.alert('Error', 'Please start the grant application draft first.');
@@ -203,220 +243,167 @@ export default function ScholarshipGrantScreen() {
             docType,
             asset.uri,
             asset.name,
-            asset.mimeType || 'application/pdf',
+            asset.mimeType || 'application/octet-stream'
           );
           setApplication(updatedApp);
-          Alert.alert('Upload Successful', `${docType} document uploaded successfully.`);
         } catch (uploadErr: any) {
-          console.error('[ScholarshipGrantScreen] Document upload error:', uploadErr);
           setDocValidations((prev) => ({
             ...prev,
-            [docType]: { status: 'idle' },
+            [docType]: { status: 'error', message: uploadErr.message || 'Upload failed' },
           }));
-          Alert.alert('Upload Error', uploadErr.message || `Failed to upload ${docType} document.`);
-          return;
-        } finally {
-          setUploadingDoc(null);
+          throw uploadErr;
         }
 
-        // 2. Independent advisory OCR document-type validation
+        // 2. OCR validation pipeline
         try {
-          const ocrResult = await validateCitizenGrantDocument(asset, docType);
-          if (ocrResult) {
+          const validation = await validateCitizenGrantDocument(asset, docType);
+          if (validation) {
             setDocValidations((prev) => ({
               ...prev,
               [docType]: {
-                status: ocrResult.result,
-                result: ocrResult.result,
-                detectedCode: ocrResult.detected_document_code,
-                expectedCode: ocrResult.expected_document_code,
-                message: ocrResult.message,
+                status: validation.result,
+                result: validation.result,
+                detectedCode: validation.detected_document_code,
+                expectedCode: validation.expected_document_code,
+                message: validation.message,
               },
             }));
           } else {
             setDocValidations((prev) => ({
               ...prev,
               [docType]: {
-                status: 'error',
-                message: 'Automatic document check is unavailable. You can still continue and the document can be reviewed manually.',
+                status: 'INCONCLUSIVE',
+                result: 'INCONCLUSIVE',
+                message: 'Automatic document check is unavailable. Manual review will apply.',
               },
             }));
           }
-        } catch (ocrErr) {
-          console.warn(`[ScholarshipGrantScreen] OCR validation error for ${docType}:`, ocrErr);
+        } catch (ocrErr: any) {
+          // OCR error fails gracefully to inconclusive — manual review still permitted
           setDocValidations((prev) => ({
             ...prev,
             [docType]: {
-              status: 'error',
-              message: 'Automatic document check is unavailable. You can still continue and the document can be reviewed manually.',
+              status: 'INCONCLUSIVE',
+              result: 'INCONCLUSIVE',
+              message: ocrErr.message || 'Automatic document check is unavailable. Manual review will apply.',
             },
           }));
         }
       }
     } catch (err: any) {
-      console.error('[ScholarshipGrantScreen] Document picker error:', err);
-      Alert.alert('Error', 'Unable to pick document. Please try again.');
+      console.error('[ScholarshipGrantScreen] Pick/Upload error:', err);
+      Alert.alert('Upload Failed', err.message || `Failed to upload ${docType}. Please try again.`);
     } finally {
       setUploadingDoc(null);
     }
   };
 
-  // Final Submit Application
-  const handleSubmitApplication = async () => {
+  // Submit Application triggers confirmation modal
+  const handleSubmitApplication = () => {
     if (!application) return;
 
-    const instType = application.institution_type || 'Public';
-    const docs = application.documents || [];
-    const hasCor = docs.some((d) => d.document_type === 'COR' && d.submission_status !== 'Removed');
-    const hasSoa = docs.some((d) => d.document_type === 'SOA' && d.submission_status !== 'Removed');
-
-    if (!hasCor) {
-      Alert.alert('Document Required', 'Certificate of Registration (COR) is required before submitting your grant application.');
+    // Check pre-submission OCR mismatch guard: Warn citizen if doc type mismatch is detected
+    const hasMismatch = Object.values(docValidations).some((v) => v.status === 'MISMATCH');
+    if (hasMismatch) {
+      Alert.alert(
+        'Document Check Warning',
+        'One or more documents do not match the expected requirement. You may still proceed with submission, but Secretariat review may request replacement.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Submit Anyway',
+            style: 'default',
+            onPress: () => setConfirmModalVisible(true),
+          },
+        ]
+      );
       return;
     }
 
-    if (instType === 'Private' && !hasSoa) {
-      Alert.alert('Document Required', 'Statement of Account (SOA) is required for scholars enrolled in a private institution.');
-      return;
-    }
-
-    Alert.alert(
-      'Confirm Final Submission',
-      'Are you sure you want to submit your grant application? After submission, document changes will require Secretariat review.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Submit Application',
-          onPress: async () => {
-            try {
-              setSubmitting(true);
-              const submittedApp = await submitGrantApplication(application.grant_application_id);
-              setApplication(submittedApp);
-              setSubmittedResult(submittedApp);
-              setSuccessModalVisible(true);
-            } catch (err: any) {
-              Alert.alert('Submission Error', err.message || 'Failed to submit grant application.');
-            } },
-        },
-      ],
-    );
+    setConfirmModalVisible(true);
   };
 
+  const handleConfirmSubmit = async () => {
+    setConfirmModalVisible(false);
+    await performSubmission();
+  };
 
-  const getDocumentLabel = (code?: string | null) => {
-    switch (code) {
-      case 'COR':
-        return 'Certificate of Registration (COR)';
-      case 'SOA':
-        return 'Statement of Account (SOA)';
-      case 'COG':
-        return 'Certificate of Grades (COG)';
-      case 'TOR':
-        return 'Transcript of Records (TOR)';
-      default:
-        return code || 'Unknown';
+  const performSubmission = async () => {
+    if (!application) return;
+    try {
+      setSubmitting(true);
+      const res = await submitGrantApplication(application.grant_application_id);
+      setSubmittedResult(res);
+      setApplication(res);
+      setSuccessModalVisible(true);
+    } catch (err: any) {
+      console.error('[ScholarshipGrantScreen] Submit error:', err);
+      Alert.alert('Submission Failed', err.message || 'Failed to submit grant application.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const renderOcrFeedback = (docType: 'COR' | 'SOA', expectedLabel: string) => {
-    const validation = docValidations[docType];
-    if (validation.status === 'idle') {
-      return null;
-    }
+  // Render OCR feedback pill
+  const renderOcrFeedback = (docType: 'COR' | 'SOA', label: string) => {
+    const val = docValidations[docType];
+    if (!val || val.status === 'idle') return null;
 
-    if (validation.status === 'checking') {
+    if (val.status === 'checking') {
       return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrCheckingBox,
-            { marginTop: 10 },
-            isDarkMode && { backgroundColor: '#0F243A', borderColor: '#0369A1' },
-          ]}
-        >
-          <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+        <View style={[styles.ocrFeedbackBox, styles.ocrCheckingBox, { marginTop: 10 }]}>
+          <ActivityIndicator size="small" color="#0284C7" />
           <Text style={[styles.ocrCheckingText, isDarkMode && { color: '#38BDF8' }]}>
-            Checking document type...
+            Verifying document type automatically...
           </Text>
         </View>
       );
     }
 
-    if (validation.status === 'MATCH') {
-      const detectedText = getDocumentLabel(validation.detectedCode || validation.expectedCode);
+    if (val.status === 'MATCH') {
       return (
         <View
           style={[
             styles.ocrFeedbackBox,
             styles.ocrMatchBox,
             { marginTop: 10 },
-            isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' },
+            isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' },
           ]}
         >
           <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="checkmark.circle.fill" size={14} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
+            <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
             <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
-              ✓ Document type appears correct
+              Document verified as {label}.
             </Text>
           </View>
-          <Text style={[styles.ocrMatchDetail, isDarkMode && { color: '#BBF7D0' }]}>
-            Detected: {detectedText}
-          </Text>
         </View>
       );
     }
 
-    if (validation.status === 'MISMATCH') {
-      const detectedText = getDocumentLabel(validation.detectedCode);
+    if (val.status === 'MISMATCH') {
       return (
         <View
           style={[
             styles.ocrFeedbackBox,
             styles.ocrMismatchBox,
             { marginTop: 10 },
-            isDarkMode && { backgroundColor: '#451A03', borderColor: '#B45309' },
+            isDarkMode && { backgroundColor: '#450A0A', borderColor: '#DC2626' },
           ]}
         >
           <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="exclamationmark.triangle.fill" size={14} color={isDarkMode ? '#FBBF24' : '#D97706'} />
-            <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FDE68A' }]}>
-              ⚠️ Document type may not match
+            <IconSymbol name="exclamationmark.triangle.fill" size={14} color="#DC2626" />
+            <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FCA5A5' }]}>
+              Possible Document Mismatch
             </Text>
           </View>
-          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
-            Detected: {detectedText}
-          </Text>
-          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
-            Expected: {expectedLabel}
+          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FECACA' }]}>
+            {val.message || `Uploaded document does not appear to match ${label}. You can still submit, but manual review is required.`}
           </Text>
         </View>
       );
     }
 
-    if (validation.status === 'INCONCLUSIVE') {
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrInconclusiveBox,
-            { marginTop: 10 },
-            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
-          ]}
-        >
-          <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
-            <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
-              Automatic document check was inconclusive.
-            </Text>
-          </View>
-          <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
-            Your document can still be reviewed manually.
-          </Text>
-        </View>
-      );
-    }
-
-    if (validation.status === 'error') {
+    if (val.status === 'INCONCLUSIVE') {
       return (
         <View
           style={[
@@ -521,8 +508,7 @@ export default function ScholarshipGrantScreen() {
   const instBadgeLabel = isRegistered ? 'Verified / Linked' : 'Institution Verification Required';
   const instBadgeVariant: 'success' | 'warning' = isRegistered ? 'success' : 'warning';
 
-  // Phase 4D Stipend & Tuition Component Statuses
-  const stipendStatusLabel = application?.stipend_status || overview?.stipend_status || 'Available for Processing';
+  // Phase 4D Tuition Component Status
   const tuitionStatusLabel = application?.tuition_status || overview?.tuition_status || (isRegistered ? 'Ready for Processing' : 'On Hold — Institution Verification Required');
 
   const isTuitionOnHold = tuitionStatusLabel.toLowerCase().includes('hold') || !isRegistered;
@@ -534,6 +520,25 @@ export default function ScholarshipGrantScreen() {
   const actualEntitlement = application?.actual_tuition_grant_entitlement ?? overview?.actual_tuition_grant_entitlement;
   const hasTuitionFigures = assessedTuition !== undefined || programTuitionMax !== undefined || actualEntitlement !== undefined;
 
+  const complianceDocs = docs.filter(
+    (d) => d.review_status === 'Needs Replacement' || d.review_status === 'Invalid'
+  );
+  const isComplianceRequired =
+    application?.grant_status === 'For Compliance' || complianceDocs.length > 0;
+  const complianceCount = complianceDocs.length;
+
+  const showPaymentSection =
+    Boolean(application) &&
+    (application?.grant_status === 'Approved for Payroll' ||
+      application?.grant_status === 'Approved' ||
+      application?.grant_status === 'Processing' ||
+      application?.grant_status === 'Disbursed' ||
+      application?.grant_status === 'Released' ||
+      application?.grant_status === 'Paid' ||
+      hasTuitionFigures);
+
+  const showDistributionSection = grantReleases.length > 0;
+
   return (
     <View style={[styles.container, isDarkMode && { backgroundColor: '#0F172A' }]}>
       <ScrollView
@@ -542,76 +547,150 @@ export default function ScholarshipGrantScreen() {
       >
         {renderBackButton()}
 
-        {/* HEADER / SCHOLARSHIP CONTEXT */}
-        <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-          <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>Scholarship Grant Intake</Text>
-          <Text style={[styles.cardSubtitle, isDarkMode && { color: '#94A3B8' }]}>
-            Current Academic Period: {currentPeriod ? `${currentPeriod.academic_year} — ${currentPeriod.term}` : 'Loading...'}
+        {/* PROPER SCHOLARSHIP GRANT MODULE HEADER */}
+        <View
+          style={[
+            styles.moduleHeaderCard,
+            isDarkMode && styles.moduleHeaderCardDark,
+          ]}
+        >
+          <View style={styles.moduleHeaderTop}>
+            <View
+              style={[
+                styles.moduleHeaderIconWrap,
+                isDarkMode && styles.moduleHeaderIconWrapDark,
+              ]}
+            >
+              <IconSymbol
+                name="wallet.pass.fill"
+                size={16}
+                color="#FFFFFF"
+              />
+            </View>
+            <Text style={styles.moduleTitle}>
+              SCHOLARSHIP GRANT
+            </Text>
+          </View>
+          <Text style={styles.moduleSubtitle}>
+            Complete and track your educational grant application, requirements, compliance, and payment status.
           </Text>
+        </View>
 
-          <View style={styles.infoGrid}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Scholar Name</Text>
-              <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{scholar?.scholar_name}</Text>
+        {/* CURRENT GRANT COMPACT DIRECTORY */}
+        <View style={styles.sectionHeadingRow}>
+          <Text style={[styles.sectionHeading, isDarkMode && styles.sectionHeadingDark]}>
+            CURRENT GRANT
+          </Text>
+          {application && (
+            <Badge
+              label={grantStatusText}
+              variant={getStatusBadgeVariant(grantStatusText)}
+            />
+          )}
+        </View>
+
+        <View style={[styles.recordCard, isDarkMode && styles.recordCardDark]}>
+          <View style={[styles.recordRow, isDarkMode && styles.recordRowDark]}>
+            <Text style={styles.recordLabel}>Academic Period</Text>
+            <Text style={[styles.recordValue, isDarkMode && { color: '#F8FAFC' }]}>
+              {currentPeriod ? `${currentPeriod.academic_year} • ${currentPeriod.term}` : '—'}
+            </Text>
+          </View>
+          <View style={[styles.recordRow, isDarkMode && styles.recordRowDark]}>
+            <Text style={styles.recordLabel}>Scholar</Text>
+            <Text style={[styles.recordValue, isDarkMode && { color: '#F8FAFC' }]}>
+              {scholar?.scholar_name || '—'}
+            </Text>
+          </View>
+          <View style={[styles.recordRow, isDarkMode && styles.recordRowDark]}>
+            <Text style={styles.recordLabel}>Scholar Code</Text>
+            <Text style={[styles.recordValue, isDarkMode && { color: '#F8FAFC' }]}>
+              {scholar?.scholar_code || '—'}
+            </Text>
+          </View>
+          <View style={[styles.recordRow, isDarkMode && styles.recordRowDark]}>
+            <Text style={styles.recordLabel}>Program</Text>
+            <Text style={[styles.recordValue, isDarkMode && { color: '#F8FAFC' }]}>
+              {scholar?.program_name || '—'}
+            </Text>
+          </View>
+          {application && (
+            <View style={[styles.recordRow, isDarkMode && styles.recordRowDark]}>
+              <Text style={styles.recordLabel}>Grant Reference</Text>
+              <Text style={[styles.recordValue, { color: isDarkMode ? '#FB923C' : '#EA580C', fontWeight: '700' }]}>
+                {application.grant_application_code}
+              </Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Scholar Code</Text>
-              <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{scholar?.scholar_code}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Program</Text>
-              <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{scholar?.program_name}</Text>
-            </View>
-            {application && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Grant Reference</Text>
-                <Text style={[styles.infoValue, { color: '#0284C7' }]}>{application.grant_application_code}</Text>
-              </View>
-            )}
-            {application && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Application Status</Text>
-                <View style={styles.badgeContainer}>
-                  <Badge
-                    label={grantStatusText}
-                    variant={getStatusBadgeVariant(grantStatusText)}
-                  />
-                </View>
-              </View>
-            )}
+          )}
+          <View style={[styles.recordRow, isDarkMode && styles.recordRowDark, { borderBottomWidth: 0 }]}>
+            <Text style={styles.recordLabel}>Grant Status</Text>
+            <Text style={[styles.recordValue, isDarkMode && { color: '#F8FAFC' }, { textTransform: 'uppercase' }]}>
+              {grantStatusText}
+            </Text>
           </View>
         </View>
 
-        {/* STEP 1: ENROLLED INSTITUTION (READ-ONLY) */}
-        <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-          <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }, { marginBottom: 6 }]}>
-            1. Enrolled Educational Institution
+        <View style={[styles.sectionDivider, isDarkMode && styles.sectionDividerDark]} />
+
+        {/* ============================================================== */}
+        {/* SECTION 1: GRANT APPLICATION                                   */}
+        {/* ============================================================== */}
+        <View style={styles.sectionHeadingRow}>
+          <Text style={[styles.sectionHeading, isDarkMode && styles.sectionHeadingDark]}>
+            GRANT APPLICATION
           </Text>
+          {application && (
+            <Badge
+              label={grantStatusText}
+              variant={getStatusBadgeVariant(grantStatusText)}
+            />
+          )}
+        </View>
 
-          <View style={{ marginBottom: 8, alignSelf: 'flex-start', maxWidth: '100%' }}>
-            <Badge label={instBadgeLabel} variant={instBadgeVariant} />
-          </View>
-
-          <Text style={[styles.cardSubtitle, isDarkMode && { color: '#94A3B8' }, { marginBottom: 12 }]}>
-            Recorded educational institution for the active scholarship period.
-          </Text>
-
-          <View style={[styles.selectorBox, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.selectorText, isDarkMode && { color: '#F8FAFC' }]}>
-                {institutionDisplayName}
-              </Text>
-              <Text style={styles.selectorSub}>
-                {institutionCodeDisplay}
-              </Text>
+        {!application ? (
+          <View
+            style={[
+              styles.emptyStartCard,
+              isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+            ]}
+          >
+            <View
+              style={[
+                styles.emptyStartIconCircle,
+                { backgroundColor: isDarkMode ? '#431407' : '#FFF7ED' },
+              ]}
+            >
+              <IconSymbol
+                name="wallet.pass.fill"
+                size={36}
+                color={isDarkMode ? '#FB923C' : '#EA580C'}
+              />
             </View>
-          </View>
-
-          {!application && (
+            <Text
+              style={[
+                styles.emptyStartTitle,
+                isDarkMode && { color: '#F8FAFC' },
+              ]}
+            >
+              No Grant Application Yet
+            </Text>
+            <Text
+              style={[
+                styles.emptyStartSub,
+                isDarkMode && { color: '#CBD5E1' },
+              ]}
+            >
+              You have not submitted an educational grant application for the current academic period. Begin your application to confirm your enrolled school and submit verification documents.
+            </Text>
             <TouchableOpacity
-              style={[styles.primaryBtn, submitting && styles.primaryBtnDisabled]}
+              style={[
+                styles.primaryBtn,
+                { width: '100%', maxWidth: 280, marginTop: 4 },
+                submitting && styles.primaryBtnDisabled,
+              ]}
               onPress={handleCreateApplication}
               disabled={submitting}
+              activeOpacity={0.8}
             >
               {submitting ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
@@ -622,260 +701,646 @@ export default function ScholarshipGrantScreen() {
                 </>
               )}
             </TouchableOpacity>
-          )}
-        </View>
-
-        {/* PHASE 4D: COMPONENT STATUSES & HOLD EXPLANATION */}
-        <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-          <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>
-            Grant Processing & Component Breakdown
-          </Text>
-          <Text style={[styles.cardSubtitle, isDarkMode && { color: '#94A3B8' }]}>
-            Status of individual grant components for current period.
-          </Text>
-
-          <View style={{ gap: 10, marginTop: 4 }}>
-            {/* Stipend Component Status */}
-            <View style={[styles.docItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-              <View style={styles.docHeader}>
-                <Text style={[styles.docTypeTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                  Educational Stipend
+          </View>
+        ) : (
+          <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+            {/* Enrolled Educational Institution */}
+            <View style={{ marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A', flex: 1, marginRight: 8 }}>
+                  Enrolled Educational Institution
                 </Text>
-                <View style={{ maxWidth: '100%', alignSelf: 'flex-start' }}>
-                  <Badge label={stipendStatusLabel} variant="success" />
-                </View>
               </View>
-              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                Stipend processing runs independently and is unaffected by institution verification.
-              </Text>
+              <Badge label={instBadgeLabel} variant={instBadgeVariant} />
             </View>
 
-            {/* Tuition Component Status */}
-            <View style={[styles.docItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-              <View style={styles.docHeader}>
-                <Text style={[styles.docTypeTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                  Tuition Grant
+            <View style={[styles.selectorBox, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.selectorText, isDarkMode && { color: '#F8FAFC' }]}>
+                  {institutionDisplayName}
                 </Text>
-                <View style={{ maxWidth: '100%', alignSelf: 'flex-start' }}>
-                  <Badge
-                    label={tuitionStatusLabel}
-                    variant={isTuitionOnHold ? 'warning' : 'info'}
-                  />
-                </View>
+                <Text style={styles.selectorSub}>
+                  {institutionCodeDisplay}
+                </Text>
               </View>
-              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                {isTuitionOnHold
-                  ? 'Tuition payment requires registered partner institution verification by Secretariat.'
-                  : 'Partner institution verified. Tuition grant processing ready.'}
-              </Text>
             </View>
 
-            {/* Hold Explanation Card */}
             {isTuitionOnHold && (
-              <View style={{ backgroundColor: isDarkMode ? '#1E293B' : '#FEF3C7', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#F59E0B', marginTop: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#D97706" />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#B45309' }}>
-                    Tuition Processing Hold Notice
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#78350F', lineHeight: 18 }}>
+              <View style={{ marginTop: 10, backgroundColor: isDarkMode ? '#451A03' : '#FFFBEB', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: isDarkMode ? '#B45309' : '#FDE68A' }}>
+                <Text style={{ fontSize: 11, color: isDarkMode ? '#FDE68A' : '#B45309', fontWeight: '600', lineHeight: 16 }}>
                   {holdExplanation}
                 </Text>
               </View>
             )}
 
-            {/* Authoritative Backend Financial Figures */}
-            {hasTuitionFigures && (
-              <View style={{ marginTop: 8, backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: isDarkMode ? '#334155' : '#E2E8F0' }}>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: isDarkMode ? '#38BDF8' : '#0284C7', marginBottom: 8, letterSpacing: 0.5 }}>
-                  AUTHORITATIVE TUITION FINANCIAL FIGURES
-                </Text>
-                <View style={{ gap: 8 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Assessed Eligible Tuition</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
-                      {formatCurrency(assessedTuition)}
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Program Tuition Maximum</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
-                      {formatCurrency(programTuitionMax)}
-                    </Text>
-                  </View>
-                  <View style={{ height: 1, backgroundColor: isDarkMode ? '#334155' : '#CBD5E1', marginVertical: 2 }} />
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>Actual Tuition Grant Entitlement</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#16A34A' }}>
-                      {formatCurrency(actualEntitlement)}
-                    </Text>
-                  </View>
+            {/* Application Under Review Notice */}
+            {(application.grant_status === 'Submitted' || application.grant_status === 'Under Review' || application.grant_status === 'For Review') && (
+              <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: isDarkMode ? '#334155' : '#F1F5F9' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <IconSymbol name="paperplane.fill" size={14} color={isDarkMode ? '#CBD5E1' : '#475569'} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                    Application Under Review
+                  </Text>
                 </View>
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#64748B', lineHeight: 18 }}>
+                  Your grant application and submitted documents have been received and are currently undergoing evaluation by the City Scholarship Secretariat.
+                </Text>
+                {application.submitted_at && (
+                  <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 6 }}>
+                    Submitted on {new Date(application.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </Text>
+                )}
               </View>
             )}
-          </View>
-        </View>
 
-        {/* STEP 2: DOCUMENT REQUIREMENTS & UPLOAD */}
-        {application && (
-          <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>2. Grant Requirements</Text>
-            <Text style={[styles.cardSubtitle, isDarkMode && { color: '#94A3B8' }]}>
-              {activeInstType === 'Private'
-                ? 'Scholars in Private Institutions must submit both COR and SOA.'
-                : 'Scholars in Public Institutions must submit COR.'}
-            </Text>
-
-            {/* COR Document Card */}
-            <View style={[styles.docItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-              <View style={styles.docHeader}>
-                <Text style={[styles.docTypeTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                  Certificate of Registration (COR)
+            {/* If Draft / Unsubmitted: Document Requirements & Upload Action */}
+            {!isSubmitted && (
+              <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: isDarkMode ? '#334155' : '#F1F5F9' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A', marginBottom: 4 }}>
+                  Grant Requirements
                 </Text>
-                <Text
-                  style={[
-                    styles.docReqBadge,
-                    corDoc
-                      ? { backgroundColor: '#DCFCE7', color: '#15803D' }
-                      : { backgroundColor: '#FEF3C7', color: '#B45309' },
-                  ]}
-                >
-                  {corDoc ? '✓ Uploaded' : 'Required'}
+                <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 12 }}>
+                  {activeInstType === 'Private'
+                    ? 'Scholars in Private Institutions must submit both COR and SOA.'
+                    : 'Scholars in Public Institutions must submit COR.'}
                 </Text>
-              </View>
 
-              {corDoc ? (
-                <View>
-                  <Text style={styles.docFileName}>{corDoc.file_name}</Text>
-                  <Text style={styles.docMeta}>
-                    Status: {corDoc.review_status || 'Pending'} • Submitted: {new Date(corDoc.submitted_at).toLocaleDateString()}
-                  </Text>
-                  {!isSubmitted && (
+                {/* COR Document */}
+                <View style={[styles.docItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+                  <View style={styles.docHeader}>
+                    <Text style={[styles.docTypeTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                      Certificate of Registration (COR)
+                    </Text>
+                    <Text
+                      style={[
+                        styles.docReqBadge,
+                        corDoc ? { backgroundColor: '#DCFCE7', color: '#15803D' } : { backgroundColor: '#FEF3C7', color: '#B45309' },
+                      ]}
+                    >
+                      {corDoc ? '✓ Uploaded' : 'Required'}
+                    </Text>
+                  </View>
+                  {corDoc ? (
+                    <View>
+                      <Text style={styles.docFileName}>{corDoc.file_name}</Text>
+                      <TouchableOpacity
+                        style={styles.replaceBtn}
+                        onPress={() => handlePickAndUploadDocument('COR')}
+                        disabled={uploadingDoc === 'COR'}
+                      >
+                        {uploadingDoc === 'COR' ? (
+                          <ActivityIndicator size="small" color="#EA580C" />
+                        ) : (
+                          <>
+                            <IconSymbol name="arrow.triangle.2.circlepath" size={14} color="#334155" />
+                            <Text style={styles.replaceBtnText}>Replace COR</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
                     <TouchableOpacity
-                      style={styles.replaceBtn}
+                      style={styles.uploadBtn}
                       onPress={() => handlePickAndUploadDocument('COR')}
                       disabled={uploadingDoc === 'COR'}
                     >
                       {uploadingDoc === 'COR' ? (
-                        <ActivityIndicator size="small" color="#0284C7" />
-                      ) : (
-                        <>
-                          <IconSymbol name="arrow.triangle.2.circlepath" size={14} color="#334155" />
-                          <Text style={styles.replaceBtnText}>Replace COR Document</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ) : (
-                !isSubmitted && (
-                  <TouchableOpacity
-                    style={styles.uploadBtn}
-                    onPress={() => handlePickAndUploadDocument('COR')}
-                    disabled={uploadingDoc === 'COR'}
-                  >
-                    {uploadingDoc === 'COR' ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <IconSymbol name="doc.fill" size={14} color="#FFFFFF" />
-                        <Text style={styles.uploadBtnText}>Upload COR (PDF/Image)</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )
-              )}
-              {renderOcrFeedback('COR', 'Certificate of Registration (COR)')}
-            </View>
-
-            {/* SOA Document Card (Private only) */}
-            {activeInstType === 'Private' && (
-              <View style={[styles.docItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-                <View style={styles.docHeader}>
-                  <Text style={[styles.docTypeTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                    Statement of Account (SOA)
-                  </Text>
-                  <Text
-                    style={[
-                      styles.docReqBadge,
-                      soaDoc
-                        ? { backgroundColor: '#DCFCE7', color: '#15803D' }
-                        : { backgroundColor: '#FEF3C7', color: '#B45309' },
-                    ]}
-                  >
-                    {soaDoc ? '✓ Uploaded' : 'Required for Private'}
-                  </Text>
-                </View>
-
-                {soaDoc ? (
-                  <View>
-                    <Text style={styles.docFileName}>{soaDoc.file_name}</Text>
-                    <Text style={styles.docMeta}>
-                      Status: {soaDoc.review_status || 'Pending'} • Submitted: {new Date(soaDoc.submitted_at).toLocaleDateString()}
-                    </Text>
-                    {!isSubmitted && (
-                      <TouchableOpacity
-                        style={styles.replaceBtn}
-                        onPress={() => handlePickAndUploadDocument('SOA')}
-                        disabled={uploadingDoc === 'SOA'}
-                      >
-                        {uploadingDoc === 'SOA' ? (
-                          <ActivityIndicator size="small" color="#0284C7" />
-                        ) : (
-                          <>
-                            <IconSymbol name="arrow.triangle.2.circlepath" size={14} color="#334155" />
-                            <Text style={styles.replaceBtnText}>Replace SOA Document</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ) : (
-                  !isSubmitted && (
-                    <TouchableOpacity
-                      style={styles.uploadBtn}
-                      onPress={() => handlePickAndUploadDocument('SOA')}
-                      disabled={uploadingDoc === 'SOA'}
-                    >
-                      {uploadingDoc === 'SOA' ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
                         <>
                           <IconSymbol name="doc.fill" size={14} color="#FFFFFF" />
-                          <Text style={styles.uploadBtnText}>Upload SOA (PDF/Image)</Text>
+                          <Text style={styles.uploadBtnText}>Upload COR (PDF/Image)</Text>
                         </>
                       )}
                     </TouchableOpacity>
-                  )
+                  )}
+                  {renderOcrFeedback('COR', 'Certificate of Registration (COR)')}
+                </View>
+
+                {/* SOA Document (Private) */}
+                {activeInstType === 'Private' && (
+                  <View style={[styles.docItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+                    <View style={styles.docHeader}>
+                      <Text style={[styles.docTypeTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                        Statement of Account (SOA)
+                      </Text>
+                      <Text
+                        style={[
+                          styles.docReqBadge,
+                          soaDoc ? { backgroundColor: '#DCFCE7', color: '#15803D' } : { backgroundColor: '#FEF3C7', color: '#B45309' },
+                        ]}
+                      >
+                        {soaDoc ? '✓ Uploaded' : 'Required for Private'}
+                      </Text>
+                    </View>
+                    {soaDoc ? (
+                      <View>
+                        <Text style={styles.docFileName}>{soaDoc.file_name}</Text>
+                        <TouchableOpacity
+                          style={styles.replaceBtn}
+                          onPress={() => handlePickAndUploadDocument('SOA')}
+                          disabled={uploadingDoc === 'SOA'}
+                        >
+                          {uploadingDoc === 'SOA' ? (
+                            <ActivityIndicator size="small" color="#EA580C" />
+                          ) : (
+                            <>
+                              <IconSymbol name="arrow.triangle.2.circlepath" size={14} color="#334155" />
+                              <Text style={styles.replaceBtnText}>Replace SOA</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.uploadBtn}
+                        onPress={() => handlePickAndUploadDocument('SOA')}
+                        disabled={uploadingDoc === 'SOA'}
+                      >
+                        {uploadingDoc === 'SOA' ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <>
+                            <IconSymbol name="doc.fill" size={14} color="#FFFFFF" />
+                            <Text style={styles.uploadBtnText}>Upload SOA (PDF/Image)</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                    {renderOcrFeedback('SOA', 'Statement of Account (SOA)')}
+                  </View>
                 )}
-                {renderOcrFeedback('SOA', 'Statement of Account (SOA)')}
+
+                {/* Final Submit Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.primaryBtn,
+                    (!corDoc || (activeInstType === 'Private' && !soaDoc) || submitting) && styles.primaryBtnDisabled,
+                  ]}
+                  onPress={handleSubmitApplication}
+                  disabled={!corDoc || (activeInstType === 'Private' && !soaDoc) || submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <Text style={styles.primaryBtnText}>Submit Grant Application</Text>
+                      <IconSymbol name="paperplane.fill" size={16} color="#FFFFFF" />
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             )}
+          </View>
+        )}
 
-            {/* FINAL SUBMIT BUTTON */}
-            {!isSubmitted && (
+        <View style={[styles.sectionDivider, isDarkMode && styles.sectionDividerDark]} />
+
+        {/* ============================================================== */}
+        {/* SECTION 2: GRANT COMPLIANCE                                    */}
+        {/* ============================================================== */}
+        <View style={[styles.complianceCard, isDarkMode && styles.complianceCardDark]}>
+          <View style={styles.sectionHeadingRow}>
+            <Text style={[styles.sectionHeading, isDarkMode && styles.sectionHeadingDark]}>
+              GRANT COMPLIANCE
+            </Text>
+            {isComplianceRequired && (
+              <Badge
+                label={`${complianceCount > 0 ? complianceCount + ' ' : ''}Action Required`}
+                variant="warning"
+              />
+            )}
+          </View>
+
+          {isComplianceRequired ? (
+            /* STATE C: Submitted + active compliance requests */
+            <View
+              style={[
+                styles.complianceActionBox,
+                isDarkMode && styles.complianceActionBoxDark,
+              ]}
+            >
+              <View style={styles.complianceActionHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <IconSymbol name="exclamationmark.triangle.fill" size={18} color="#EA580C" />
+                  <Text style={[styles.complianceActionTitle, isDarkMode && { color: '#FB923C' }]}>
+                    {complianceCount > 0 ? `${complianceCount} Action Required` : 'Action Required'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.complianceActionSub, isDarkMode && { color: '#FED7AA' }]}>
+                Document corrections have been requested.
+              </Text>
+
+              {/* Flagged items list */}
+              {complianceDocs.map((doc) => (
+                <View
+                  key={doc.grant_document_id}
+                  style={{
+                    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+                    padding: 10,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: isDarkMode ? '#7C2D12' : '#FED7AA',
+                    marginTop: 2,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                      {doc.document_type === 'COR' ? 'Certificate of Registration (COR)' : 'Statement of Account (SOA)'}
+                    </Text>
+                    <Badge label={doc.review_status} variant="warning" />
+                  </View>
+                  {doc.review_remarks ? (
+                    <Text style={{ fontSize: 11, color: isDarkMode ? '#FCA5A5' : '#DC2626', marginTop: 4, fontWeight: '600' }}>
+                      Secretariat Note: {doc.review_remarks}
+                    </Text>
+                  ) : null}
+                  <TouchableOpacity
+                    style={[styles.replaceBtn, { alignSelf: 'flex-start', marginTop: 8 }]}
+                    onPress={() => handlePickAndUploadDocument(doc.document_type)}
+                    disabled={uploadingDoc === doc.document_type}
+                  >
+                    {uploadingDoc === doc.document_type ? (
+                      <ActivityIndicator size="small" color="#EA580C" />
+                    ) : (
+                      <>
+                        <IconSymbol name="arrow.triangle.2.circlepath" size={12} color="#334155" />
+                        <Text style={styles.replaceBtnText}>Replace {doc.document_type}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ))}
+
               <TouchableOpacity
                 style={[
-                  styles.primaryBtn,
-                  (!corDoc || (activeInstType === 'Private' && !soaDoc) || submitting) && styles.primaryBtnDisabled,
+                  styles.complianceCtaRow,
+                  isDarkMode && styles.complianceCtaRowDark,
                 ]}
-                onPress={handleSubmitApplication}
-                disabled={!corDoc || (activeInstType === 'Private' && !soaDoc) || submitting}
+                onPress={() => router.push('/education/grant/compliance' as any)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.complianceCtaText, isDarkMode && { color: '#FB923C' }]}>
+                  Open Compliance
+                </Text>
+                <IconSymbol name="chevron.right" size={14} color={isDarkMode ? '#FB923C' : '#EA580C'} />
+              </TouchableOpacity>
+            </View>
+          ) : !isSubmitted ? (
+            /* STATE A: Draft / not submitted — informational */
+            <View style={{ paddingVertical: 4 }}>
+              <Text style={[styles.complianceInfoText, isDarkMode && { color: '#CBD5E1' }]}>
+                No compliance requests yet.
+              </Text>
+              <Text style={[styles.complianceInfoSub, isDarkMode && { color: '#64748B' }]}>
+                Compliance requests will appear here if document corrections are requested after your grant application is submitted.
+              </Text>
+            </View>
+          ) : (
+            /* STATE B: Submitted + no active compliance requests */
+            <View style={styles.compliancePositiveRow}>
+              <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+              <Text style={[styles.compliancePositiveText, isDarkMode && { color: '#86EFAC' }]}>
+                No active compliance requests.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {showPaymentSection && (
+          <View style={[styles.sectionDivider, isDarkMode && styles.sectionDividerDark]} />
+        )}
+
+        {/* ============================================================== */}
+        {/* SECTION 3: PAYMENT / RELEASE                                   */}
+        {/* ============================================================== */}
+        {showPaymentSection && (
+          <>
+            <View style={styles.sectionHeadingRow}>
+              <Text style={[styles.sectionHeading, isDarkMode && styles.sectionHeadingDark]}>
+                PAYMENT / RELEASE
+              </Text>
+              <Badge
+                label={
+                  application?.grant_status === 'Disbursed' || application?.grant_status === 'Released' || application?.grant_status === 'Paid'
+                    ? 'Disbursed'
+                    : 'Processing'
+                }
+                variant={
+                  application?.grant_status === 'Disbursed' || application?.grant_status === 'Released' || application?.grant_status === 'Paid'
+                    ? 'success'
+                    : 'info'
+                }
+              />
+            </View>
+
+            <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                  Grant Entitlement & Processing
+                </Text>
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                  {application?.grant_status || 'Under Review'}
+                </Text>
+              </View>
+
+              {hasTuitionFigures && (
+                <View
+                  style={[
+                    styles.financialCard,
+                    { marginBottom: 0 },
+                    isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                  ]}
+                >
+                  <View style={styles.financialCol}>
+                    <Text style={styles.financialLabel}>Assessed Tuition</Text>
+                    <Text style={[styles.financialVal, isDarkMode && { color: '#F8FAFC' }]}>
+                      {assessedTuition !== undefined ? formatCurrency(assessedTuition) : '--'}
+                    </Text>
+                  </View>
+                  <View style={[styles.financialDivider, isDarkMode && { backgroundColor: '#334155' }]} />
+                  <View style={styles.financialCol}>
+                    <Text style={styles.financialLabel}>Grant Cap</Text>
+                    <Text style={[styles.financialVal, { color: '#16A34A' }]}>
+                      {programTuitionMax !== undefined ? formatCurrency(programTuitionMax) : '--'}
+                    </Text>
+                  </View>
+                  <View style={[styles.financialDivider, isDarkMode && { backgroundColor: '#334155' }]} />
+                  <View style={styles.financialCol}>
+                    <Text style={styles.financialLabel}>Actual Entitlement</Text>
+                    <Text style={[styles.financialVal, { color: isDarkMode ? '#38BDF8' : '#EA580C' }]}>
+                      {actualEntitlement !== undefined ? formatCurrency(actualEntitlement) : '--'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </>
+        )}
+
+        {showDistributionSection && (
+          <View style={[styles.sectionDivider, isDarkMode && styles.sectionDividerDark]} />
+        )}
+
+        {/* ============================================================== */}
+        {/* SECTION 4: DISTRIBUTION                                        */}
+        {/* ============================================================== */}
+        {showDistributionSection && (
+          <>
+            <View style={styles.sectionHeadingRow}>
+              <Text style={[styles.sectionHeading, isDarkMode && styles.sectionHeadingDark]}>
+                DISTRIBUTION
+              </Text>
+              <Badge label="Scheduled Releases" variant="info" />
+            </View>
+
+            {/* Releases list */}
+            <View style={{ gap: 14 }}>
+              {grantReleases.map((rel) => (
+                <View
+                  key={rel.release_code || rel.academic_year}
+                  style={[
+                    styles.card,
+                    { padding: 14, marginBottom: 0 },
+                    isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+                  ]}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <View>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                        AY {rel.academic_year} • {rel.academic_term}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                        Release Code: {rel.release_code}
+                      </Text>
+                    </View>
+                    <Badge
+                      label={rel.release_status}
+                      variant={
+                        rel.release_status === 'Completed' || rel.release_status === 'Released'
+                          ? 'success'
+                          : rel.release_status === 'In Progress' || rel.release_status === 'Partially Released'
+                          ? 'info'
+                          : 'neutral'
+                      }
+                    />
+                  </View>
+
+                  {/* Financial summary */}
+                  <View
+                    style={[
+                      styles.financialCard,
+                      { marginBottom: 12 },
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                    ]}
+                  >
+                    <View style={styles.financialCol}>
+                      <Text style={styles.financialLabel}>Authorized</Text>
+                      <Text style={[styles.financialVal, isDarkMode && { color: '#F8FAFC' }]}>
+                        {formatCurrency(rel.authorized_amount)}
+                      </Text>
+                    </View>
+                    <View style={[styles.financialDivider, isDarkMode && { backgroundColor: '#334155' }]} />
+                    <View style={styles.financialCol}>
+                      <Text style={styles.financialLabel}>Released</Text>
+                      <Text style={[styles.financialVal, { color: '#16A34A' }]}>
+                        {formatCurrency(rel.total_released_amount)}
+                      </Text>
+                    </View>
+                    <View style={[styles.financialDivider, isDarkMode && { backgroundColor: '#334155' }]} />
+                    <View style={styles.financialCol}>
+                      <Text style={styles.financialLabel}>Remaining</Text>
+                      <Text style={[styles.financialVal, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
+                        {formatCurrency(rel.remaining_amount)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Components */}
+                  <View style={{ gap: 10 }}>
+                    {rel.components.map((comp) => {
+                      const isF2F = comp.release_method === 'Face-to-Face';
+                      const f2f = comp.f2f_schedule;
+                      const inst = comp.institutional_payment;
+
+                      return (
+                        <View
+                          key={comp.component_id}
+                          style={[
+                            styles.componentBox,
+                            isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                          ]}
+                        >
+                          <View style={styles.componentTopRow}>
+                            <View style={styles.componentBadges}>
+                              <Badge
+                                label={comp.component_type}
+                                variant={comp.component_type === 'Stipend' ? 'success' : 'info'}
+                              />
+                              <Text style={[styles.componentMethod, isDarkMode && { color: '#94A3B8' }]}>
+                                {comp.release_method}
+                              </Text>
+                            </View>
+                            <Text style={[styles.componentAmount, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
+                              {formatCurrency(comp.amount)}
+                            </Text>
+                          </View>
+
+                          {/* F2F Schedule info */}
+                          {isF2F && f2f && (
+                            <View style={{ gap: 4, marginTop: 4, borderTopWidth: 1, borderTopColor: isDarkMode ? '#334155' : '#E2E8F0', paddingTop: 8 }}>
+                              {f2f.venue_name ? (
+                                <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#334155' }}>
+                                  <Text style={{ fontWeight: '700' }}>Venue: </Text>{f2f.venue_name}
+                                </Text>
+                              ) : null}
+                              {f2f.release_date ? (
+                                <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#334155' }}>
+                                  <Text style={{ fontWeight: '700' }}>Schedule: </Text>{f2f.release_date} {f2f.start_time ? `(${f2f.start_time} - ${f2f.end_time || ''})` : ''}
+                                </Text>
+                              ) : null}
+                              {f2f.claim_reference ? (
+                                <Text style={{ fontSize: 12, color: '#EA580C', fontWeight: '700' }}>
+                                  Claim Ref: {f2f.claim_reference}
+                                </Text>
+                              ) : null}
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                                <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Claim Status</Text>
+                                <Badge
+                                  label={f2f.claim_status || 'Scheduled'}
+                                  variant={getF2FClaimBadgeVariant(f2f.claim_status)}
+                                />
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Institutional info */}
+                          {!isF2F && inst && (
+                            <View style={{ gap: 4, marginTop: 4, borderTopWidth: 1, borderTopColor: isDarkMode ? '#334155' : '#E2E8F0', paddingTop: 8 }}>
+                              <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#334155' }}>
+                                <Text style={{ fontWeight: '700' }}>Partner School: </Text>{inst.partner_school_name}
+                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                                <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Payment Status</Text>
+                                <Badge
+                                  label={inst.institutional_status || 'Processing'}
+                                  variant={getInstitutionalBadgeVariant(inst.institutional_status)}
+                                />
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Claiming Guidelines Card */}
+            <View
+              style={[
+                styles.reqCard,
+                { marginTop: 14, marginBottom: 0 },
+                isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+              ]}
+            >
+              <View style={styles.reqHeaderRow}>
+                <View style={[styles.reqIconCircle, isDarkMode && { backgroundColor: '#064E3B' }]}>
+                  <IconSymbol name="info.circle.fill" size={18} color="#16A34A" />
+                </View>
+                <Text style={[styles.reqTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                  Claiming Guidelines
+                </Text>
+              </View>
+              <View style={styles.reqList}>
+                <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                  <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
+                    Present your valid Student ID and one (1) Government-issued ID.
+                  </Text>
+                </View>
+                <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                  <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
+                    Bring your Claim Reference code or printout of this schedule.
+                  </Text>
+                </View>
+                <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                  <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
+                    Only the registered scholar may claim unless authorized with an SPA.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </>
+        )}
+      </ScrollView>
+
+      {/* SUBMIT CONFIRMATION MODAL */}
+      <Modal
+        visible={confirmModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setConfirmModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.confirmModalCard, isDarkMode && styles.confirmModalCardDark]}>
+            <Text style={[styles.confirmModalTitle, isDarkMode && { color: '#F8FAFC' }]}>
+              SUBMIT GRANT APPLICATION
+            </Text>
+            <Text style={[styles.confirmModalSub, isDarkMode && { color: '#94A3B8' }]}>
+              {"You're ready to submit your scholarship grant application for review. Once submitted, the application will be reviewed according to the scholarship process."}
+            </Text>
+
+            <View style={[styles.summaryCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Grant Reference</Text>
+                <Text style={[styles.summaryValueRef, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
+                  {application?.grant_application_code || '--'}
+                </Text>
+              </View>
+              <View style={[styles.summaryRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
+                <Text style={styles.summaryLabel}>Institution</Text>
+                <Text style={[styles.summaryLabel, isDarkMode && { color: '#F8FAFC' }, { fontWeight: '700' }]}>
+                  {institutionDisplayName}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.confirmBtnRow}>
+              <TouchableOpacity
+                style={[styles.cancelBtn, isDarkMode && styles.cancelBtnDark]}
+                onPress={() => setConfirmModalVisible(false)}
+                disabled={submitting}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.cancelBtnText, isDarkMode && { color: '#CBD5E1' }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmSubmitBtn, submitting && styles.primaryBtnDisabled]}
+                onPress={handleConfirmSubmit}
+                disabled={submitting}
+                activeOpacity={0.8}
               >
                 {submitting ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <>
-                    <Text style={styles.primaryBtnText}>Submit Grant Application</Text>
-                    <IconSymbol name="paperplane.fill" size={16} color="#FFFFFF" />
+                    <Text style={styles.confirmSubmitBtnText}>Submit Application</Text>
+                    <IconSymbol name="paperplane.fill" size={14} color="#FFFFFF" />
                   </>
                 )}
               </TouchableOpacity>
-            )}
+            </View>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </Modal>
 
       {/* SUCCESS SUBMISSION MODAL */}
       <Modal
@@ -891,17 +1356,17 @@ export default function ScholarshipGrantScreen() {
             </View>
 
             <Text style={[styles.successModalTitle, isDarkMode && { color: '#F8FAFC' }]}>
-              Grant Application Submitted
+              Application Submitted Successfully
             </Text>
 
             <Text style={[styles.successModalSub, isDarkMode && { color: '#94A3B8' }]}>
-              Your scholarship grant application has been submitted successfully.
+              Your scholarship grant application has been submitted for evaluation by the City Scholarship Secretariat.
             </Text>
 
             <View style={[styles.summaryCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Grant Reference</Text>
-                <Text style={[styles.summaryValueRef, isDarkMode && { color: '#38BDF8' }]}>
+                <Text style={[styles.summaryValueRef, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
                   {submittedResult?.grant_application_code || application?.grant_application_code || '--'}
                 </Text>
               </View>
@@ -915,15 +1380,15 @@ export default function ScholarshipGrantScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.doneBtn}
+              style={[styles.primaryBtn, { width: '100%', marginTop: 0 }]}
               onPress={() => setSuccessModalVisible(false)}
               activeOpacity={0.8}
             >
-              <Text style={styles.doneBtnText}>Done</Text>
+              <Text style={styles.primaryBtnText}>Done</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
     </View>
   );
-}
+}

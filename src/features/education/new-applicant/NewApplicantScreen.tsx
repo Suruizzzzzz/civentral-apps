@@ -13,7 +13,7 @@ import {
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { Skeleton } from "@/src/components/ui/Skeleton";
 import { useTheme } from "@/src/context/ThemeContext";
-import { fetchCitizenDashboard, CitizenDashboardData } from "../dashboard/api/scholarshipDashboardApi";
+
 import { fetchApplicationCompliance, ApplicationComplianceData } from "../compliance/api/newApplicantComplianceApi";
 import { styles } from "./styles/NewApplicant.styles";
 
@@ -23,8 +23,7 @@ const puzzleLight = require("@/assets/images/puzzle.png");
 const puzzleDark = require("@/assets/images/puzzle-dark.png");
 const browseLight = require("@/assets/images/browse.png");
 const browseDark = require("@/assets/images/browse-dark.png");
-const myAppLight = require("@/assets/images/my-application-light.png");
-const myAppDark = require("@/assets/images/my-application-dark.png");
+
 const complianceLight = require("@/assets/images/compliance-light.png");
 const complianceDark = require("@/assets/images/compliance-dark.png");
 
@@ -34,16 +33,11 @@ export function NewApplicantScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(null);
   const [complianceData, setComplianceData] = useState<ApplicationComplianceData | null>(null);
 
   const loadData = React.useCallback(async () => {
     try {
-      const [dash, comp] = await Promise.all([
-        fetchCitizenDashboard().catch(() => null),
-        fetchApplicationCompliance().catch(() => null),
-      ]);
-      setDashboardData(dash);
+      const comp = await fetchApplicationCompliance().catch(() => null);
       setComplianceData(comp);
     } catch (err) {
       console.warn("[NewApplicantScreen] loadData error:", err);
@@ -61,9 +55,6 @@ export function NewApplicantScreen() {
     setRefreshing(true);
     loadData();
   }, [loadData]);
-
-  const application = dashboardData?.application;
-  const hasActiveApplication = Boolean(application);
 
   const appAllRequests = complianceData?.compliance_requests || [];
   const actionableRequests = appAllRequests.filter(
@@ -210,38 +201,8 @@ export function NewApplicantScreen() {
             </View>
           </View>
 
-          {/* CARD 3 SKELETON: MY APPLICATION */}
-          <View
-            style={[
-              styles.card,
-              isDarkMode && {
-                backgroundColor: "#071D37",
-                borderColor: "#0F3866",
-              },
-            ]}
-          >
-            <View style={styles.cardMainRow}>
-              <Skeleton width={95} height={95} borderRadius={16} />
-              <View style={{ flex: 1 }}>
-                <Skeleton
-                  width={130}
-                  height={20}
-                  borderRadius={6}
-                  style={{ marginBottom: 6 }}
-                />
-                <Skeleton width="90%" height={14} borderRadius={4} />
-              </View>
-            </View>
-            <View style={{ gap: 10, marginTop: 12 }}>
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <Skeleton width={110} height={24} borderRadius={12} />
-                <Skeleton width={100} height={24} borderRadius={12} />
-              </View>
-              <Skeleton width="100%" height={40} borderRadius={20} />
-            </View>
-          </View>
 
-          {/* CARD 4 SKELETON: COMPLIANCE */}
+          {/* CARD 3 SKELETON: COMPLIANCE */}
           <View
             style={[
               styles.card,
@@ -522,167 +483,7 @@ export function NewApplicantScreen() {
             </View>
           </View>
 
-          {/* CARD 3: MY APPLICATION */}
-          <View
-            style={[
-              styles.card,
-              isDarkMode && {
-                backgroundColor: "#071D37",
-                borderColor: "#0F3866",
-              },
-            ]}
-          >
-            <View style={styles.cardMainRow}>
-              <Image
-                source={isDarkMode ? myAppDark : myAppLight}
-                style={styles.artworkImage}
-                resizeMode="contain"
-              />
-
-              <View style={styles.cardContent}>
-                {hasActiveApplication ? (
-                  <View style={styles.badgeRow}>
-                    <View
-                      style={[
-                        styles.successBadge,
-                        isDarkMode && { backgroundColor: "#064E3B" },
-                      ]}
-                    >
-                      <IconSymbol
-                        name="checkmark.circle.fill"
-                        size={11}
-                        color={isDarkMode ? "#34D399" : "#15803D"}
-                      />
-                      <Text
-                        style={[
-                          styles.successBadgeText,
-                          isDarkMode && { color: "#34D399" },
-                        ]}
-                      >
-                        Active Application
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.badgeRow}>
-                    <View
-                      style={[
-                        styles.neutralBadge,
-                        isDarkMode && { backgroundColor: "#1E293B" },
-                      ]}
-                    >
-                      <IconSymbol
-                        name="circle"
-                        size={11}
-                        color={isDarkMode ? "#94A3B8" : "#64748B"}
-                      />
-                      <Text
-                        style={[
-                          styles.neutralBadgeText,
-                          isDarkMode && { color: "#94A3B8" },
-                        ]}
-                      >
-                        No Active Application
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-                <Text
-                  style={[styles.cardTitle, isDarkMode && { color: "#F8FAFC" }]}
-                >
-                  My Application
-                </Text>
-                <Text
-                  style={[styles.cardSub, isDarkMode && { color: "#CBD5E1" }]}
-                >
-                  {hasActiveApplication
-                    ? `${application?.application_status} • Track your application progress, review milestones, and interview notices.`
-                    : "Track your active scholarship application status, verification milestones, and scheduled interviews."}
-                </Text>
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.cardBottomRow,
-                isDarkMode && { borderTopColor: "#0E2C52" },
-              ]}
-            >
-              <View style={styles.pillGroup}>
-                <View
-                  style={[
-                    styles.infoPill,
-                    isDarkMode && { backgroundColor: "#0B2749" },
-                  ]}
-                >
-                  <IconSymbol
-                    name="doc.text.fill"
-                    size={13}
-                    color={isDarkMode ? "#94A3B8" : "#64748B"}
-                  />
-                  <Text
-                    style={[
-                      styles.infoPillText,
-                      isDarkMode && { color: "#CBD5E1" },
-                    ]}
-                  >
-                    {hasActiveApplication
-                      ? application?.application_code || "Active"
-                      : "Direct tracking"}
-                  </Text>
-                </View>
-
-                <View
-                  style={[
-                    styles.infoPill,
-                    isDarkMode && { backgroundColor: "#0B2749" },
-                  ]}
-                >
-                  <IconSymbol
-                    name="clock.fill"
-                    size={13}
-                    color={isDarkMode ? "#94A3B8" : "#64748B"}
-                  />
-                  <Text
-                    style={[
-                      styles.infoPillText,
-                      isDarkMode && { color: "#CBD5E1" },
-                    ]}
-                  >
-                    {hasActiveApplication
-                      ? application?.application_status || "In Review"
-                      : "Lifecycle updates"}
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.secondaryActionBtn,
-                  isDarkMode && { borderColor: "#38BDF8" },
-                ]}
-                onPress={() => router.push('/education/new-applicant/my-application' as any)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.secondaryActionBtnText,
-                    isDarkMode && { color: "#38BDF8" },
-                  ]}
-                >
-                  {hasActiveApplication ? "View Application" : "Check Application"}
-                </Text>
-                <IconSymbol
-                  name="chevron.right"
-                  size={14}
-                  color={isDarkMode ? "#38BDF8" : "#0284C7"}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* CARD 4: COMPLIANCE */}
+          {/* CARD 3: COMPLIANCE */}
           <View
             style={[
               styles.card,
