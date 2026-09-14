@@ -16,6 +16,8 @@ import {
   CitizenRenewalOverview,
   fetchCitizenRenewalOverview,
   RequiredDocumentItem,
+  CitizenComplianceDetailsData,
+  fetchCitizenRenewalCompliance,
 } from "./api/renewalApi";
 import { styles } from "./styles/ScholarshipRenewal.styles";
 
@@ -49,12 +51,17 @@ export function ScholarshipRenewalScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CitizenRenewalOverview | null>(null);
+  const [complianceDetails, setComplianceDetails] = useState<CitizenComplianceDetailsData | null>(null);
 
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const overview = await fetchCitizenRenewalOverview();
+      const [overview, compliance] = await Promise.all([
+        fetchCitizenRenewalOverview(),
+        fetchCitizenRenewalCompliance().catch(() => null),
+      ]);
       setData(overview);
+      setComplianceDetails(compliance);
     } catch (err: any) {
       console.error("[ScholarshipRenewalScreen] fetch error:", err);
       setError(
@@ -657,6 +664,86 @@ export function ScholarshipRenewalScreen() {
                   </View>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* RENEWAL COMPLIANCE SECTION */}
+          {(data.state === "RENEWAL_AVAILABLE" || data.state === "RENEWAL_EXISTS") && (
+            <View
+              style={[
+                styles.card,
+                { marginTop: 16 },
+                isDarkMode && {
+                  backgroundColor: "#1E293B",
+                  borderColor: "#334155",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { marginBottom: 8 },
+                  isDarkMode && { color: "#F8FAFC" },
+                ]}
+              >
+                Renewal Compliance
+              </Text>
+
+              {(() => {
+                const unresolvedCount = complianceDetails?.unresolved_compliance_requests?.length ?? 0;
+                const isRenewalSubmitted = data.state === "RENEWAL_EXISTS";
+
+                if (unresolvedCount > 0) {
+                  /* Active compliance requests */
+                  return (
+                    <View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#D97706" />
+                        <Text style={{ fontSize: 13, fontWeight: "800", color: isDarkMode ? "#FDE68A" : "#B45309" }}>
+                          {unresolvedCount} Action Required
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: isDarkMode ? "#CBD5E1" : "#64748B", lineHeight: 17, marginBottom: 10 }}>
+                        Document corrections have been requested for your renewal application.
+                      </Text>
+                      <TouchableOpacity
+                        style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-end" }}
+                        onPress={() => router.push("/education/renewal/compliance" as any)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: "800", color: isDarkMode ? "#4ADE80" : "#15803D" }}>
+                          Open Compliance
+                        </Text>
+                        <IconSymbol name="chevron.right" size={14} color={isDarkMode ? "#4ADE80" : "#15803D"} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }
+
+                if (!isRenewalSubmitted) {
+                  /* Pre-submission */
+                  return (
+                    <View>
+                      <Text style={{ fontSize: 12.5, fontWeight: "600", color: isDarkMode ? "#CBD5E1" : "#475569", marginBottom: 2 }}>
+                        No compliance requests yet.
+                      </Text>
+                      <Text style={{ fontSize: 11.5, color: isDarkMode ? "#64748B" : "#94A3B8", lineHeight: 17 }}>
+                        Compliance requests will appear here if document corrections are requested after your renewal is submitted.
+                      </Text>
+                    </View>
+                  );
+                }
+
+                /* Submitted + no active requests */
+                return (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                    <Text style={{ fontSize: 12.5, fontWeight: "600", color: isDarkMode ? "#86EFAC" : "#16A34A" }}>
+                      No active compliance requests.
+                    </Text>
+                  </View>
+                );
+              })()}
             </View>
           )}
         </>
