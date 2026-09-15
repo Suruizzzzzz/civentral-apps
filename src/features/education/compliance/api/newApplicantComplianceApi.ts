@@ -87,10 +87,14 @@ export async function fetchApplicationCompliance(): Promise<ApplicationComplianc
 
 export async function submitApplicationComplianceReplacement(
   complianceId: number,
-  file: { uri: string; name: string; type: string }
+  file: { uri: string; name: string; type: string },
+  targetDocumentId?: number | null
 ): Promise<ApplicationComplianceData> {
   const formData = new FormData();
   formData.append('compliance_id', String(complianceId));
+  if (targetDocumentId) {
+    formData.append('target_document_id', String(targetDocumentId));
+  }
   formData.append('replacement_file', {
     uri: file.uri,
     name: file.name,

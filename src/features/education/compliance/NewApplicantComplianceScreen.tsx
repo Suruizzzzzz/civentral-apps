@@ -112,11 +112,16 @@ export function NewApplicantComplianceScreen() {
 
     setIsSubmittingCompId(item.compliance_id);
     try {
-      const updatedData = await submitApplicationComplianceReplacement(item.compliance_id, {
-        uri: picked.uri,
-        name: picked.name,
-        type: picked.mimeType || 'application/octet-stream',
-      });
+      const targetDocId = item.target_document?.application_document_id || null;
+      const updatedData = await submitApplicationComplianceReplacement(
+        item.compliance_id,
+        {
+          uri: picked.uri,
+          name: picked.name,
+          type: picked.mimeType || 'application/octet-stream',
+        },
+        targetDocId
+      );
 
       setSelectedFiles((prev) => {
         const copy = { ...prev };

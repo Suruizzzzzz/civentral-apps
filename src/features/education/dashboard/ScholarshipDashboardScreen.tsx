@@ -1011,6 +1011,9 @@ export function ScholarshipDashboardScreen() {
                 historyList.map((rec, idx) => {
                   const isLast = idx === historyList.length - 1;
                   const colors = getStatusColors(rec.status, isDarkMode);
+                  const isCurrentApplication =
+                    rec.recordType === 'Application' &&
+                    (rec.isCurrent || (Boolean(application?.application_code) && rec.referenceCode === application?.application_code));
 
                   return (
                     <View
@@ -1124,24 +1127,47 @@ export function ScholarshipDashboardScreen() {
                           ) : null}
                         </View>
 
-                        {/* Per-record Documents > Link */}
-                        <TouchableOpacity
-                          style={[
-                            styles.historyDocumentsLink,
-                            isDarkMode && { backgroundColor: '#3B0764' },
-                          ]}
-                          onPress={() => openDocsForRecord(rec)}
-                          activeOpacity={0.7}
-                        >
-                          <Text
+                        {/* Actions: View Details (if current application context) and Documents */}
+                        <View style={styles.historyActionsGroup}>
+                          {isCurrentApplication ? (
+                            <TouchableOpacity
+                              style={[
+                                styles.historyDocumentsLink,
+                                isDarkMode && { backgroundColor: '#3B0764' },
+                              ]}
+                              onPress={() => router.push('/education/dashboard/details' as any)}
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={[
+                                  styles.historyDocumentsLinkText,
+                                  isDarkMode && { color: '#C084FC' },
+                                ]}
+                              >
+                                View Details ›
+                              </Text>
+                            </TouchableOpacity>
+                          ) : null}
+
+                          {/* Per-record Documents > Link */}
+                          <TouchableOpacity
                             style={[
-                              styles.historyDocumentsLinkText,
-                              isDarkMode && { color: '#C084FC' },
+                              styles.historyDocumentsLink,
+                              isDarkMode && { backgroundColor: '#3B0764' },
                             ]}
+                            onPress={() => openDocsForRecord(rec)}
+                            activeOpacity={0.7}
                           >
-                            Documents ›
-                          </Text>
-                        </TouchableOpacity>
+                            <Text
+                              style={[
+                                styles.historyDocumentsLinkText,
+                                isDarkMode && { color: '#C084FC' },
+                              ]}
+                            >
+                              Documents ›
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
                   );

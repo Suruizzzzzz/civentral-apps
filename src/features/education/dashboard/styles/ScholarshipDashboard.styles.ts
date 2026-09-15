@@ -367,6 +367,12 @@ export const styles = StyleSheet.create({
     color: "#94A3B8",
   },
 
+  historyActionsGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
   historyDocumentsLink: {
     flexDirection: "row",
     alignItems: "center",
