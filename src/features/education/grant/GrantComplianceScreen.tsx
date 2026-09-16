@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/dateUtils';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -236,7 +237,7 @@ export default function GrantComplianceScreen() {
 
                   <Text style={styles.docFileName}>{doc.file_name}</Text>
                   <Text style={styles.docMeta}>
-                    Submitted: {new Date(doc.submitted_at).toLocaleDateString()}
+                    Submitted: {formatDate(doc.submitted_at, '—')}
                   </Text>
 
                   {doc.review_remarks && (
@@ -289,3 +290,4 @@ export default function GrantComplianceScreen() {
     </View>
   );
 }
+

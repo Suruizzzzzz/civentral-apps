@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/dateUtils';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -374,7 +375,7 @@ export function RenewalApplicationScreen() {
           <View style={styles.ocrHeaderRow}>
             <IconSymbol name="checkmark.circle.fill" size={14} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
             <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
-              ✓ Document type appears correct
+              âœ“ Document type appears correct
             </Text>
           </View>
           <Text style={[styles.ocrMatchDetail, isDarkMode && { color: '#BBF7D0' }]}>
@@ -397,7 +398,7 @@ export function RenewalApplicationScreen() {
           <View style={styles.ocrHeaderRow}>
             <IconSymbol name="exclamationmark.triangle.fill" size={14} color={isDarkMode ? '#FBBF24' : '#D97706'} />
             <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FDE68A' }]}>
-              ⚠ Document type may not match
+              âš  Document type may not match
             </Text>
           </View>
           <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
@@ -571,7 +572,7 @@ export function RenewalApplicationScreen() {
                   <View style={styles.metaRow}>
                     <Text style={[styles.metaLabel, isDarkMode && { color: '#94A3B8' }]}>Current Academic Period:</Text>
                     <Text style={[styles.metaValue, isDarkMode && { color: '#F8FAFC' }]}>
-                      {overview.current_academic_period.academic_year} — {overview.current_academic_period.term}
+                      {overview.current_academic_period.academic_year} â€” {overview.current_academic_period.term}
                     </Text>
                   </View>
                 )}
@@ -580,7 +581,7 @@ export function RenewalApplicationScreen() {
                   <View style={styles.metaRow}>
                     <Text style={[styles.metaLabel, isDarkMode && { color: '#94A3B8' }]}>Renewal Window:</Text>
                     <Text style={[styles.metaValue, isDarkMode && { color: '#F8FAFC' }]}>
-                      {new Date(overview.renewal_period.opening_date).toLocaleDateString()} – {new Date(overview.renewal_period.closing_date).toLocaleDateString()}
+                      {formatDate(overview.renewal_period.opening_date)} — {formatDate(overview.renewal_period.closing_date)}
                     </Text>
                   </View>
                 )}
@@ -877,3 +878,4 @@ export function RenewalApplicationScreen() {
     </ScrollView>
   );
 }
+

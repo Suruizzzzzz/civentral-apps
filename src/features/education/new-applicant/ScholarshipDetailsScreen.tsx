@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/dateUtils';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -114,7 +115,7 @@ function computeApplyCTAState(
     return {
       canApply: false,
       buttonText: 'Application Opening Soon',
-      noticeText: `Opening Date: ${period.opening_date ? new Date(period.opening_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBA'}`,
+      noticeText: `Opening Date: ${formatDate(period.opening_date, 'TBA')}`,
     };
   }
 
@@ -128,7 +129,7 @@ function computeApplyCTAState(
       return {
         canApply: false,
         buttonText: 'Application Opening Soon',
-        noticeText: `Opening Date: ${new Date(period.opening_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+        noticeText: `Opening Date: ${formatDate(period.opening_date, '—')}`,
       };
     }
 
@@ -136,7 +137,7 @@ function computeApplyCTAState(
       return {
         canApply: false,
         buttonText: 'Application Period Closed',
-        noticeText: `The application period ended on ${new Date(period.closing_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`,
+        noticeText: `The application period ended on ${formatDate(period.closing_date, '—')}.`,
       };
     }
   }
@@ -332,7 +333,7 @@ export function ScholarshipDetailsScreen() {
                         {item.title}
                       </Text>
                       <Text style={{ fontSize: 12, color: item.is_completed ? '#16A34A' : item.is_current ? '#D97706' : '#94A3B8', marginTop: 2 }}>
-                        {item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : item.is_completed ? 'Completed' : 'Pending'}
+                        {item.date ? formatDate(item.date) : item.is_completed ? 'Completed' : 'Pending'}
                       </Text>
                     </View>
                   </View>
@@ -416,13 +417,13 @@ export function ScholarshipDetailsScreen() {
             {program.application_period ? (
               <View style={styles.applyContainer}>
                 <Text style={[styles.listTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                  AY {program.application_period.academic_year} — {program.application_period.term}
+                  AY {program.application_period.academic_year} â€” {program.application_period.term}
                 </Text>
                 <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
-                  Opening Date: {new Date(program.application_period.opening_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  Opening Date: {formatDate(program.application_period.opening_date, '—')}
                 </Text>
                 <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
-                  Closing Date: {new Date(program.application_period.closing_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  Closing Date: {formatDate(program.application_period.closing_date, '—')}
                 </Text>
               </View>
             ) : (
@@ -446,7 +447,7 @@ export function ScholarshipDetailsScreen() {
                       {b.benefit_name}
                     </Text>
                     <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
-                      ₱{b.amount.toLocaleString()} ({b.amount_basis})
+                      â‚±{b.amount.toLocaleString()} ({b.amount_basis})
                     </Text>
                   </View>
                 </View>
@@ -506,3 +507,4 @@ export function ScholarshipDetailsScreen() {
     </ScrollView>
   );
 }
+

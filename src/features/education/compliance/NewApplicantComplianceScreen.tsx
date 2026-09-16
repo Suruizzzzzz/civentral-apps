@@ -1,3 +1,4 @@
+import { formatDate } from '@/utils/dateUtils';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
@@ -393,7 +394,7 @@ export function NewApplicantComplianceScreen() {
                 <View style={styles.infoRow}>
                   <IconSymbol name="clock.fill" size={14} color="#D97706" />
                   <Text style={[styles.infoText, isDarkMode && { color: '#CBD5E1' }]}>
-                    Deadline: {new Date(item.due_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    Deadline: {formatDate(item.due_at, '—')}
                   </Text>
                 </View>
               ) : null}
@@ -445,13 +446,13 @@ export function NewApplicantComplianceScreen() {
                 <View style={styles.submittedBanner}>
                   <IconSymbol name="checkmark.circle.fill" size={20} color="#16A34A" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.submittedBannerTitle}>Replacement Submitted — Awaiting Review</Text>
+                    <Text style={styles.submittedBannerTitle}>Replacement Submitted â€” Awaiting Review</Text>
                     <Text style={styles.submittedBannerSub}>
                       Your replacement document has been submitted and is currently being validated by the Secretariat.
                     </Text>
                     {replDoc ? (
                       <Text style={styles.submittedFileMeta}>
-                        File: {replDoc.replacement_filename} • Submitted: {new Date(replDoc.submitted_at).toLocaleDateString()}
+                        File: {replDoc.replacement_filename} â€¢ Submitted: {formatDate(replDoc.submitted_at, '—')}
                       </Text>
                     ) : null}
                   </View>
@@ -765,3 +766,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

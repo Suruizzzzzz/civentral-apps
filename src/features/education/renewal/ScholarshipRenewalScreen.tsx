@@ -22,13 +22,10 @@ import {
 } from "./api/renewalApi";
 import { styles } from "./styles/ScholarshipRenewal.styles";
 
+import { formatDate } from "@/utils/dateUtils";
+
 function formatRenewalDate(value?: string | null): string {
-  if (!value) return "—";
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "—";
-
-  return parsed.toLocaleDateString();
+  return formatDate(value, "—");
 }
 
 function getCertificateStatusText(status: string): string {
@@ -387,7 +384,7 @@ export function ScholarshipRenewalScreen() {
                 </View>
               ) : null}
 
-              {/* C4 — CITIZEN-SAFE CERTIFICATE METADATA ONLY */}
+              {/* C4 â€” CITIZEN-SAFE CERTIFICATE METADATA ONLY */}
               {data.renewal?.certificate &&
                 (data.renewal.renewal_status === "For Certificate" ||
                   data.renewal.renewal_status === "Completed") && (
@@ -614,7 +611,7 @@ export function ScholarshipRenewalScreen() {
                       isDarkMode && { color: "#F8FAFC" },
                     ]}
                   >
-                    {data.current_academic_period.academic_year} —{" "}
+                    {data.current_academic_period.academic_year} â€”{" "}
                     {data.current_academic_period.term}
                   </Text>
                 </View>
@@ -754,3 +751,4 @@ export function ScholarshipRenewalScreen() {
     </ScrollView>
   );
 }
+
