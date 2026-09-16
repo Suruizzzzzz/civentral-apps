@@ -613,35 +613,49 @@ export class AuthService {
         const { json } = parseJsonResponse(text);
 
         if (json && (json.status === "success" || json.success === true)) {
+          const userObj = json.user || json.data?.user || json.data;
+          const userEmail = json.email || userObj?.email || identifier;
           const userId =
             json.citizen_user_id ||
-            json.data?.citizen_user_id ||
-            json.user?.citizen_user_id;
+            userObj?.citizen_user_id ||
+            userObj?.id ||
+            userObj?.user_id ||
+            json.data?.citizen_user_id;
           const token =
             json.token ||
+            json.session?.refresh_token ||
+            json.session?.token ||
             json.reset_token ||
             json.data?.token ||
             json.data?.reset_token;
+          const expiresAt =
+            json.expires_at ||
+            json.session?.expires_at ||
+            json.data?.expires_at;
 
           if (token && userId && purpose !== "Password Reset") {
             await AuthService.saveSession({
               token: token,
               citizen_user_id: Number(userId),
-              email: identifier,
+              email: userEmail,
+              expires_at: expiresAt,
             });
           }
 
           AuthService.setCurrentUser({
-            email: identifier,
-            citizen_user_id: userId,
+            email: userEmail,
+            citizen_user_id: userId ? Number(userId) : undefined,
             token: token,
-            user: json.user || json.data,
+            user: userObj,
           });
 
           return {
             status: "success",
             message: json.message || "Verification successful.",
             token: token,
+            user: userObj,
+            citizen_user_id: userId ? Number(userId) : undefined,
+            email: userEmail,
             data: json.data,
           };
         }
