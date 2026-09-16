@@ -47,6 +47,7 @@ export function ForgotPasswordScreen() {
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // 10-Minute Timer Countdown for OTP
   useEffect(() => {
@@ -114,6 +115,7 @@ export function ForgotPasswordScreen() {
   // Handle Back Button press
   const handleBack = () => {
     setErrorMessage(null);
+    setInfoMessage(null);
     if (step === 'otp') {
       setStep('identifier');
     } else if (step === 'new_password') {
@@ -126,6 +128,7 @@ export function ForgotPasswordScreen() {
   // STEP 1: Send OTP
   const handleSendOtp = async () => {
     setErrorMessage(null);
+    setInfoMessage(null);
     const cleanId = identifier.trim();
 
     if (!cleanId) {
@@ -137,10 +140,17 @@ export function ForgotPasswordScreen() {
     const res = await AuthService.forgotPassword(cleanId);
     setIsLoading(false);
 
-    if (res.status === 'success') {
-      if (res.token) setResetToken(res.token);
+    if (res.status === 'success' && res.token) {
+      // Existing citizen account with valid reset token
+      setResetToken(res.token);
       setTimerSeconds(600); // 10 minutes timer
       setStep('otp');
+    } else if (res.status === 'success' && !res.token) {
+      // Nonexistent account or generic enumeration-protected response
+      // DO NOT proceed to OTP. Remain on identifier/email step.
+      setInfoMessage(
+        res.message || 'If an account exists with this email, password reset instructions have been sent.'
+      );
     } else {
       setErrorMessage(res.message || 'Failed to send OTP. Please check your contact information and try again.');
     }
@@ -309,6 +319,14 @@ export function ForgotPasswordScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
 
+          {/* Info / Notice Message Box */}
+          {infoMessage ? (
+            <View style={[styles.errorBox, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+              <IconSymbol name="info.circle.fill" size={18} color="#2563EB" />
+              <Text style={[styles.errorBoxText, { color: '#1E40AF' }]}>{infoMessage}</Text>
+            </View>
+          ) : null}
+
           {/* Error Message Box */}
           {errorMessage ? (
             <View style={styles.errorBox}>
@@ -343,6 +361,7 @@ export function ForgotPasswordScreen() {
                   onChangeText={(text) => {
                     setIdentifier(text);
                     if (errorMessage) setErrorMessage(null);
+                    if (infoMessage) setInfoMessage(null);
                   }}
                   keyboardType="email-address"
                   autoCapitalize="none"

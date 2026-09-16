@@ -293,7 +293,7 @@ export async function validateCitizenGrantDocument(
       body: formData,
     });
 
-    if (res.status === 401) {
+    if (res.status === 401 || res.status === 429) {
       await handleEducationResponse(res);
     }
 

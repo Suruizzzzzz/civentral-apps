@@ -1,13 +1,14 @@
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { AuthService } from '@/src/services/auth-service';
+import { FormDraftService } from '@/src/services/form-draft-service';
 import { CitizenRenewalOverview, fetchCitizenRenewalOverview, submitCitizenRenewal, validateCitizenRenewalDocument } from './api/renewalApi';
 import { styles } from './styles/RenewalApplication.styles';
 
@@ -77,12 +78,73 @@ export function RenewalApplicationScreen() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
+  const hasHydratedRef = useRef<boolean>(false);
 
   const loadData = useCallback(async () => {
     try {
       setFetchError(null);
       const data = await fetchCitizenRenewalOverview();
       setOverview(data);
+
+      // Re-hydrate draft if available for this citizen & renewal period
+      const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+      const renewalPeriodId = data.renewal_period?.renewal_period_id || 'current';
+      if (activeUserId && data.state === 'RENEWAL_AVAILABLE' && !hasHydratedRef.current) {
+        try {
+          const draft = await FormDraftService.loadDraft<{
+            files: {
+              cor: SelectedFileState | null;
+              cog: SelectedFileState | null;
+              soa: SelectedFileState | null;
+            };
+            docValidations: {
+              cor: DocumentValidationState;
+              cog: DocumentValidationState;
+              soa: DocumentValidationState;
+            };
+          }>('renewal', activeUserId, renewalPeriodId);
+
+          if (draft && draft.files) {
+            const restoredFiles = { cor: null, cog: null, soa: null } as {
+              cor: SelectedFileState | null;
+              cog: SelectedFileState | null;
+              soa: SelectedFileState | null;
+            };
+            const restoredValidations = {
+              cor: { status: 'idle' },
+              cog: { status: 'idle' },
+              soa: { status: 'idle' },
+            } as {
+              cor: DocumentValidationState;
+              cog: DocumentValidationState;
+              soa: DocumentValidationState;
+            };
+
+            for (const docType of ['cor', 'cog', 'soa'] as const) {
+              const f = draft.files[docType];
+              if (f && f.uri) {
+                const exists = await FormDraftService.verifyFileExists(f.uri);
+                if (exists) {
+                  restoredFiles[docType] = f;
+                  if (draft.docValidations && draft.docValidations[docType]) {
+                    restoredValidations[docType] = draft.docValidations[docType];
+                  }
+                } else {
+                  console.log(`[RenewalApplicationScreen] Draft file for ${docType} (${f.name}) no longer exists in cache.`);
+                }
+              }
+            }
+            setFiles(restoredFiles);
+            setDocValidations(restoredValidations);
+          }
+        } catch (draftErr) {
+          console.warn('[RenewalApplicationScreen] Draft restoration error:', draftErr);
+        } finally {
+          hasHydratedRef.current = true;
+        }
+      } else {
+        hasHydratedRef.current = true;
+      }
 
       if (data.state === 'RENEWAL_EXISTS') {
         Alert.alert(
@@ -109,6 +171,28 @@ export function RenewalApplicationScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-save renewal draft to local storage (debounced by 500ms)
+  useEffect(() => {
+    if (!hasHydratedRef.current) return;
+    const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+    const renewalPeriodId = overview?.renewal_period?.renewal_period_id || 'current';
+    if (!activeUserId) return;
+
+    const hasData = files.cor !== null || files.cog !== null || files.soa !== null;
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      FormDraftService.saveDraft('renewal', activeUserId, renewalPeriodId, {
+        files,
+        docValidations,
+      }).catch((err) => {
+        console.warn('[RenewalApplicationScreen] Draft save error:', err);
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [files, docValidations, overview?.renewal_period?.renewal_period_id]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -236,6 +320,14 @@ export function RenewalApplicationScreen() {
       } as any);
 
       await submitCitizenRenewal(formData);
+
+      // Clear draft on successful submission
+      const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+      const renewalPeriodId = overview?.renewal_period?.renewal_period_id || 'current';
+      if (activeUserId) {
+        await FormDraftService.clearDraft('renewal', activeUserId, renewalPeriodId).catch(() => {});
+      }
+
       setSubmitSuccess(true);
     } catch (err: any) {
       console.error('[RenewalApplicationScreen] submit error:', err);

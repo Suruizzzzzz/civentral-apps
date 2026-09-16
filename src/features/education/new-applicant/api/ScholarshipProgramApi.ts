@@ -310,7 +310,7 @@ export async function submitNewScholarshipApplication(
       body: formData,
     });
 
-    if (res.status === 401) {
+    if (res.status === 401 || res.status === 429) {
       await handleEducationResponse(res);
     }
 
@@ -426,7 +426,7 @@ export async function validateCitizenDocument(
       body: formData,
     });
 
-    if (res.status === 401) {
+    if (res.status === 401 || res.status === 429) {
       await handleEducationResponse(res);
     }
 

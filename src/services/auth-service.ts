@@ -645,13 +645,13 @@ export class AuthService {
             data: json.data,
           };
         }
-      }
 
-      if (purpose === "Password Reset" || hasResetToken) {
-        return {
-          status: "success",
-          message: "OTP verified successfully.",
-        };
+        if (json && (json.status === "error" || json.message)) {
+          return {
+            status: "error",
+            message: json.message || "Invalid or expired OTP code.",
+          };
+        }
       }
 
       return {
@@ -659,13 +659,6 @@ export class AuthService {
         message: "Invalid or expired OTP code.",
       };
     } catch (error: any) {
-      if (purpose === "Password Reset" || hasResetToken) {
-        return {
-          status: "success",
-          message: "OTP verified successfully.",
-        };
-      }
-
       return {
         status: "error",
         message:
@@ -799,19 +792,17 @@ export class AuthService {
       );
       if (!response) {
         return {
-          status: "success",
-          message: "OTP verification code sent to your registered contact.",
-          email: identifier,
+          status: "error",
+          message: "Unable to reach Civentral authentication server.",
         };
       }
 
       const text = await response.text();
-      const { json } = parseJsonResponse(text);
+      const { json, errorText } = parseJsonResponse(text);
       if (!json) {
         return {
-          status: "success",
-          message: "OTP verification code sent to your registered contact.",
-          email: identifier,
+          status: "error",
+          message: errorText || "Server returned an invalid response format.",
         };
       }
 
@@ -820,7 +811,7 @@ export class AuthService {
           status: "success",
           message:
             json.message ||
-            "OTP verification code sent to your registered contact.",
+            "If an account exists with this email, password reset instructions have been sent.",
           email: json.email || identifier,
           token:
             json.reset_token ||
@@ -836,9 +827,9 @@ export class AuthService {
       };
     } catch (error: any) {
       return {
-        status: "success",
-        message: "OTP verification code sent to your registered contact.",
-        email: identifier,
+        status: "error",
+        message:
+          error?.message || "Network error connecting to Civentral servers.",
       };
     }
   }

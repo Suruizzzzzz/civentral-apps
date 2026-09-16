@@ -1,14 +1,14 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { AuthService } from '@/src/services/auth-service';
+import { FormDraftService } from '@/src/services/form-draft-service';
 import { CitizenComplianceDetailsData, fetchCitizenRenewalCompliance, submitCitizenComplianceResponse } from './api/renewalApi';
 import { SelectedFileState } from './RenewalApplicationScreen';
 import { styles } from './styles/RenewalCompliance.styles';
@@ -37,12 +37,61 @@ export function RenewalComplianceScreen() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
+  const hasHydratedRef = useRef<boolean>(false);
 
   const loadData = useCallback(async () => {
     try {
       setFetchError(null);
       const data = await fetchCitizenRenewalCompliance();
       setDetails(data);
+
+      // Re-hydrate draft if available for this citizen & renewal_id
+      const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+      const renewalId = data.renewal_id || 'current';
+      if (activeUserId && !hasHydratedRef.current) {
+        try {
+          const draft = await FormDraftService.loadDraft<{
+            clarificationText: string;
+            files: {
+              cor: SelectedFileState | null;
+              cog: SelectedFileState | null;
+              soa: SelectedFileState | null;
+            };
+          }>('renewal_compliance', activeUserId, renewalId);
+
+          if (draft) {
+            if (typeof draft.clarificationText === 'string') {
+              setClarificationText(draft.clarificationText);
+            }
+            if (draft.files) {
+              const restoredFiles = { cor: null, cog: null, soa: null } as {
+                cor: SelectedFileState | null;
+                cog: SelectedFileState | null;
+                soa: SelectedFileState | null;
+              };
+
+              for (const docType of ['cor', 'cog', 'soa'] as const) {
+                const f = draft.files[docType];
+                if (f && f.uri) {
+                  const exists = await FormDraftService.verifyFileExists(f.uri);
+                  if (exists) {
+                    restoredFiles[docType] = f;
+                  } else {
+                    console.log(`[RenewalComplianceScreen] Draft file for ${docType} (${f.name}) no longer exists in cache.`);
+                  }
+                }
+              }
+              setFiles(restoredFiles);
+            }
+          }
+        } catch (draftErr) {
+          console.warn('[RenewalComplianceScreen] Draft restoration error:', draftErr);
+        } finally {
+          hasHydratedRef.current = true;
+        }
+      } else {
+        hasHydratedRef.current = true;
+      }
     } catch (err: any) {
       console.error('[RenewalComplianceScreen] fetch error:', err);
       setFetchError(err?.message || 'No active compliance action required for your scholarship renewal.');
@@ -57,6 +106,32 @@ export function RenewalComplianceScreen() {
       loadData();
     }, [loadData])
   );
+
+  // Auto-save renewal compliance draft to local storage (debounced by 500ms)
+  useEffect(() => {
+    if (!hasHydratedRef.current || !details?.renewal_id) return;
+    const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+    if (!activeUserId) return;
+
+    const hasData =
+      clarificationText.trim().length > 0 ||
+      files.cor !== null ||
+      files.cog !== null ||
+      files.soa !== null;
+
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      FormDraftService.saveDraft('renewal_compliance', activeUserId, details.renewal_id, {
+        clarificationText,
+        files,
+      }).catch((err) => {
+        console.warn('[RenewalComplianceScreen] Draft save error:', err);
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [clarificationText, files, details?.renewal_id]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -171,6 +246,13 @@ export function RenewalComplianceScreen() {
       }
 
       await submitCitizenComplianceResponse(formData);
+
+      // Clear draft on successful submission
+      const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+      if (activeUserId && details?.renewal_id) {
+        await FormDraftService.clearDraft('renewal_compliance', activeUserId, details.renewal_id).catch(() => {});
+      }
+
       setSubmitSuccess(true);
     } catch (err: any) {
       console.error('[RenewalComplianceScreen] submit error:', err);

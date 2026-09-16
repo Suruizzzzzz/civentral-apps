@@ -16,6 +16,8 @@ import {
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { AuthService } from '@/src/services/auth-service';
+import { FormDraftService } from '@/src/services/form-draft-service';
 import {
   downloadOrViewCitizenDocument,
 } from '../dashboard/api/citizenDocumentApi';
@@ -38,12 +40,46 @@ export function NewApplicantComplianceScreen() {
   const [selectedFiles, setSelectedFiles] = useState<Record<number, { uri: string; name: string; size?: number; mimeType?: string }>>({});
   const [isSubmittingCompId, setIsSubmittingCompId] = useState<number | null>(null);
   const [actionLoadingDocKey, setActionLoadingDocKey] = useState<string | null>(null);
+  const hasHydratedRef = React.useRef<boolean>(false);
 
   const loadComplianceData = React.useCallback(async () => {
     try {
       setError(null);
       const data = await fetchApplicationCompliance();
       setComplianceData(data);
+
+      // Re-hydrate draft if available for this citizen & application_id
+      const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+      const appId = data.application_id || 'current';
+      if (activeUserId && !hasHydratedRef.current) {
+        try {
+          const draft = await FormDraftService.loadDraft<{
+            selectedFiles: Record<number, { uri: string; name: string; size?: number; mimeType?: string }>;
+          }>('new_applicant_compliance', activeUserId, appId);
+
+          if (draft && draft.selectedFiles && typeof draft.selectedFiles === 'object') {
+            const restored: Record<number, { uri: string; name: string; size?: number; mimeType?: string }> = {};
+            for (const [compIdStr, file] of Object.entries(draft.selectedFiles)) {
+              const compId = Number(compIdStr);
+              if (file?.uri) {
+                const exists = await FormDraftService.verifyFileExists(file.uri);
+                if (exists) {
+                  restored[compId] = file;
+                } else {
+                  console.log(`[NewApplicantComplianceScreen] Draft file for compId ${compId} (${file.name}) no longer exists in cache.`);
+                }
+              }
+            }
+            setSelectedFiles(restored);
+          }
+        } catch (draftErr) {
+          console.warn('[NewApplicantComplianceScreen] Draft restoration error:', draftErr);
+        } finally {
+          hasHydratedRef.current = true;
+        }
+      } else {
+        hasHydratedRef.current = true;
+      }
     } catch (err: any) {
       console.error('[NewApplicantComplianceScreen] fetch error:', err);
       setError(err?.message || 'Unable to load application compliance requests.');
@@ -58,6 +94,30 @@ export function NewApplicantComplianceScreen() {
       loadComplianceData();
     }, [loadComplianceData])
   );
+
+  // Auto-save compliance replacement draft to local storage (debounced by 500ms)
+  React.useEffect(() => {
+    if (!hasHydratedRef.current || !complianceData?.application_id) return;
+    const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+    const appId = complianceData.application_id;
+    if (!activeUserId || !appId) return;
+
+    const hasFiles = Object.keys(selectedFiles).length > 0;
+    if (!hasFiles) {
+      FormDraftService.clearDraft('new_applicant_compliance', activeUserId, appId).catch(() => {});
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      FormDraftService.saveDraft('new_applicant_compliance', activeUserId, appId, {
+        selectedFiles,
+      }).catch((err) => {
+        console.warn('[NewApplicantComplianceScreen] Draft save error:', err);
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [selectedFiles, complianceData?.application_id]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);

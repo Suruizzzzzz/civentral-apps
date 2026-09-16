@@ -1,7 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File as ExpoFile } from 'expo-file-system';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { Badge } from '@/src/components/ui/Badge';
@@ -9,9 +9,9 @@ import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
+import { FormDraftService } from '@/src/services/form-draft-service';
 import { ProfileService } from '@/src/services/profile-service';
 import {
-  DocumentValidationResult,
   getPartnerSchoolsLookup,
   getScholarshipProgramDetails,
   PartnerSchoolLookupItem,
@@ -77,6 +77,7 @@ export function NewApplicantApplicationScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitResult, setSubmitResult] = useState<SubmitApplicationResult | null>(null);
+  const hasHydratedRef = useRef<boolean>(false);
 
   const loadData = useCallback(async () => {
     if (!programId) {
@@ -109,6 +110,63 @@ export function NewApplicantApplicationScreen() {
             requirement_level: d.requirement_level,
           })),
         });
+
+        // Re-hydrate draft if available for this citizen & program
+        const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+        if (activeUserId && programId && !hasHydratedRef.current) {
+          try {
+            const draft = await FormDraftService.loadDraft<{
+              institutionName: string;
+              selectedPartnerSchoolId: number | null;
+              courseProgram: string;
+              isCourseSuggestionSelected: boolean;
+              yearLevel: string;
+              residentialAddress: string;
+              files: Record<string, SelectedFileState>;
+              docValidations: Record<string, DocumentValidationState>;
+            }>('new_applicant', activeUserId, programId);
+
+            if (draft) {
+              if (draft.institutionName) setInstitutionName(draft.institutionName);
+              if (draft.selectedPartnerSchoolId !== undefined && draft.selectedPartnerSchoolId !== null) {
+                setSelectedPartnerSchoolId(draft.selectedPartnerSchoolId);
+              }
+              if (draft.courseProgram) setCourseProgram(draft.courseProgram);
+              if (draft.isCourseSuggestionSelected !== undefined) {
+                setIsCourseSuggestionSelected(draft.isCourseSuggestionSelected);
+              }
+              if (draft.yearLevel) setYearLevel(draft.yearLevel);
+              if (draft.residentialAddress) setResidentialAddress(draft.residentialAddress);
+
+              if (draft.files && typeof draft.files === 'object') {
+                const restoredFiles: Record<string, SelectedFileState> = {};
+                const restoredValidations: Record<string, DocumentValidationState> = {};
+
+                for (const [key, fileState] of Object.entries(draft.files)) {
+                  if (fileState?.uri) {
+                    const exists = await FormDraftService.verifyFileExists(fileState.uri);
+                    if (exists) {
+                      restoredFiles[key] = fileState;
+                      if (draft.docValidations && draft.docValidations[key]) {
+                        restoredValidations[key] = draft.docValidations[key];
+                      }
+                    } else {
+                      console.log(`[NewApplicantApplicationScreen] Draft file for ${key} (${fileState.name}) no longer exists in cache.`);
+                    }
+                  }
+                }
+                setFiles(restoredFiles);
+                setDocValidations(restoredValidations);
+              }
+            }
+          } catch (draftErr) {
+            console.warn('[NewApplicantApplicationScreen] Draft restoration error:', draftErr);
+          } finally {
+            hasHydratedRef.current = true;
+          }
+        } else {
+          hasHydratedRef.current = true;
+        }
       }
     } catch (err: any) {
       console.error('[NewApplicantApplicationScreen] fetch error:', err);
@@ -190,6 +248,50 @@ export function NewApplicantApplicationScreen() {
       isMounted = false;
     };
   }, []);
+
+  // Auto-save form draft to local storage (debounced by 500ms)
+  useEffect(() => {
+    if (!hasHydratedRef.current || !programId) return;
+    const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+    if (!activeUserId) return;
+
+    const hasData =
+      institutionName.trim().length > 0 ||
+      courseProgram.trim().length > 0 ||
+      yearLevel.trim().length > 0 ||
+      residentialAddress.trim().length > 0 ||
+      selectedPartnerSchoolId !== null ||
+      Object.keys(files).length > 0;
+
+    if (!hasData) return;
+
+    const timer = setTimeout(() => {
+      FormDraftService.saveDraft('new_applicant', activeUserId, programId, {
+        institutionName,
+        selectedPartnerSchoolId,
+        courseProgram,
+        isCourseSuggestionSelected,
+        yearLevel,
+        residentialAddress,
+        files,
+        docValidations,
+      }).catch((err) => {
+        console.warn('[NewApplicantApplicationScreen] Draft save error:', err);
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [
+    institutionName,
+    selectedPartnerSchoolId,
+    courseProgram,
+    isCourseSuggestionSelected,
+    yearLevel,
+    residentialAddress,
+    files,
+    docValidations,
+    programId,
+  ]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -566,6 +668,12 @@ export function NewApplicantApplicationScreen() {
       const result = await submitNewScholarshipApplication(formData);
       const duration = Date.now() - startTime;
       console.log(`[Submit] 7. after API call resolved in ${duration}ms`, result);
+
+      // Clear draft on successful submission
+      const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
+      if (activeUserId && programId) {
+        await FormDraftService.clearDraft('new_applicant', activeUserId, programId).catch(() => {});
+      }
 
       setSubmitResult(result);
       console.log('[Submit] 8. setSubmitResult executed');
