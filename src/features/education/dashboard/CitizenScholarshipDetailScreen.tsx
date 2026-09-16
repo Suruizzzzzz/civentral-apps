@@ -1,5 +1,6 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -303,7 +304,7 @@ export function CitizenScholarshipDetailScreen() {
   const [modalBody, setModalBody] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     try {
       setError(null);
       const dash = await fetchCitizenDashboard();
@@ -344,16 +345,18 @@ export function CitizenScholarshipDetailScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [loadGrantOverview]);
 
-  useEffect(() => {
-    loadAllData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadAllData();
+    }, [loadAllData])
+  );
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     loadAllData();
-  }, []);
+  }, [loadAllData]);
 
   const handleDocumentAction = async (
     type: 'application' | 'renewal',

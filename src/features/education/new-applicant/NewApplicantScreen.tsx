@@ -1,6 +1,7 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { ResizeMode, Video } from "expo-av";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Image,
   RefreshControl,
@@ -47,9 +48,11 @@ export function NewApplicantScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);

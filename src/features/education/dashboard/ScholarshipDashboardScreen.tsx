@@ -1,5 +1,6 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -40,6 +41,7 @@ interface ProgressStage {
   subLabel?: string;
   date?: string | null;
   state: 'completed' | 'current' | 'upcoming';
+  isActionable?: boolean;
 }
 
 interface HistoryItem {
@@ -205,9 +207,11 @@ export function ScholarshipDashboardScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -395,6 +399,12 @@ export function ScholarshipDashboardScreen() {
         subLabel: grantSubLabel,
         date: grantDate,
         state: grantState,
+        isActionable:
+          grantSubLabel !== 'Pending' &&
+          (Boolean(scholar?.scholar_status === 'Active') ||
+            Boolean(grantOverview?.has_existing_application) ||
+            hasGrantProcessing ||
+            hasGrantDisbursed),
       },
     ];
   }, [scholar, application, processTimeline, grantReleases, grantOverview]);
@@ -880,9 +890,10 @@ export function ScholarshipDashboardScreen() {
               {stages.map((stg) => {
                 const isCompleted = stg.state === 'completed';
                 const isCurrent = stg.state === 'current';
+                const isGrantActionable = stg.id === 5 && Boolean(stg.isActionable);
 
-                return (
-                  <View key={stg.id} style={styles.stepColumn}>
+                const stepContent = (
+                  <>
                     {/* Step indicator dot with non-breaking checkmark */}
                     <View
                       style={[
@@ -965,6 +976,27 @@ export function ScholarshipDashboardScreen() {
                         {stg.date}
                       </Text>
                     ) : null}
+                  </>
+                );
+
+                if (isGrantActionable) {
+                  return (
+                    <TouchableOpacity
+                      key={stg.id}
+                      style={styles.stepColumn}
+                      onPress={() => router.push('/education/grant' as any)}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="Open Scholarship Grant"
+                    >
+                      {stepContent}
+                    </TouchableOpacity>
+                  );
+                }
+
+                return (
+                  <View key={stg.id} style={styles.stepColumn}>
+                    {stepContent}
                   </View>
                 );
               })}
@@ -1127,7 +1159,7 @@ export function ScholarshipDashboardScreen() {
                           ) : null}
                         </View>
 
-                        {/* Actions: View Details (if current application context) and Documents */}
+                        {/* Actions: View Details (if current application context), View Grant (if Grant record), and Documents */}
                         <View style={styles.historyActionsGroup}>
                           {isCurrentApplication ? (
                             <TouchableOpacity
@@ -1144,7 +1176,27 @@ export function ScholarshipDashboardScreen() {
                                   isDarkMode && { color: '#C084FC' },
                                 ]}
                               >
-                                View Details ›
+                                View Details →
+                              </Text>
+                            </TouchableOpacity>
+                          ) : null}
+
+                          {rec.recordType === 'Grant' ? (
+                            <TouchableOpacity
+                              style={[
+                                styles.historyDocumentsLink,
+                                isDarkMode && { backgroundColor: '#3B0764' },
+                              ]}
+                              onPress={() => router.push('/education/grant' as any)}
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={[
+                                  styles.historyDocumentsLinkText,
+                                  isDarkMode && { color: '#C084FC' },
+                                ]}
+                              >
+                                View Grant →
                               </Text>
                             </TouchableOpacity>
                           ) : null}
@@ -1164,7 +1216,7 @@ export function ScholarshipDashboardScreen() {
                                 isDarkMode && { color: '#C084FC' },
                               ]}
                             >
-                              Documents ›
+                              Documents →
                             </Text>
                           </TouchableOpacity>
                         </View>

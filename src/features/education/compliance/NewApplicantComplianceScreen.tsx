@@ -1,6 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -38,7 +39,7 @@ export function NewApplicantComplianceScreen() {
   const [isSubmittingCompId, setIsSubmittingCompId] = useState<number | null>(null);
   const [actionLoadingDocKey, setActionLoadingDocKey] = useState<string | null>(null);
 
-  const loadComplianceData = async () => {
+  const loadComplianceData = React.useCallback(async () => {
     try {
       setError(null);
       const data = await fetchApplicationCompliance();
@@ -50,16 +51,18 @@ export function NewApplicantComplianceScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    loadComplianceData();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadComplianceData();
+    }, [loadComplianceData])
+  );
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     loadComplianceData();
-  }, []);
+  }, [loadComplianceData]);
 
   const handlePickDocument = async (compId: number) => {
     try {
