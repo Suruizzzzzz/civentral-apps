@@ -498,7 +498,7 @@ export function ScholarshipDashboardScreen() {
     }
 
     if (list.length === 0 && (scholar || application)) {
-      const code = scholar?.scholar_code || application?.application_code || 'APP-RECORD';
+      const code = scholar?.scholar_code || application?.application_code || 'Unassigned';
       const dateVal = scholar?.admitted_at || application?.submitted_at || null;
       const rawTime = dateVal ? new Date(dateVal).getTime() : 0;
 
@@ -533,7 +533,7 @@ export function ScholarshipDashboardScreen() {
     const fallbackDate =
       selectedRecordForDocs.date ||
       formatDate(scholar?.admitted_at || application?.submitted_at) ||
-      'Aug 25, 2026';
+      'Pending Schedule';
 
     if (isRenewal) {
       // 1. Resolve renewal-specific official documents
@@ -551,7 +551,7 @@ export function ScholarshipDashboardScreen() {
           title: 'Renewal Certificate of Scholarship',
           status: matchingRenDoc?.status || 'Completed',
           date: matchingRenDoc?.date ? formatDate(matchingRenDoc.date) || fallbackDate : fallbackDate,
-          documentNumber: matchingRenDoc?.document_number || selectedRecordForDocs.referenceCode || 'RNW-CERT-001',
+          documentNumber: matchingRenDoc?.document_number || selectedRecordForDocs.referenceCode || 'Pending Generation',
           rawDoc: matchingRenDoc,
         },
       ];
@@ -585,7 +585,7 @@ export function ScholarshipDashboardScreen() {
         title: 'Certificate of Scholarship',
         status: certDoc?.status || (isScholarActive ? 'Issued' : 'Pending Issuance'),
         date: certDoc?.date ? formatDate(certDoc.date) || fallbackDate : fallbackDate,
-        documentNumber: certDoc?.document_number || scholar?.scholar_code || 'CERT-2026-001',
+        documentNumber: certDoc?.document_number || scholar?.scholar_code || 'Pending Generation',
         rawDoc: certDoc,
       },
       {
@@ -594,7 +594,7 @@ export function ScholarshipDashboardScreen() {
         title: 'Scholarship Contract / Agreement',
         status: contractDoc?.status || (isScholarActive ? 'Completed' : 'Pending'),
         date: contractDoc?.date ? formatDate(contractDoc.date) || fallbackDate : fallbackDate,
-        documentNumber: contractDoc?.document_number || 'AGR-2026-001',
+        documentNumber: contractDoc?.document_number || 'Pending Generation',
         rawDoc: contractDoc,
       },
       {
@@ -603,7 +603,7 @@ export function ScholarshipDashboardScreen() {
         title: 'Sworn Undertaking',
         status: undertakingDoc?.status || (isScholarActive ? 'Completed' : 'Pending'),
         date: undertakingDoc?.date ? formatDate(undertakingDoc.date) || fallbackDate : fallbackDate,
-        documentNumber: undertakingDoc?.document_number || 'UND-2026-001',
+        documentNumber: undertakingDoc?.document_number || 'Pending Generation',
         rawDoc: undertakingDoc,
       },
     ];
@@ -1093,7 +1093,7 @@ export function ScholarshipDashboardScreen() {
                           numberOfLines={1}
                         >
                           {scholarship?.program_name || 'Academic Scholarship Program'}
-                          {scholarship?.category_name ? ` â€” ${scholarship.category_name}` : ''}
+                          {scholarship?.category_name ? ` — ${scholarship.category_name}` : ''}
                         </Text>
                       ) : null}
 

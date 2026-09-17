@@ -1,5 +1,7 @@
 import { formatDate } from '@/utils/dateUtils';
 import * as DocumentPicker from 'expo-document-picker';
+import { validateFileSize } from '@/src/utils/fileValidation';
+import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -162,7 +164,7 @@ export function RenewalApplicationScreen() {
       }
     } catch (err: any) {
       console.error('[RenewalApplicationScreen] fetch error:', err);
-      setFetchError(err?.message || 'Unable to load renewal details.');
+      setFetchError(sanitizeErrorMessage(err?.message, 'Unable to load renewal details.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -215,9 +217,10 @@ export function RenewalApplicationScreen() {
       if (!res.canceled && res.assets && res.assets.length > 0) {
         const asset = res.assets[0];
 
-        // 10MB file size limit validation (UX level)
-        if (asset.size && asset.size > 10 * 1024 * 1024) {
-          Alert.alert('File Too Large', `The selected ${docType.toUpperCase()} file exceeds the maximum limit of 10MB.`);
+        // 10MB file size limit validation using shared utility (LOW-03)
+        const validation = validateFileSize(asset, 10, docType.toUpperCase());
+        if (!validation.valid) {
+          Alert.alert('File Too Large', validation.errorMessage || `The selected ${docType.toUpperCase()} file exceeds the maximum limit of 10MB.`);
           return;
         }
 
@@ -332,7 +335,7 @@ export function RenewalApplicationScreen() {
       setSubmitSuccess(true);
     } catch (err: any) {
       console.error('[RenewalApplicationScreen] submit error:', err);
-      setSubmitError(err?.message || 'Failed to submit scholarship renewal. Please check your network and try again.');
+      setSubmitError(sanitizeErrorMessage(err?.message, 'Failed to submit scholarship renewal. Please check your network and try again.'));
     } finally {
       setSubmitting(false);
     }

@@ -1,6 +1,8 @@
 import { formatDate } from '@/utils/dateUtils';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import { validateFileSize } from '@/src/utils/fileValidation';
+import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -83,7 +85,7 @@ export function NewApplicantComplianceScreen() {
       }
     } catch (err: any) {
       console.error('[NewApplicantComplianceScreen] fetch error:', err);
-      setError(err?.message || 'Unable to load application compliance requests.');
+      setError(sanitizeErrorMessage(err?.message, 'Unable to load application compliance requests.'));
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -134,6 +136,18 @@ export function NewApplicantComplianceScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
+
+        // 10MB file size limit validation (LOW-03)
+        const validation = validateFileSize(file, 10, 'replacement');
+        if (!validation.valid) {
+          Alert.alert(
+            'File Too Large',
+            validation.errorMessage ||
+              'The selected replacement file exceeds the maximum limit of 10MB. Please choose a smaller file.'
+          );
+          return;
+        }
+
         setSelectedFiles((prev) => ({
           ...prev,
           [compId]: {
@@ -161,7 +175,7 @@ export function NewApplicantComplianceScreen() {
       await downloadOrViewCitizenDocument('application', docId, filename, mode);
     } catch (err: any) {
       console.error('[handleOriginalDocAction] error:', err);
-      Alert.alert('Unable to Process Document', err?.message || 'Please check your connection and try again.');
+      Alert.alert('Unable to Process Document', sanitizeErrorMessage(err?.message, 'Please check your connection and try again.'));
     } finally {
       setActionLoadingDocKey(null);
     }
@@ -200,7 +214,7 @@ export function NewApplicantComplianceScreen() {
       );
     } catch (err: any) {
       console.error('[handleSubmitReplacement] error:', err);
-      Alert.alert('Submission Failed', err?.message || 'Unable to submit replacement document. Please try again.');
+      Alert.alert('Submission Failed', sanitizeErrorMessage(err?.message, 'Unable to submit replacement document. Please try again.'));
     } finally {
       setIsSubmittingCompId(null);
     }
@@ -462,6 +476,9 @@ export function NewApplicantComplianceScreen() {
                   <Text style={[styles.sectionSubtitle, isDarkMode && { color: '#F8FAFC' }]}>
                     Upload Document Replacement
                   </Text>
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginBottom: 8, marginTop: 2 }}>
+                    PDF, PNG, JPG up to 10MB
+                  </Text>
 
                   <TouchableOpacity
                     style={[
@@ -475,7 +492,7 @@ export function NewApplicantComplianceScreen() {
                   >
                     <IconSymbol name="arrow.up.circle.fill" size={18} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
                     <Text style={[styles.pickerBtnText, isDarkMode && { color: '#38BDF8' }]}>
-                      {pickedFile ? 'Change Selected File' : 'Select Replacement File (PDF / Image)'}
+                      {pickedFile ? 'Change Selected File' : 'Select Replacement File (PDF, PNG, JPG up to 10MB)'}
                     </Text>
                   </TouchableOpacity>
 

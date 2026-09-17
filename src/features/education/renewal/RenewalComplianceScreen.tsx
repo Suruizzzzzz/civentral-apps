@@ -1,5 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import { validateFileSize } from '@/src/utils/fileValidation';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -148,8 +149,10 @@ export function RenewalComplianceScreen() {
       if (!res.canceled && res.assets && res.assets.length > 0) {
         const asset = res.assets[0];
 
-        if (asset.size && asset.size > 10 * 1024 * 1024) {
-          Alert.alert('File Too Large', `The selected ${docType.toUpperCase()} file exceeds the maximum limit of 10MB.`);
+        // 10MB file size limit validation using shared utility (LOW-03)
+        const validation = validateFileSize(asset, 10, docType.toUpperCase());
+        if (!validation.valid) {
+          Alert.alert('File Too Large', validation.errorMessage || `The selected ${docType.toUpperCase()} file exceeds the maximum limit of 10MB.`);
           return;
         }
 
@@ -433,7 +436,7 @@ export function RenewalComplianceScreen() {
                   </View>
 
                   <View style={[styles.currentFileBox, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-                    <Text style={styles.currentFileLabel}>Status: Needs Replacement</Text>
+                    <Text style={styles.currentFileLabel}>Status: Needs Replacement • PDF, PNG, JPG up to 10MB</Text>
                   </View>
 
                   <View style={[
@@ -444,7 +447,7 @@ export function RenewalComplianceScreen() {
                   ]}>
                     <View style={styles.fileInfo}>
                       <Text style={[styles.fileName, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={1}>
-                        {files.cor ? files.cor.name : 'Choose replacement COR file'}
+                        {files.cor ? files.cor.name : 'Choose replacement COR file (PDF, PNG, JPG up to 10MB)'}
                       </Text>
                       {files.cor?.size ? (
                         <Text style={[styles.fileSize, isDarkMode && { color: '#A7F3D0' }]}>
@@ -480,7 +483,7 @@ export function RenewalComplianceScreen() {
                   </View>
 
                   <View style={[styles.currentFileBox, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-                    <Text style={styles.currentFileLabel}>Status: Needs Replacement</Text>
+                    <Text style={styles.currentFileLabel}>Status: Needs Replacement • PDF, PNG, JPG up to 10MB</Text>
                   </View>
 
                   <View style={[
@@ -491,7 +494,7 @@ export function RenewalComplianceScreen() {
                   ]}>
                     <View style={styles.fileInfo}>
                       <Text style={[styles.fileName, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={1}>
-                        {files.cog ? files.cog.name : 'Choose replacement COG file'}
+                        {files.cog ? files.cog.name : 'Choose replacement COG file (PDF, PNG, JPG up to 10MB)'}
                       </Text>
                       {files.cog?.size ? (
                         <Text style={[styles.fileSize, isDarkMode && { color: '#A7F3D0' }]}>
@@ -527,7 +530,7 @@ export function RenewalComplianceScreen() {
                   </View>
 
                   <View style={[styles.currentFileBox, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-                    <Text style={styles.currentFileLabel}>Status: Needs Replacement</Text>
+                    <Text style={styles.currentFileLabel}>Status: Needs Replacement • PDF, PNG, JPG up to 10MB</Text>
                   </View>
 
                   <View style={[
@@ -538,7 +541,7 @@ export function RenewalComplianceScreen() {
                   ]}>
                     <View style={styles.fileInfo}>
                       <Text style={[styles.fileName, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={1}>
-                        {files.soa ? files.soa.name : 'Choose replacement SOA file'}
+                        {files.soa ? files.soa.name : 'Choose replacement SOA file (PDF, PNG, JPG up to 10MB)'}
                       </Text>
                       {files.soa?.size ? (
                         <Text style={[styles.fileSize, isDarkMode && { color: '#A7F3D0' }]}>

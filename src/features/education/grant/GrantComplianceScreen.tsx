@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import { validateFileSize } from '@/src/utils/fileValidation';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
@@ -86,8 +87,10 @@ export default function GrantComplianceScreen() {
       if (!res.canceled && res.assets && res.assets.length > 0) {
         const asset = res.assets[0];
 
-        if (asset.size && asset.size > 10 * 1024 * 1024) {
-          Alert.alert('File Too Large', `The selected ${docType} file exceeds the maximum limit of 10MB.`);
+        // 10MB file size limit validation using shared utility (LOW-03)
+        const validation = validateFileSize(asset, 10, docType);
+        if (!validation.valid) {
+          Alert.alert('File Too Large', validation.errorMessage || `The selected ${docType} file exceeds the maximum limit of 10MB.`);
           return;
         }
 
@@ -276,7 +279,7 @@ export default function GrantComplianceScreen() {
                       <>
                         <IconSymbol name="arrow.triangle.2.circlepath" size={16} color="#FFFFFF" />
                         <Text style={styles.primaryBtnText}>
-                          Upload Replacement {doc.document_type}
+                          Upload Replacement {doc.document_type} (PDF, PNG, JPG up to 10MB)
                         </Text>
                       </>
                     )}

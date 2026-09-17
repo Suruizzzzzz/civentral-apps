@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import { validateFileSize } from '@/src/utils/fileValidation';
+import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/src/components/ui/Badge';
@@ -167,7 +169,7 @@ export default function ScholarshipGrantScreen() {
       }
     } catch (err: any) {
       console.error('[ScholarshipGrantScreen] Load overview error:', err);
-      Alert.alert('Error', err.message || 'Failed to load grant application context.');
+      Alert.alert('Error', sanitizeErrorMessage(err?.message, 'Failed to load grant application context.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -198,7 +200,7 @@ export default function ScholarshipGrantScreen() {
       setApplication(app);
       Alert.alert('Application Started', 'Your grant application draft has been initiated. Please upload the required document(s).');
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to create grant application draft.');
+      Alert.alert('Error', sanitizeErrorMessage(err?.message, 'Failed to create grant application draft.'));
     } finally {
       setSubmitting(false);
     }
@@ -220,8 +222,10 @@ export default function ScholarshipGrantScreen() {
       if (!res.canceled && res.assets && res.assets.length > 0) {
         const asset = res.assets[0];
 
-        if (asset.size && asset.size > 10 * 1024 * 1024) {
-          Alert.alert('File Too Large', `The selected ${docType} file exceeds the maximum limit of 10MB.`);
+        // 10MB file size limit validation using shared utility (LOW-03)
+        const validation = validateFileSize(asset, 10, docType);
+        if (!validation.valid) {
+          Alert.alert('File Too Large', validation.errorMessage || `The selected ${docType} file exceeds the maximum limit of 10MB.`);
           return;
         }
 
@@ -292,7 +296,7 @@ export default function ScholarshipGrantScreen() {
       }
     } catch (err: any) {
       console.error('[ScholarshipGrantScreen] Pick/Upload error:', err);
-      Alert.alert('Upload Failed', err.message || `Failed to upload ${docType}. Please try again.`);
+      Alert.alert('Upload Failed', sanitizeErrorMessage(err?.message, `Failed to upload ${docType}. Please try again.`));
     } finally {
       setUploadingDoc(null);
     }
@@ -338,7 +342,7 @@ export default function ScholarshipGrantScreen() {
       setSuccessModalVisible(true);
     } catch (err: any) {
       console.error('[ScholarshipGrantScreen] Submit error:', err);
-      Alert.alert('Submission Failed', err.message || 'Failed to submit grant application.');
+      Alert.alert('Submission Failed', sanitizeErrorMessage(err?.message, 'Failed to submit grant application.'));
     } finally {
       setSubmitting(false);
     }
@@ -809,7 +813,7 @@ export default function ScholarshipGrantScreen() {
                       ) : (
                         <>
                           <IconSymbol name="doc.fill" size={14} color="#FFFFFF" />
-                          <Text style={styles.uploadBtnText}>Upload COR (PDF/Image)</Text>
+                          <Text style={styles.uploadBtnText}>Upload COR (PDF, PNG, JPG up to 10MB)</Text>
                         </>
                       )}
                     </TouchableOpacity>
@@ -862,7 +866,7 @@ export default function ScholarshipGrantScreen() {
                         ) : (
                           <>
                             <IconSymbol name="doc.fill" size={14} color="#FFFFFF" />
-                            <Text style={styles.uploadBtnText}>Upload SOA (PDF/Image)</Text>
+                            <Text style={styles.uploadBtnText}>Upload SOA (PDF, PNG, JPG up to 10MB)</Text>
                           </>
                         )}
                       </TouchableOpacity>
@@ -966,7 +970,7 @@ export default function ScholarshipGrantScreen() {
                     ) : (
                       <>
                         <IconSymbol name="arrow.triangle.2.circlepath" size={12} color="#334155" />
-                        <Text style={styles.replaceBtnText}>Replace {doc.document_type}</Text>
+                        <Text style={styles.replaceBtnText}>Replace {doc.document_type} (PDF, PNG, JPG up to 10MB)</Text>
                       </>
                     )}
                   </TouchableOpacity>

@@ -28,13 +28,9 @@ function parseJsonResponse(text: string): { json: any; errorText?: string } {
       } catch {}
     }
   }
-  const cleanText = text
-    .replace(/<[^>]*>?/gm, " ")
-    .replace(/\s+/g, " ")
-    .trim();
   return {
     json: null,
-    errorText: cleanText || "Server returned an invalid response format.",
+    errorText: "Service temporarily unavailable. Please try again later.",
   };
 }
 

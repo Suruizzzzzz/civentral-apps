@@ -3,6 +3,7 @@ import { File as ExpoFile } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
 import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
 import { DocumentValidationResult, EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
+import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
 
 export type RenewalState =
   | "NOT_A_SCHOLAR"
@@ -186,7 +187,7 @@ export async function fetchCitizenRenewalOverview(): Promise<CitizenRenewalOverv
 
   const json: CitizenRenewalOverviewResponse = await res.json();
   if (json.status !== "success" || !json.data) {
-    throw new Error(json.message || "Unable to retrieve renewal overview.");
+    throw new Error(sanitizeErrorMessage(json.message, "Unable to retrieve renewal overview."));
   }
 
   return json.data;
@@ -213,8 +214,10 @@ export async function submitCitizenRenewal(
   const json = await res.json();
 
   if (!res.ok || json.status === "error") {
-    const errorMsg =
-      json.message || `Submission failed with HTTP ${res.status}`;
+    const errorMsg = sanitizeErrorMessage(
+      json.message,
+      `Submission failed with HTTP ${res.status}`
+    );
     const err = new Error(errorMsg) as any;
     err.status = res.status;
     throw err;
@@ -242,13 +245,13 @@ export async function fetchCitizenRenewalCompliance(): Promise<CitizenCompliance
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));
     throw new Error(
-      json.message || `Failed to fetch compliance details (HTTP ${res.status})`,
+      sanitizeErrorMessage(json.message, `Failed to fetch compliance details (HTTP ${res.status})`),
     );
   }
 
   const json: CitizenComplianceDetailsResponse = await res.json();
   if (json.status !== "success" || !json.data) {
-    throw new Error(json.message || "Unable to retrieve compliance details.");
+    throw new Error(sanitizeErrorMessage(json.message, "Unable to retrieve compliance details."));
   }
 
   return json.data;
@@ -275,8 +278,10 @@ export async function submitCitizenComplianceResponse(
   const json = await res.json();
 
   if (!res.ok || json.status === "error") {
-    const errorMsg =
-      json.message || `Compliance submission failed with HTTP ${res.status}`;
+    const errorMsg = sanitizeErrorMessage(
+      json.message,
+      `Compliance submission failed with HTTP ${res.status}`
+    );
     const err = new Error(errorMsg) as any;
     err.status = res.status;
     throw err;

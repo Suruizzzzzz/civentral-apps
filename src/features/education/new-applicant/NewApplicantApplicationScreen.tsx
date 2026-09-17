@@ -1,4 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
+import { validateFileSize } from '@/src/utils/fileValidation';
 import { File as ExpoFile } from 'expo-file-system';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -317,7 +318,6 @@ export function NewApplicantApplicationScreen() {
       : ['application/pdf', 'image/jpeg', 'image/png'];
 
     const maxLimitMb = isVideo ? 20 : 10;
-    const maxSizeBytes = maxLimitMb * 1024 * 1024;
 
     try {
       const res = await DocumentPicker.getDocumentAsync({
@@ -339,9 +339,10 @@ export function NewApplicantApplicationScreen() {
           uriScheme: asset.uri ? asset.uri.split(':')[0] : null,
         });
 
-        // 10MB/20MB file size limit validation
-        if (asset.size && asset.size > maxSizeBytes) {
-          Alert.alert('File Too Large', `The selected ${doc.document_name} file exceeds the maximum limit of ${maxLimitMb}MB.`);
+        // 10MB/20MB file size limit validation using shared utility (LOW-03)
+        const validation = validateFileSize(asset, maxLimitMb, doc.document_name);
+        if (!validation.valid) {
+          Alert.alert('File Too Large', validation.errorMessage || `The selected ${doc.document_name} file exceeds the maximum limit of ${maxLimitMb}MB.`);
           return;
         }
 
@@ -1323,8 +1324,8 @@ export function NewApplicantApplicationScreen() {
                       {selectedFile
                         ? selectedFile.name
                         : (doc.document_code?.toUpperCase().includes('VIDEO') || doc.document_name?.toUpperCase().includes('VIDEO'))
-                          ? `Select ${doc.document_name} (MP4, MOV, WEBM)`
-                          : `Select ${doc.document_name} (PDF, PNG, JPG)`}
+                          ? `Select ${doc.document_name} (MP4, MOV, WEBM up to 20MB)`
+                          : `Select ${doc.document_name} (PDF, PNG, JPG up to 10MB)`}
                     </Text>
                   </TouchableOpacity>
 

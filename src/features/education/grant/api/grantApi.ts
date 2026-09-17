@@ -3,6 +3,7 @@ import { File as ExpoFile } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
 import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
 import { EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
+import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
 
 export interface ScholarInfo {
   scholar_id: number;
@@ -124,7 +125,7 @@ export async function fetchCitizenGrantOverview(): Promise<CitizenGrantOverviewD
 
   const json = await res.json();
   if (json.status !== "success" || !json.data) {
-    throw new Error(json.message || "Unable to retrieve grant overview.");
+    throw new Error(sanitizeErrorMessage(json.message, "Unable to retrieve grant overview."));
   }
 
   return json.data;
@@ -181,7 +182,7 @@ export async function createGrantApplication(
 
   const json = await res.json();
   if (!res.ok || json.status === "error") {
-    throw new Error(json.message || `Application creation failed (HTTP ${res.status})`);
+    throw new Error(sanitizeErrorMessage(json.message, `Application creation failed (HTTP ${res.status})`));
   }
 
   return json.data;
@@ -221,7 +222,7 @@ export async function uploadGrantDocument(
 
   const json = await res.json();
   if (!res.ok || json.status === "error") {
-    throw new Error(json.message || `Document upload failed (HTTP ${res.status})`);
+    throw new Error(sanitizeErrorMessage(json.message, `Document upload failed (HTTP ${res.status})`));
   }
 
   return json.data;
@@ -248,7 +249,7 @@ export async function submitGrantApplication(
 
   const json = await res.json();
   if (!res.ok || json.status === "error") {
-    throw new Error(json.message || `Grant submission failed (HTTP ${res.status})`);
+    throw new Error(sanitizeErrorMessage(json.message, `Grant submission failed (HTTP ${res.status})`));
   }
 
   return json.data;

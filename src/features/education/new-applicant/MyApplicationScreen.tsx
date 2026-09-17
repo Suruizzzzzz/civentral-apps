@@ -502,14 +502,14 @@ export function MyApplicationScreen() {
                 <View style={styles.infoRow}>
                   <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Method</Text>
                   <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                    {application.interview.method || 'Face-to-Face'}
+                    {application.interview.method || 'To be determined'}
                   </Text>
                 </View>
 
                 <View style={styles.infoRow}>
                   <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Venue / Link</Text>
                   <Text style={[styles.infoValue, { color: isDarkMode ? '#38BDF8' : '#0284C7', fontWeight: '600' }]}>
-                    {application.interview.venue_or_link || 'Education & Scholarship Office'}
+                    {application.interview.venue_or_link || 'To be announced'}
                   </Text>
                 </View>
               </View>

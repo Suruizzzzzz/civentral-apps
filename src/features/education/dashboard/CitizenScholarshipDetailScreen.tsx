@@ -1,4 +1,5 @@
 import { formatDate } from '@/utils/dateUtils';
+import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -103,7 +104,7 @@ function getGrantTimelineItems(grantStatus?: string): GrantTimelineStep[] {
 }
 
 function getGrantBadgeConfig(status?: string): { label: string; variant: 'info' | 'success' | 'warning' | 'danger' | 'neutral' } {
-  if (!status) return { label: 'Active', variant: 'neutral' };
+  if (!status) return { label: 'Pending / Not Started', variant: 'neutral' };
   switch (status) {
     case 'Draft':
       return { label: 'Draft', variant: 'warning' };
@@ -133,7 +134,7 @@ interface StatusTimelineStep {
 }
 
 function getRenewalBadgeConfig(status?: string): { label: string; variant: 'info' | 'success' | 'warning' | 'danger' | 'neutral' } {
-  if (!status) return { label: 'Active', variant: 'neutral' };
+  if (!status) return { label: 'Pending / Not Started', variant: 'neutral' };
   switch (status) {
     case 'For Review':
     case 'Under Review':
@@ -254,7 +255,7 @@ export function CitizenScholarshipDetailScreen() {
     } catch (err: any) {
       console.warn('[CitizenScholarshipDetailScreen] grant overview error:', err);
       setGrantOverview(null);
-      setGrantOverviewError(err?.message || 'Unable to load current grant status.');
+      setGrantOverviewError(sanitizeErrorMessage(err?.message, 'Unable to load current grant status.'));
     } finally {
       setGrantOverviewLoading(false);
     }
@@ -293,7 +294,7 @@ export function CitizenScholarshipDetailScreen() {
     } catch (err: any) {
       Alert.alert(
         'Unable to Withdraw Application',
-        err?.message || 'Application has already progressed beyond the withdrawal boundary and can no longer be withdrawn.'
+        sanitizeErrorMessage(err?.message, 'Application has already progressed beyond the withdrawal boundary and can no longer be withdrawn.')
       );
     } finally {
       setIsWithdrawing(false);
@@ -341,7 +342,7 @@ export function CitizenScholarshipDetailScreen() {
 
     } catch (err: any) {
       console.error('[CitizenScholarshipDetailScreen] load error:', err);
-      setError(err?.message || 'Unable to load scholarship details.');
+      setError(sanitizeErrorMessage(err?.message, 'Unable to load scholarship details.'));
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -546,7 +547,7 @@ export function CitizenScholarshipDetailScreen() {
               <View style={styles.headerMetaCol}>
                 <Text style={styles.headerMetaLabel}>Scholar ID</Text>
                 <Text style={styles.headerMetaCode}>
-                  {scholar?.scholar_code || application?.application_code || 'SCH-2026-100000'}
+                  {scholar?.scholar_code || application?.application_code || 'Unassigned'}
                 </Text>
               </View>
 
@@ -656,7 +657,7 @@ export function CitizenScholarshipDetailScreen() {
                           day: 'numeric',
                           year: 'numeric',
                         })
-                      : 'Aug 24, 2026'}
+                      : 'Pending Admission'}
                   </Text>
                 </View>
               </View>
