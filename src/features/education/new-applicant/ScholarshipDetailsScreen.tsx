@@ -417,7 +417,7 @@ export function ScholarshipDetailsScreen() {
             {program.application_period ? (
               <View style={styles.applyContainer}>
                 <Text style={[styles.listTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                  AY {program.application_period.academic_year} â€” {program.application_period.term}
+                  AY {program.application_period.academic_year} — {program.application_period.term}
                 </Text>
                 <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
                   Opening Date: {formatDate(program.application_period.opening_date, '—')}
@@ -447,7 +447,7 @@ export function ScholarshipDetailsScreen() {
                       {b.benefit_name}
                     </Text>
                     <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
-                      â‚±{b.amount.toLocaleString()} ({b.amount_basis})
+                      ₱{b.amount.toLocaleString()} ({b.amount_basis})
                     </Text>
                   </View>
                 </View>

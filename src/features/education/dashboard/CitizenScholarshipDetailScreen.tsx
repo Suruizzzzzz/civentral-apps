@@ -554,7 +554,7 @@ export function CitizenScholarshipDetailScreen() {
               <View style={styles.headerMetaCol}>
                 <Text style={styles.headerMetaLabel}>Academic Period</Text>
                 <Text style={[styles.headerMetaVal, isDarkMode && { color: '#F8FAFC' }]}>
-                  {academicPeriod?.academic_year || 'AY 2026-2027'} â€¢ {academicPeriod?.term || 'Whole Academic Year'}
+                  {academicPeriod?.academic_year || 'AY 2026-2027'} • {academicPeriod?.term || 'Whole Academic Year'}
                 </Text>
               </View>
             </View>
@@ -616,7 +616,7 @@ export function CitizenScholarshipDetailScreen() {
                 <View style={styles.infoRow}>
                   <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Program Code</Text>
                   <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                    {scholarship?.program_code || 'â€”'}
+                    {scholarship?.program_code || '—'}
                   </Text>
                 </View>
 
@@ -630,7 +630,7 @@ export function CitizenScholarshipDetailScreen() {
                 <View style={styles.infoRow}>
                   <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Scholar Code</Text>
                   <Text style={[styles.infoValue, { color: '#7E22CE' }]}>
-                    {scholar?.scholar_code || application?.application_code || 'â€”'}
+                    {scholar?.scholar_code || application?.application_code || '—'}
                   </Text>
                 </View>
 
@@ -935,10 +935,10 @@ export function CitizenScholarshipDetailScreen() {
                 const renewalTimelineItems = getRenewalTimelineItems(renewalItem?.renewal_status);
 
                 const renewalPeriodStr = renewalOverview?.renewal_period
-                  ? `AY ${renewalOverview.renewal_period.academic_year} â€” ${renewalOverview.renewal_period.term}`
+                  ? `AY ${renewalOverview.renewal_period.academic_year} — ${renewalOverview.renewal_period.term}`
                   : renewalOverview?.current_academic_period
-                  ? `AY ${renewalOverview.current_academic_period.academic_year} â€” ${renewalOverview.current_academic_period.term}`
-                  : 'â€”';
+                  ? `AY ${renewalOverview.current_academic_period.academic_year} — ${renewalOverview.current_academic_period.term}`
+                  : '—';
 
                 let renewalTitle = 'Renewal Overview';
                 let renewalSub = 'Your scholarship renewal details.';
@@ -1045,7 +1045,7 @@ export function CitizenScholarshipDetailScreen() {
                                     day: 'numeric',
                                     year: 'numeric',
                                   })
-                                : 'â€”'}
+                                : '—'}
                             </Text>
                           </View>
                         </View>
@@ -1217,7 +1217,7 @@ export function CitizenScholarshipDetailScreen() {
                 const grantBadgeConfig = getGrantBadgeConfig(grantApp?.grant_status);
                 const grantTimelineItems = getGrantTimelineItems(grantApp?.grant_status);
 
-                let grantReqText = 'â€”';
+                let grantReqText = '—';
                 if (grantApp) {
                   if (grantApp.document_summary?.summary_label) {
                     grantReqText = grantApp.document_summary.summary_label;
@@ -1341,7 +1341,7 @@ export function CitizenScholarshipDetailScreen() {
                           <View style={styles.infoRowStacked}>
                             <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Academic Period</Text>
                             <Text style={[styles.infoValueStacked, isDarkMode && { color: '#F8FAFC' }]}>
-                              AY {grantApp.academic_year} â€” {grantApp.academic_term}
+                              AY {grantApp.academic_year} — {grantApp.academic_term}
                             </Text>
                           </View>
 
@@ -1546,7 +1546,7 @@ export function CitizenScholarshipDetailScreen() {
                               {doc.document_name}
                             </Text>
                             <Text style={[styles.docSub, isDarkMode && { color: '#94A3B8' }]}>
-                              Status: {isReplSubmitted ? 'Replacement Submitted (Awaiting Review)' : doc.validation_result || doc.status} â€¢ File: {doc.original_filename} ({(doc.file_size / 1024).toFixed(0)} KB)
+                              Status: {isReplSubmitted ? 'Replacement Submitted (Awaiting Review)' : doc.validation_result || doc.status} • File: {doc.original_filename} ({(doc.file_size / 1024).toFixed(0)} KB)
                             </Text>
                           </View>
                         </View>
@@ -1554,7 +1554,7 @@ export function CitizenScholarshipDetailScreen() {
                         {isNeedsReplacement ? (
                           <View style={styles.docWarningBox}>
                             <Text style={styles.docWarningText}>
-                              âš  Needs Replacement â€” {doc.review_remarks || 'Secretariat requested document replacement.'}
+                              ⚠ Needs Replacement — {doc.review_remarks || 'Secretariat requested document replacement.'}
                             </Text>
                           </View>
                         ) : null}
@@ -1636,7 +1636,7 @@ export function CitizenScholarshipDetailScreen() {
                               {doc.document_name}
                             </Text>
                             <Text style={[styles.docSub, isDarkMode && { color: '#94A3B8' }]}>
-                              Status: {doc.validation_status} â€¢ File: {doc.original_filename} ({(doc.file_size / 1024).toFixed(0)} KB)
+                              Status: {doc.validation_status} • File: {doc.original_filename} ({(doc.file_size / 1024).toFixed(0)} KB)
                             </Text>
                           </View>
                         </View>
@@ -1645,7 +1645,7 @@ export function CitizenScholarshipDetailScreen() {
                           <>
                             <View style={styles.docWarningBox}>
                               <Text style={styles.docWarningText}>
-                                âš  Needs Replacement â€” {doc.review_remarks || 'Coordinator requested document replacement.'}
+                                ⚠ Needs Replacement — {doc.review_remarks || 'Coordinator requested document replacement.'}
                               </Text>
                             </View>
 
@@ -1816,7 +1816,7 @@ export function CitizenScholarshipDetailScreen() {
                               {doc.title}
                             </Text>
                             <Text style={[styles.certSub, isDarkMode && { color: '#94A3B8' }]}>
-                              {doc.document_number} â€¢ Status: {doc.status}
+                              {doc.document_number} • Status: {doc.status}
                             </Text>
                           </View>
                         </View>
@@ -1886,7 +1886,7 @@ export function CitizenScholarshipDetailScreen() {
                               {doc.title}
                             </Text>
                             <Text style={[styles.certSub, isDarkMode && { color: '#94A3B8' }]}>
-                              {doc.document_number} â€¢ Status: {doc.status}
+                              {doc.document_number} • Status: {doc.status}
                             </Text>
                           </View>
                         </View>

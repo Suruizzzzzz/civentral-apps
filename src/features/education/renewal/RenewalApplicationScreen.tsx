@@ -378,7 +378,7 @@ export function RenewalApplicationScreen() {
           <View style={styles.ocrHeaderRow}>
             <IconSymbol name="checkmark.circle.fill" size={14} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
             <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
-              âœ“ Document type appears correct
+              ✓ Document type appears correct
             </Text>
           </View>
           <Text style={[styles.ocrMatchDetail, isDarkMode && { color: '#BBF7D0' }]}>
@@ -401,7 +401,7 @@ export function RenewalApplicationScreen() {
           <View style={styles.ocrHeaderRow}>
             <IconSymbol name="exclamationmark.triangle.fill" size={14} color={isDarkMode ? '#FBBF24' : '#D97706'} />
             <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FDE68A' }]}>
-              âš  Document type may not match
+              ⚠ Document type may not match
             </Text>
           </View>
           <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
@@ -575,7 +575,7 @@ export function RenewalApplicationScreen() {
                   <View style={styles.metaRow}>
                     <Text style={[styles.metaLabel, isDarkMode && { color: '#94A3B8' }]}>Current Academic Period:</Text>
                     <Text style={[styles.metaValue, isDarkMode && { color: '#F8FAFC' }]}>
-                      {overview.current_academic_period.academic_year} â€” {overview.current_academic_period.term}
+                      {overview.current_academic_period.academic_year} — {overview.current_academic_period.term}
                     </Text>
                   </View>
                 )}

@@ -225,7 +225,7 @@ export function ScholarshipDashboardScreen() {
     const ay = currentAcademicPeriod.academic_year?.trim();
     const term = currentAcademicPeriod.term?.trim();
     if (ay && term) {
-      return `AY ${ay} â€¢ ${term}`;
+      return `AY ${ay} • ${term}`;
     }
     if (ay) {
       return `AY ${ay}`;
@@ -411,18 +411,18 @@ export function ScholarshipDashboardScreen() {
 
     const authoritativeFallback = currentPeriodString || 'Academic Period';
 
-    // Resolves academic period cleanly and eliminates the "AY â€¢" bug
+    // Resolves academic period cleanly and eliminates the "AY •" bug
     const cleanAcademicPeriod = (raw: string | undefined | null): string => {
       if (!raw) return authoritativeFallback;
       const trimmed = raw.trim();
       const hasYearDigits = /\d{4}/.test(trimmed);
       if (
         !hasYearDigits ||
-        trimmed === 'AY â€¢' ||
-        trimmed === 'AY â€¢ ' ||
-        trimmed === 'AY' ||
-        trimmed === 'â€¢' ||
-        (trimmed.startsWith('AY â€¢') && trimmed.length <= 5)
+        trimmed === 'AY •' ||
+        trimmed === 'AY • ' ||
+                        trimmed === 'AY' ||
+        trimmed === '•' ||
+                (trimmed.startsWith('AY •') && trimmed.length <= 5)
       ) {
         return authoritativeFallback;
       }
@@ -473,7 +473,7 @@ export function ScholarshipDashboardScreen() {
       if (rel.release_code) seenCodes.add(rel.release_code);
 
       const rawRelPeriod = rel.academic_term
-        ? `AY ${rel.academic_year} â€¢ ${rel.academic_term}`
+        ? `AY ${rel.academic_year} • ${rel.academic_term}`
         : `AY ${rel.academic_year}`;
       const relPeriod = cleanAcademicPeriod(rawRelPeriod);
 
@@ -1146,7 +1146,7 @@ export function ScholarshipDashboardScreen() {
                                 isDarkMode && { color: '#64748B' },
                               ]}
                             >
-                              â€¢ {rec.date}
+                              • {rec.date}
                             </Text>
                           ) : null}
                         </View>
@@ -1168,7 +1168,7 @@ export function ScholarshipDashboardScreen() {
                                   isDarkMode && { color: '#C084FC' },
                                 ]}
                               >
-                                View Details â†’
+                                View Details →
                               </Text>
                             </TouchableOpacity>
                           ) : null}
@@ -1188,7 +1188,7 @@ export function ScholarshipDashboardScreen() {
                                   isDarkMode && { color: '#C084FC' },
                                 ]}
                               >
-                                View Grant â†’
+                                View Grant →
                               </Text>
                             </TouchableOpacity>
                           ) : null}
@@ -1208,7 +1208,7 @@ export function ScholarshipDashboardScreen() {
                                 isDarkMode && { color: '#C084FC' },
                               ]}
                             >
-                              Documents â†’
+                              Documents →
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -1308,7 +1308,7 @@ export function ScholarshipDashboardScreen() {
                         isDarkMode && { color: '#94A3B8' },
                       ]}
                     >
-                      {doc.status} â€¢ {doc.date}
+                      {doc.status} • {doc.date}
                     </Text>
 
                     <View style={styles.modalDocActionsRow}>

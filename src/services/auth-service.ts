@@ -224,7 +224,7 @@ export class AuthService {
       const verifyRoutes = ["/auth/verify.php", "/verify.php"];
       for (const route of verifyRoutes) {
         try {
-          const url = `https://civentral.tech/api/citizen${route}`;
+          const url = `${API_BASE_URL}${route}`;
           const res = await fetch(url, {
             method: "POST",
             headers: {

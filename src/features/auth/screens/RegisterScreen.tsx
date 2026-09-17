@@ -184,8 +184,11 @@ export function RegisterScreen() {
     setIsLoading(false);
 
     if (res.status === 'otp_required' || res.status === 'success') {
-      const isEmailMode = params.mode === 'email' || (!!email.trim() && email.trim().includes('@')) || !!params.email || params.identifier?.includes('@');
-      const isPhoneRegistration = !isEmailMode && (params.mode === 'phone' || (!email.trim() && !!mobileNumber.trim()));
+      const isPhoneRegistration = params.mode === 'phone'
+        ? true
+        : params.mode === 'email'
+        ? false
+        : (!params.email && !params.identifier?.includes('@') && (!!params.phone || !email.trim()));
 
       const targetRoute = isPhoneRegistration ? '/(auth)/verify-phone' : '/(auth)/verify';
       const modeParam = isPhoneRegistration ? 'phone' : 'email';

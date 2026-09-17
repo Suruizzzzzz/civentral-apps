@@ -460,13 +460,13 @@ export function NewApplicantComplianceScreen() {
                 <View style={styles.submittedBanner}>
                   <IconSymbol name="checkmark.circle.fill" size={20} color="#16A34A" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.submittedBannerTitle}>Replacement Submitted â€” Awaiting Review</Text>
+                    <Text style={styles.submittedBannerTitle}>Replacement Submitted — Awaiting Review</Text>
                     <Text style={styles.submittedBannerSub}>
                       Your replacement document has been submitted and is currently being validated by the Secretariat.
                     </Text>
                     {replDoc ? (
                       <Text style={styles.submittedFileMeta}>
-                        File: {replDoc.replacement_filename} â€¢ Submitted: {formatDate(replDoc.submitted_at, '—')}
+                        File: {replDoc.replacement_filename} • Submitted: {formatDate(replDoc.submitted_at, '—')}
                       </Text>
                     ) : null}
                   </View>
