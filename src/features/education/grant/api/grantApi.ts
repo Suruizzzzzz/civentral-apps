@@ -195,19 +195,26 @@ export async function uploadGrantDocument(
   fileName: string,
   mimeType: string,
 ): Promise<GrantApplicationDetail> {
-  const headers = await getEducationAuthHeaders();
+  const headers = await getEducationAuthHeaders({
+    Accept: "application/json",
+  });
   
   const formData = new FormData();
   formData.append("document_type", documentType);
   
-  // @ts-ignore
-  formData.append("file", {
-    uri: fileUri,
-    name: fileName,
-    type: mimeType || "application/pdf",
-  });
+  let expoFile: any;
+  if (fileUri) {
+    expoFile = new ExpoFile(fileUri);
+  } else {
+    expoFile = {
+      uri: fileUri,
+      name: fileName || `${documentType.toLowerCase()}.pdf`,
+      type: mimeType || "application/pdf",
+    };
+  }
+  formData.append("file", expoFile as any);
 
-  const res = await fetch(
+  const res = await expoFetch(
     `${EDUCATION_API_BASE_URL}/grants/applications/${applicationId}/documents`,
     {
       method: "POST",
@@ -216,13 +223,32 @@ export async function uploadGrantDocument(
     },
   );
 
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 429) {
     await handleEducationResponse(res);
   }
 
-  const json = await res.json();
-  if (!res.ok || json.status === "error") {
-    throw new Error(sanitizeErrorMessage(json.message, `Document upload failed (HTTP ${res.status})`));
+  const rawText = await res.text();
+  let json: any = null;
+
+  if (rawText && rawText.trim().length > 0) {
+    try {
+      json = JSON.parse(rawText);
+    } catch {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          json = JSON.parse(jsonMatch[0]);
+        } catch {}
+      }
+    }
+  }
+
+  if (!res.ok || (json && json.status === "error")) {
+    throw new Error(sanitizeErrorMessage(json?.message, `Document upload failed (HTTP ${res.status})`));
+  }
+
+  if (!json || !json.data) {
+    throw new Error("Server returned an unexpected response format.");
   }
 
   return json.data;
