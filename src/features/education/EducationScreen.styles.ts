@@ -314,7 +314,7 @@ export const styles = StyleSheet.create({
   grantTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#EA580C',
+    color: '#0F172A',
     marginBottom: 5,
     letterSpacing: -0.2,
   },

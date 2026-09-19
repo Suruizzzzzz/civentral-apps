@@ -1,3 +1,4 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -10,6 +11,22 @@ import { styles } from "./EducationScreen.styles";
 export function EducationScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const isNavigatingRef = React.useRef(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      isNavigatingRef.current = false;
+    }, [])
+  );
+
+  const safeNavigate = (path: string) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    router.navigate(path as any);
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 600);
+  };
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -84,7 +101,7 @@ export function EducationScreen() {
                   borderColor: "#3A506B",
                 },
               ]}
-              onPress={() => router.push("/education/dashboard" as any)}
+              onPress={() => safeNavigate("/education/dashboard")}
               activeOpacity={0.85}
             >
               <View style={styles.hubCardHeader}>
@@ -142,7 +159,7 @@ export function EducationScreen() {
                   borderColor: "#3A506B",
                 },
               ]}
-              onPress={() => router.push("/education/new-applicant" as any)}
+              onPress={() => safeNavigate("/education/new-applicant")}
               activeOpacity={0.85}
             >
               <View style={styles.hubCardHeader}>
@@ -200,7 +217,7 @@ export function EducationScreen() {
                   borderColor: "#3A506B",
                 },
               ]}
-              onPress={() => router.push("/education/renewal" as any)}
+              onPress={() => safeNavigate("/education/renewal")}
               activeOpacity={0.85}
             >
               <View style={styles.hubCardHeader}>
@@ -263,7 +280,7 @@ export function EducationScreen() {
                   borderColor: "#3A506B",
                 },
               ]}
-              onPress={() => router.push("/education/grant" as any)}
+              onPress={() => safeNavigate("/education/grant")}
               activeOpacity={0.85}
             >
               <View style={styles.hubCardHeader}>
