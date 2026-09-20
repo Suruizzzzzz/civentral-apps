@@ -22,6 +22,8 @@ import {
 } from './api/grantApi';
 import { styles } from './styles/ScholarshipGrant.styles';
 
+const grantHeaderLight = require('@/assets/images/grant-header-light.png');
+const grantHeaderDark = require('@/assets/images/grant-header-dark.png');
 const grantWhite = require('@/assets/images/grant-white.png');
 const grantDark = require('@/assets/images/grant-dark.png');
 const complianceLight = require('@/assets/images/compliance-light.png');
@@ -78,16 +80,38 @@ export default function ScholarshipGrantScreen() {
       style={styles.backBtn}
       onPress={handleGoBack}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Back to Education Hub"
     >
       <IconSymbol
         name="chevron.left"
         size={16}
-        color={isDarkMode ? '#CBD5E1' : '#475569'}
+        color={isDarkMode ? '#FB923C' : '#EA580C'}
       />
-      <Text style={[styles.backText, { color: isDarkMode ? '#CBD5E1' : '#475569' }]}>
+      <Text style={[styles.backText, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
         Back to Education Hub
       </Text>
     </TouchableOpacity>
+  );
+
+  const headerAspectRatio = isDarkMode ? 1852 / 560 : 1844 / 582;
+
+  const renderHeaderSkeleton = () => (
+    <View
+      style={[
+        styles.headerContainer,
+        isDarkMode && styles.headerContainerDark,
+        { aspectRatio: headerAspectRatio },
+      ]}
+    >
+      <Skeleton
+        width="100%"
+        borderRadius={16}
+        style={{
+          height: '100%',
+        }}
+      />
+    </View>
   );
 
   const loadData = useCallback(async () => {
@@ -130,7 +154,7 @@ export default function ScholarshipGrantScreen() {
       <View style={[styles.container, isDarkMode && { backgroundColor: '#0F172A' }]}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {renderBackButton()}
-          <Skeleton height={120} borderRadius={16} />
+          {renderHeaderSkeleton()}
           <View style={{ height: 16 }} />
           <Skeleton height={160} borderRadius={16} />
           <View style={{ height: 16 }} />
@@ -244,33 +268,23 @@ export default function ScholarshipGrantScreen() {
       >
         {renderBackButton()}
 
-        {/* 1. SCHOLARSHIP GRANT HEADER / HERO */}
+        {/* 1. SCHOLARSHIP GRANT HEADER IMAGE */}
         <View
           style={[
-            styles.moduleHeaderCard,
-            isDarkMode && styles.moduleHeaderCardDark,
+            styles.headerContainer,
+            isDarkMode && styles.headerContainerDark,
+            { aspectRatio: headerAspectRatio },
           ]}
+          accessible={true}
+          accessibilityRole="header"
         >
-          <View style={styles.moduleHeaderTop}>
-            <View
-              style={[
-                styles.moduleHeaderIconWrap,
-                isDarkMode && styles.moduleHeaderIconWrapDark,
-              ]}
-            >
-              <IconSymbol
-                name="wallet.pass.fill"
-                size={16}
-                color="#FFFFFF"
-              />
-            </View>
-            <Text style={styles.moduleTitle}>
-              SCHOLARSHIP GRANT
-            </Text>
-          </View>
-          <Text style={styles.moduleSubtitle}>
-            Complete and track your educational grant application, requirements, compliance, and payment status.
-          </Text>
+          <Image
+            source={isDarkMode ? grantHeaderDark : grantHeaderLight}
+            style={styles.headerImage}
+            resizeMode="cover"
+            accessible={true}
+            accessibilityLabel="Scholarship Grant Header"
+          />
         </View>
 
         {/* 2. PRIMARY CARD 1: GRANT APPLICATION (ENTIRE CARD TOUCHABLE) */}

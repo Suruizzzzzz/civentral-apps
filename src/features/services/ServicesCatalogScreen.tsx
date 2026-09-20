@@ -44,11 +44,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORIES = [
   'ALL',
+  'EDUCATION',
   'DISASTER',
   'HOUSING',
   'TRANSPORT',
   'FACILITIES',
-  'EDUCATION',
   'BARANGAY',
   'BUSINESS',
   'TREASURY',
@@ -57,7 +57,21 @@ const CATEGORIES = [
 ] as const;
 
 const SERVICES_CATALOG: ServiceCatalogItem[] = [
-  // 1. DISASTER & EMERGENCY SERVICES
+  // 1. EDUCATION & SCHOLARSHIP PORTAL
+  {
+    id: 'SVC-EDU',
+    title: 'Education & Scholarship Portal',
+    category: 'EDUCATION',
+    description: 'City College grants, SHEAP scholarships, new application, renewal & cash allowance distribution schedule.',
+    iconName: 'book.closed.fill',
+    iconBg: '#F3E8FF',
+    iconColor: '#7E22CE',
+    badgeLabel: '4 SUB-SERVICES',
+    badgeVariant: 'success',
+    route: '/education',
+  },
+
+  // 2. DISASTER & EMERGENCY SERVICES
   {
     id: 'SVC-DRR',
     title: 'Disaster & Emergency Services',
@@ -305,19 +319,7 @@ const SERVICES_CATALOG: ServiceCatalogItem[] = [
     route: '/facilities',
   },
 
-  // 5. EXISTING CATEGORIES
-  {
-    id: 'SVC-EDU',
-    title: 'Education & Scholarship Portal',
-    category: 'EDUCATION',
-    description: 'City College grants, SHEAP scholarships, new application, renewal & cash allowance distribution schedule.',
-    iconName: 'book.closed.fill',
-    iconBg: '#F3E8FF',
-    iconColor: '#7E22CE',
-    badgeLabel: '4 SUB-SERVICES',
-    badgeVariant: 'success',
-    route: '/education',
-  },
+  // 6. OTHER MUNICIPAL CATEGORIES
   {
     id: 'SVC-BRG',
     title: 'Barangay Clearance & Citizen ID',

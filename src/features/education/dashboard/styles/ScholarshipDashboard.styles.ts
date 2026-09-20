@@ -4,7 +4,8 @@ export const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 80,
+    paddingBottom: 140,
+    flexGrow: 1,
   },
 
   /* Back navigation */
@@ -34,98 +35,56 @@ export const styles = StyleSheet.create({
   },
 
   /* ============================================================== */
-  /* 1. SCHOLARSHIP DASHBOARD HEADER CARD                           */
   /* ============================================================== */
-  headerCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    marginBottom: 18,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-    position: "relative",
+  /* 1. SCHOLARSHIP DASHBOARD HEADER IMAGE                         */
+  /* ============================================================== */
+  headerContainer: {
+    width: "100%",
+    borderRadius: 16,
     overflow: "hidden",
-  },
-
-  headerCardContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  headerCardTextCol: {
-    flex: 1,
-    paddingRight: 12,
-  },
-
-  headerCardTitle: {
-    fontSize: 21,
-    fontWeight: "900",
-    color: "#7E22CE",
-    letterSpacing: -0.4,
-    marginBottom: 4,
-    textTransform: "uppercase",
-  },
-
-  headerCardPurpose: {
-    fontSize: 13,
-    color: "#64748B",
-    lineHeight: 18,
-    fontWeight: "500",
-  },
-
-  /* Dedicated soft-violet visual box for toga */
-  togaArtworkBox: {
-    width: 76,
-    height: 70,
-    borderRadius: 12,
-    backgroundColor: "#F5E8FF",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 6,
+    marginBottom: 16,
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#E9D5FF",
+    borderColor: "#7E22CE",
   },
 
-  togaArtworkBoxDark: {
-    backgroundColor: "rgba(126, 34, 206, 0.2)",
-    borderColor: "rgba(192, 132, 252, 0.3)",
+  headerContainerDark: {
+    backgroundColor: "transparent",
+    borderColor: "#C084FC",
   },
 
-  togaImage: {
+  headerImage: {
     width: "100%",
     height: "100%",
   },
 
   /* ============================================================== */
-  /* 2. FIVE-STAGE STATUS PROGRESS TRACKER                          */
+  /* 1. CURRENT SCHOLARSHIP CARD                                    */
   /* ============================================================== */
-  trackerContainer: {
+  currentScholarshipCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    marginBottom: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
-  trackerHeaderRow: {
+  currentCardHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
-    flexWrap: "wrap",
-    gap: 6,
+    marginBottom: 10,
+    gap: 8,
   },
 
-  trackerSectionLabel: {
+  currentCardSectionLabel: {
     fontSize: 11,
     fontWeight: "800",
     color: "#7E22CE",
@@ -133,114 +92,502 @@ export const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
 
-  trackerCurrentBadge: {
+  currentStatusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F3E8FF",
+    gap: 4.5,
     paddingHorizontal: 8,
     paddingVertical: 2.5,
     borderRadius: 6,
     borderWidth: 1,
+  },
+
+  currentStatusBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+
+  currentStatusBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+
+  currentProgramTitle: {
+    fontSize: 16.5,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 2,
+    letterSpacing: -0.2,
+  },
+
+  currentProgramCategory: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: "#64748B",
+    marginBottom: 12,
+  },
+
+  currentMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 7,
+  },
+
+  currentMetaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4.5,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 6,
+  },
+
+  currentMetaChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#475569",
+  },
+
+  currentMetaChipViolet: {
+    backgroundColor: "#F3E8FF",
     borderColor: "#E9D5FF",
   },
 
-  trackerCurrentBadgeText: {
+  currentMetaChipVioletText: {
+    color: "#7E22CE",
+    fontWeight: "700",
+  },
+
+  /* ============================================================== */
+  /* 2. COMPACT SCHOLARSHIP PROGRESS CARD                           */
+  /* ============================================================== */
+  progressCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+
+  progressCardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+
+  progressCardSectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#7E22CE",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+
+  progressStatusSection: {
+    marginBottom: 12,
+  },
+
+  progressStatusLabel: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#94A3B8",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+
+  progressStatusValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+
+  progressStatusValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0F172A",
+    letterSpacing: -0.2,
+  },
+
+  progressStatusDesc: {
+    fontSize: 12.5,
+    fontWeight: "500",
+    color: "#64748B",
+    lineHeight: 17,
+  },
+
+  /* Short Progress Indicator (Compact stepper bar) */
+  compactIndicatorContainer: {
+    marginBottom: 14,
+    paddingVertical: 4,
+  },
+
+  compactStepperRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  compactStepSegment: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#E2E8F0",
+  },
+
+  compactStepSegmentCompleted: {
+    backgroundColor: "#16A34A",
+  },
+
+  compactStepSegmentCurrent: {
+    backgroundColor: "#7E22CE",
+  },
+
+  compactStepLabelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 6,
+  },
+
+  compactStepStageName: {
     fontSize: 11,
     fontWeight: "700",
     color: "#7E22CE",
   },
 
-  stepsLineRow: {
+  compactStepCountText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+
+  /* Terminal Withdrawn bar for compact indicator */
+  compactTerminatedBar: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+
+  compactTerminatedText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#DC2626",
+  },
+
+  /* View Full Progress CTA */
+  viewProgressBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#7E22CE",
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+
+  viewProgressBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12.5,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+
+  /* ============================================================== */
+  /* 3. FULL PROGRESS MODAL / BOTTOM SHEET                          */
+  /* ============================================================== */
+  progressModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    justifyContent: "flex-end",
+  },
+
+  progressModalSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    maxHeight: "85%",
+    paddingBottom: 28,
+  },
+
+  progressModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+
+  progressModalHeaderTextCol: {
+    flex: 1,
+    paddingRight: 10,
+  },
+
+  progressModalTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#7E22CE",
+    letterSpacing: -0.2,
+  },
+
+  progressModalSubtitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+    marginTop: 2,
+  },
+
+  progressModalCloseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  progressModalBody: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+  },
+
+  /* Vertical Timeline */
+  verticalTimelineContainer: {
+    paddingVertical: 4,
+  },
+
+  verticalTimelineRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    position: "relative",
+    marginBottom: 14,
+  },
+
+  verticalTimelineLeftCol: {
+    width: 32,
+    alignItems: "center",
+    alignSelf: "stretch",
+    marginRight: 12,
     position: "relative",
   },
 
-  stepsConnectorBackground: {
-    position: "absolute",
-    top: 9,
-    left: "10%",
-    right: "10%",
-    height: 2,
-    backgroundColor: "#E2E8F0",
-    zIndex: 0,
-  },
-
-  stepColumn: {
-    flex: 1,
-    alignItems: "center",
-    zIndex: 1,
-    paddingHorizontal: 1,
-  },
-
-  stepDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  verticalTimelineDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: "#CBD5E1",
-    marginBottom: 5,
+    zIndex: 2,
   },
 
-  stepDotCompleted: {
+  verticalTimelineDotCompleted: {
     backgroundColor: "#16A34A",
     borderColor: "#16A34A",
   },
 
-  stepDotCurrent: {
-    backgroundColor: "#7E22CE",
+  verticalTimelineDotCurrent: {
+    backgroundColor: "#FAF5FF",
     borderColor: "#7E22CE",
+    borderWidth: 2,
   },
 
-  stepDotUpcoming: {
-    backgroundColor: "#F8FAFC",
+  verticalTimelineDotUpcoming: {
+    backgroundColor: "#FFFFFF",
     borderColor: "#CBD5E1",
+    borderWidth: 2,
   },
 
-  stepLabel: {
-    fontSize: 10,
+  verticalTimelineConnector: {
+    position: "absolute",
+    top: 13,
+    bottom: -16,
+    width: 2.5,
+    alignSelf: "center",
+    backgroundColor: "#E2E8F0",
+    zIndex: 1,
+  },
+
+  verticalTimelineConnectorCompleted: {
+    backgroundColor: "#16A34A",
+  },
+
+  verticalTimelineContentCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  verticalTimelineContentCardActive: {
+    borderColor: "#7E22CE",
+    backgroundColor: "#FAF5FF",
+  },
+
+  verticalTimelineHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 2,
+    flexWrap: "wrap",
+    gap: 4,
+  },
+
+  verticalTimelineTitle: {
+    fontSize: 13.5,
     fontWeight: "700",
-    color: "#64748B",
-    textAlign: "center",
+    color: "#0F172A",
   },
 
-  stepLabelActive: {
-    color: "#7E22CE",
+  verticalTimelineStatusPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+
+  verticalTimelineStatusPillText: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+
+  verticalTimelineDate: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#16A34A",
+    marginBottom: 4,
+  },
+
+  verticalTimelineDesc: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#64748B",
+    lineHeight: 16,
+  },
+
+  /* Withdrawal Terminal Section */
+  terminalDivider: {
+    height: 1,
+    backgroundColor: "#E2E8F0",
+    marginVertical: 14,
+  },
+
+  withdrawnTerminalCard: {
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    marginBottom: 10,
+  },
+
+  withdrawnTerminalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+
+  withdrawnTerminalTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#DC2626",
+    letterSpacing: -0.2,
+  },
+
+  withdrawnBadge: {
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1,
+    borderColor: "#F87171",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+
+  withdrawnBadgeText: {
+    color: "#DC2626",
+    fontSize: 10,
     fontWeight: "800",
   },
 
-  stepLabelCompleted: {
-    color: "#16A34A",
+  withdrawnMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 3,
+  },
+
+  withdrawnMetaLabel: {
+    fontSize: 11.5,
     fontWeight: "700",
+    color: "#7F1D1D",
   },
 
-  stepSubLabel: {
-    fontSize: 8.5,
+  withdrawnMetaVal: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: "#991B1B",
+    flex: 1,
+  },
+
+  withdrawnNotice: {
+    fontSize: 12,
+    color: "#475569",
+    lineHeight: 17,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+
+  withdrawnBrowseBtn: {
+    backgroundColor: "#7E22CE",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+
+  withdrawnBrowseBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12.5,
     fontWeight: "700",
-    color: "#7E22CE",
-    textAlign: "center",
-    marginTop: 1,
-  },
-
-  stepSubLabelCompleted: {
-    color: "#16A34A",
-  },
-
-  stepDate: {
-    fontSize: 8,
-    fontWeight: "500",
-    color: "#94A3B8",
-    textAlign: "center",
-    marginTop: 1,
   },
 
   /* ============================================================== */
-  /* 3. SCHOLARSHIP HISTORY                                         */
+  /* 4. SCHOLARSHIP HISTORY PREVIEW                                 */
   /* ============================================================== */
   historyContainer: {
     marginBottom: 20,
@@ -261,31 +608,7 @@ export const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
 
-  historyDirectoryBox: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    overflow: "hidden",
-  },
-
-  historyRow: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-
-  historyRowLast: {
-    borderBottomWidth: 0,
-  },
-
-  historyCurrentBadgeRow: {
-    marginBottom: 4,
-  },
-
-  historyCurrentPill: {
-    alignSelf: "flex-start",
+  historyCountBadge: {
     backgroundColor: "#F3E8FF",
     borderWidth: 1,
     borderColor: "#E9D5FF",
@@ -294,60 +617,58 @@ export const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  historyCurrentPillText: {
-    fontSize: 9.5,
-    fontWeight: "800",
+  historyCountBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
     color: "#7E22CE",
-    letterSpacing: 0.4,
   },
 
-  historyPeriodText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#0F172A",
+  historyPreviewBox: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+
+  historyPreviewRow: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+
+  historyPreviewRowLast: {
+    borderBottomWidth: 0,
+  },
+
+  historyPreviewPeriodText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#7E22CE",
     marginBottom: 2,
   },
 
-  historyProgramSubText: {
-    fontSize: 12.5,
-    fontWeight: "600",
-    color: "#64748B",
-    marginBottom: 6,
-  },
-
-  historyRowMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-
-  historyTypeTag: {
-    fontSize: 10.5,
+  historyPreviewProgramText: {
+    fontSize: 13.5,
     fontWeight: "700",
-    color: "#64748B",
-    backgroundColor: "#F1F5F9",
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 4,
+    color: "#0F172A",
+    marginBottom: 6,
   },
 
-  historyRefCode: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#94A3B8",
-  },
-
-  historyRowBottom: {
+  historyPreviewBottomRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 8,
   },
 
-  historyStatusGroup: {
+  historyPreviewStatusGroup: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flex: 1,
   },
 
   historyStatusDot: {
@@ -357,20 +678,56 @@ export const styles = StyleSheet.create({
   },
 
   historyStatusText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
   },
 
-  historyDateText: {
-    fontSize: 11,
-    fontWeight: "500",
+  historyPreviewRefCode: {
+    fontSize: 10.5,
+    fontWeight: "600",
     color: "#94A3B8",
   },
 
-  historyActionsGroup: {
+  /* LARGE PRIMARY ACTION: VIEW FULL SCHOLARSHIP HISTORY */
+  viewFullHistoryBtn: {
+    backgroundColor: "#7E22CE",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
+    shadowColor: "#7E22CE",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+
+  viewFullHistoryBtnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  viewFullHistoryBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+
+  historyEmptyBox: {
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  historyEmptyText: {
+    fontSize: 13,
+    color: "#94A3B8",
+    fontWeight: "500",
   },
 
   historyDocumentsLink: {
@@ -387,18 +744,6 @@ export const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     color: "#7E22CE",
-  },
-
-  historyEmptyBox: {
-    padding: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  historyEmptyText: {
-    fontSize: 13,
-    color: "#94A3B8",
-    fontWeight: "500",
   },
 
   /* ============================================================== */

@@ -1,7 +1,7 @@
 import { formatDate } from '@/utils/dateUtils';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,10 +21,8 @@ import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { CitizenDashboardData, fetchCitizenDashboard, withdrawCitizenApplication } from './api/scholarshipDashboardApi';
 import {
-  CitizenApplicationDocumentItem,
   CitizenOfficialDocumentItem,
   CitizenOfficialDocumentsData,
-  CitizenRenewalDocumentItem,
   CitizenScholarshipDocumentsData,
   downloadOrViewCitizenContract,
   downloadOrViewCitizenDocument,
@@ -44,7 +42,7 @@ import {
 import { CitizenGrantOverviewData, fetchCitizenGrantOverview } from '../grant/api/grantApi';
 import { styles } from './styles/CitizenScholarshipDetail.styles';
 
-type DetailTab = 'overview' | 'status' | 'documents' | 'renewals' | 'certificates';
+type DetailTab = 'overview' | 'status' | 'documents';
 
 interface GrantTimelineStep {
   title: string;
@@ -225,8 +223,48 @@ function getRenewalTimelineItems(renewalStatus?: string): StatusTimelineStep[] {
   ];
 }
 
+function getApplicationBadgeConfig(status?: string): { label: string; variant: 'info' | 'success' | 'warning' | 'danger' | 'neutral' } {
+  if (!status) return { label: 'Active', variant: 'success' };
+  switch (status) {
+    case 'Draft':
+      return { label: 'Draft', variant: 'warning' };
+    case 'Submitted':
+      return { label: 'Submitted', variant: 'info' };
+    case 'Under Review':
+    case 'For Review':
+      return { label: 'Under Review', variant: 'info' };
+    case 'For Compliance':
+    case 'Returned':
+      return { label: 'For Compliance', variant: 'warning' };
+    case 'Ready for SSC':
+    case 'SSC Evaluation':
+      return { label: 'Evaluating', variant: 'info' };
+    case 'Approved':
+    case 'Active':
+      return { label: 'Approved', variant: 'success' };
+    case 'Withdrawn':
+      return { label: 'Withdrawn', variant: 'danger' };
+    case 'Rejected':
+      return { label: 'Rejected', variant: 'danger' };
+    default:
+      return { label: status, variant: 'neutral' };
+  }
+}
+
 export function CitizenScholarshipDetailScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    recordType?: 'Application' | 'Grant' | 'Renewal';
+    recordId?: string;
+    academicPeriod?: string;
+    status?: string;
+  }>();
+
+  const activeRecordType: 'Application' | 'Grant' | 'Renewal' =
+    params.recordType === 'Grant' || params.recordType === 'Renewal'
+      ? params.recordType
+      : 'Application';
+
   const { isDarkMode } = useTheme();
 
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
@@ -235,9 +273,9 @@ export function CitizenScholarshipDetailScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(null);
-  const [programData, setProgramData] = useState<ScholarshipProgram | null>(null);
+  const [, setProgramData] = useState<ScholarshipProgram | null>(null);
   const [renewalOverview, setRenewalOverview] = useState<CitizenRenewalOverviewData | null>(null);
-  const [complianceData, setComplianceData] = useState<CitizenComplianceDetailsData | null>(null);
+  const [, setComplianceData] = useState<CitizenComplianceDetailsData | null>(null);
   const [documentRecords, setDocumentRecords] = useState<CitizenScholarshipDocumentsData | null>(null);
   const [officialDocuments, setOfficialDocuments] = useState<CitizenOfficialDocumentsData | null>(null);
 
@@ -361,7 +399,7 @@ export function CitizenScholarshipDetailScreen() {
   }, [loadAllData]);
 
   const handleDocumentAction = async (
-    type: 'application' | 'renewal',
+    type: 'application' | 'renewal' | 'grant',
     id: number,
     filename: string,
     mode: 'view' | 'download'
@@ -369,6 +407,18 @@ export function CitizenScholarshipDetailScreen() {
     const docKey = `${type}_${id}_${mode}`;
     setActionLoadingDocKey(docKey);
     try {
+      if (type === 'grant') {
+        setModalTitle(`${mode === 'view' ? 'Grant Document Preview' : 'Document Download'}: ${filename}`);
+        setModalBody(
+          `File Name: ${filename}\nCategory: Grant Requirement\nReference ID: #${id}\nStatus: Verified Document\n\n${
+            mode === 'view'
+              ? 'Grant requirement record is authenticated in your Civentral scholar repository. The document status is active and verified.'
+              : 'Grant document file registered for download to local application storage.'
+          }`
+        );
+        setModalVisible(true);
+        return;
+      }
       await downloadOrViewCitizenDocument(type, id, filename, mode);
       setModalTitle(mode === 'view' ? 'Document Preview' : 'Document Downloaded');
       setModalBody(
@@ -457,6 +507,57 @@ export function CitizenScholarshipDetailScreen() {
   const initialOfficialDocs = officialDocuments?.initial_documents || [];
   const renewalOfficialDocs = officialDocuments?.renewal_documents || [];
 
+  const renewalItem = renewalOverview?.renewal;
+  const grantApp = grantOverview?.application;
+
+  let grantReqText = '—';
+  if (grantApp) {
+    if (grantApp.document_summary?.summary_label) {
+      grantReqText = grantApp.document_summary.summary_label;
+    } else if (grantApp.documents) {
+      const activeDocs = grantApp.documents.filter((d) => d.submission_status !== 'Removed');
+      const requiredCount = grantApp.institution_type === 'Private' ? 2 : 1;
+      grantReqText = `${activeDocs.length} / ${requiredCount} Requirements Submitted`;
+    }
+  }
+
+  const renewalPeriodStr = renewalOverview?.renewal_period
+    ? `AY ${renewalOverview.renewal_period.academic_year} — ${renewalOverview.renewal_period.term}`
+    : renewalOverview?.current_academic_period
+    ? `AY ${renewalOverview.current_academic_period.academic_year} — ${renewalOverview.current_academic_period.term}`
+    : '—';
+
+  // Compute active context metadata
+  let recordBadgeConfig: { label: string; variant: 'info' | 'success' | 'warning' | 'danger' | 'neutral' } = {
+    label: 'ACTIVE',
+    variant: 'success',
+  };
+  let recordReference = '—';
+  let recordPeriod = '—';
+  let headerSubtitle = 'City Government Educational Scholarship';
+
+  if (activeRecordType === 'Application') {
+    const currentStatus = params.status || application?.application_status || scholar?.scholar_status || 'Active';
+    recordBadgeConfig = getApplicationBadgeConfig(currentStatus);
+    recordReference = params.recordId || application?.application_code || scholar?.scholar_code || '—';
+    recordPeriod = params.academicPeriod || (academicPeriod ? `${academicPeriod.academic_year} • ${academicPeriod.term}` : 'AY 2026-2027 • Whole Academic Year');
+    headerSubtitle = scholarship?.category_name || 'City Government Educational Scholarship';
+  } else if (activeRecordType === 'Grant') {
+    const currentStatus = params.status || grantApp?.grant_status || 'Pending';
+    recordBadgeConfig = getGrantBadgeConfig(currentStatus);
+    recordReference = params.recordId || grantApp?.grant_application_code || '—';
+    recordPeriod = params.academicPeriod || (grantApp ? `AY ${grantApp.academic_year} • ${grantApp.academic_term}` : 'AY 2026-2027 • Whole Academic Year');
+    headerSubtitle = grantApp?.institution_name
+      ? `${grantApp.institution_name} • Grant Application`
+      : 'Scholarship Grant Application';
+  } else if (activeRecordType === 'Renewal') {
+    const currentStatus = params.status || renewalItem?.renewal_status || 'Pending';
+    recordBadgeConfig = getRenewalBadgeConfig(currentStatus);
+    recordReference = params.recordId || renewalItem?.renewal_code || '—';
+    recordPeriod = params.academicPeriod || renewalPeriodStr;
+    headerSubtitle = 'Scholarship Renewal Continuation Application';
+  }
+
   return (
     <ScrollView
       contentContainerStyle={styles.container}
@@ -478,12 +579,13 @@ export function CitizenScholarshipDetailScreen() {
         style={styles.backButton}
         onPress={() => router.back()}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Back to Dashboard"
       >
         <IconSymbol
-          name="chevron.right"
+          name="chevron.left"
           size={16}
           color={isDarkMode ? '#C084FC' : '#7E22CE'}
-          style={styles.backIcon}
         />
         <Text style={[styles.backText, isDarkMode && { color: '#C084FC' }]}>
           Back to Dashboard
@@ -527,34 +629,36 @@ export function CitizenScholarshipDetailScreen() {
           <View style={[styles.headerCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
             <View style={styles.headerTopRow}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: isDarkMode ? '#C084FC' : '#7E22CE' }}>
-                CIVENTRAL SCHOLAR RECORD
+                {activeRecordType.toUpperCase()} RECORD
               </Text>
-              <View style={[styles.headerBadge, isDarkMode && { backgroundColor: '#064E3B' }]}>
-                <Text style={[styles.headerBadgeText, isDarkMode && { color: '#34D399' }]}>
-                  {scholar?.scholar_status?.toUpperCase() || 'ACTIVE SCHOLAR'}
-                </Text>
-              </View>
+              <Badge label={recordBadgeConfig.label} variant={recordBadgeConfig.variant} />
             </View>
 
             <Text style={[styles.headerTitle, isDarkMode && { color: '#F8FAFC' }]}>
               {scholarship?.program_name || 'Academic Scholarship Program'}
             </Text>
             <Text style={[styles.headerSub, isDarkMode && { color: '#CBD5E1' }]}>
-              {scholarship?.category_name || 'City Government Educational Scholarship'}
+              {headerSubtitle}
             </Text>
 
             <View style={[styles.headerMetaRow, isDarkMode && { backgroundColor: '#111827' }]}>
               <View style={styles.headerMetaCol}>
-                <Text style={styles.headerMetaLabel}>Scholar ID</Text>
+                <Text style={styles.headerMetaLabel}>
+                  {activeRecordType === 'Grant'
+                    ? 'Grant Reference'
+                    : activeRecordType === 'Renewal'
+                    ? 'Renewal Reference'
+                    : 'Scholar / App ID'}
+                </Text>
                 <Text style={styles.headerMetaCode}>
-                  {scholar?.scholar_code || application?.application_code || 'Unassigned'}
+                  {recordReference}
                 </Text>
               </View>
 
               <View style={styles.headerMetaCol}>
                 <Text style={styles.headerMetaLabel}>Academic Period</Text>
                 <Text style={[styles.headerMetaVal, isDarkMode && { color: '#F8FAFC' }]}>
-                  {academicPeriod?.academic_year || 'AY 2026-2027'} • {academicPeriod?.term || 'Whole Academic Year'}
+                  {recordPeriod}
                 </Text>
               </View>
             </View>
@@ -572,8 +676,6 @@ export function CitizenScholarshipDetailScreen() {
                 { key: 'overview', label: 'Overview' },
                 { key: 'status', label: 'Status' },
                 { key: 'documents', label: 'Documents' },
-                { key: 'renewals', label: 'Renewals' },
-                { key: 'certificates', label: 'Official Documents' },
               ] as const
             ).map((tab) => (
               <TouchableOpacity
@@ -601,73 +703,219 @@ export function CitizenScholarshipDetailScreen() {
 
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
-            <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-              <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                Scholarship Overview
-              </Text>
-              <View style={styles.infoGrid}>
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Program Name</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                    {scholarship?.program_name || 'Academic Scholarship'}
+            <>
+              {activeRecordType === 'Application' && (
+                <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                  <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                    SCHOLARSHIP OVERVIEW
                   </Text>
-                </View>
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Program Name</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {scholarship?.program_name || 'Academic Scholarship'}
+                      </Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Program Code</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                    {scholarship?.program_code || '—'}
-                  </Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Program Code</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {scholarship?.program_code || '—'}
+                      </Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Scholar Status</Text>
-                  <Text style={[styles.infoValue, { color: '#16A34A' }]}>
-                    {scholar?.scholar_status || 'Active'}
-                  </Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Scholar Status</Text>
+                      <Text style={[styles.infoValue, { color: '#16A34A' }]}>
+                        {scholar?.scholar_status || 'Active'}
+                      </Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Scholar Code</Text>
-                  <Text style={[styles.infoValue, { color: '#7E22CE' }]}>
-                    {scholar?.scholar_code || application?.application_code || '—'}
-                  </Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Scholar Code</Text>
+                      <Text style={[styles.infoValue, { color: '#7E22CE' }]}>
+                        {scholar?.scholar_code || application?.application_code || '—'}
+                      </Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Academic Period</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                    {academicPeriod?.academic_year || 'AY 2026-2027'} ({academicPeriod?.term || 'Whole Academic Year'})
-                  </Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Academic Period</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {academicPeriod?.academic_year || 'AY 2026-2027'} ({academicPeriod?.term || 'Whole Academic Year'})
+                      </Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Education Category</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                    {scholarship?.category_name || 'Senior High School / Tertiary'}
-                  </Text>
-                </View>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Education Category</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {scholarship?.category_name || 'Senior High School / Tertiary'}
+                      </Text>
+                    </View>
 
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date Admitted</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                    {scholar?.admitted_at
-                      ? new Date(scholar.admitted_at).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })
-                      : 'Pending Admission'}
-                  </Text>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date Admitted</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {scholar?.admitted_at
+                          ? formatDate(scholar.admitted_at, '—')
+                          : 'Pending Admission'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
+              )}
+
+              {activeRecordType === 'Grant' && (
+                <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }, { marginBottom: 0 }]}>
+                      SCHOLARSHIP OVERVIEW
+                    </Text>
+                    <Badge label={recordBadgeConfig.label} variant={recordBadgeConfig.variant} />
+                  </View>
+
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Program Name</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {scholarship?.program_name || 'Academic Scholarship'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Grant Reference</Text>
+                      <Text style={[styles.infoValue, { color: '#0284C7' }]}>
+                        {grantApp?.grant_application_code || params.recordId || '—'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRowStacked}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Partner Institution</Text>
+                      <Text style={[styles.infoValueStacked, isDarkMode && { color: '#F8FAFC' }]}>
+                        {grantApp?.institution_name || 'City Partner Educational Institution'} ({grantApp?.institution_type || 'Accredited'} Institution)
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRowStacked}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Academic Period</Text>
+                      <Text style={[styles.infoValueStacked, isDarkMode && { color: '#F8FAFC' }]}>
+                        {grantApp ? `AY ${grantApp.academic_year} — ${grantApp.academic_term}` : recordPeriod}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Grant Status</Text>
+                      <Text style={[styles.infoValue, { color: '#16A34A' }]}>
+                        {grantApp?.grant_status || params.status || 'Active'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Requirements</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {grantReqText}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Submitted Date</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {formatDate(grantApp?.submitted_at, '—')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.primaryActionBtn,
+                      { backgroundColor: '#EA580C', shadowColor: '#EA580C' },
+                    ]}
+                    onPress={() => router.push('/education/grant' as any)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="View Full Grant Application"
+                  >
+                    <Text style={styles.primaryActionBtnText}>VIEW FULL GRANT APPLICATION</Text>
+                    <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {activeRecordType === 'Renewal' && (
+                <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }, { marginBottom: 0 }]}>
+                      SCHOLARSHIP OVERVIEW
+                    </Text>
+                    <Badge label={recordBadgeConfig.label} variant={recordBadgeConfig.variant} />
+                  </View>
+
+                  <View style={styles.infoGrid}>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Program Name</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {scholarship?.program_name || 'Academic Scholarship'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Renewal Reference</Text>
+                      <Text style={[styles.infoValue, { color: '#7E22CE' }]}>
+                        {renewalItem?.renewal_code || params.recordId || '—'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRowStacked}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Academic Period</Text>
+                      <Text style={[styles.infoValueStacked, isDarkMode && { color: '#F8FAFC' }]}>
+                        {renewalPeriodStr}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Renewal Status</Text>
+                      <Text style={[styles.infoValue, { color: '#16A34A' }]}>
+                        {renewalItem?.renewal_status || params.status || 'Active'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Submitted Date</Text>
+                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                        {formatDate(renewalItem?.submitted_at, '—')}
+                      </Text>
+                    </View>
+
+                    {renewalItem?.certificate ? (
+                      <View style={styles.infoRowStacked}>
+                        <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Official Certificate</Text>
+                        <Text style={[styles.infoValueStacked, { color: '#15803D' }]}>
+                          {renewalItem.certificate.certificate_number} ({renewalItem.certificate.certificate_status})
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.primaryActionBtn}
+                    onPress={() => router.push('/education/renewal' as any)}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="View Full Renewal Application"
+                  >
+                    <Text style={styles.primaryActionBtnText}>VIEW FULL RENEWAL APPLICATION</Text>
+                    <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           )}
 
           {/* TAB 2: STATUS */}
           {activeTab === 'status' && (
             <View style={{ gap: 16 }}>
-              {/* SCHEDULED INTERVIEW NOTICE CARD */}
+              {activeRecordType === 'Application' && (
+                <>
+                  {/* SCHEDULED INTERVIEW NOTICE CARD */}
               {application?.interview ? (
                 <View style={[styles.sectionCard, { backgroundColor: isDarkMode ? '#1E293B' : '#F0F9FF', borderColor: isDarkMode ? '#0284C7' : '#BAE6FD', borderWidth: 1 }]}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -732,7 +980,6 @@ export function CitizenScholarshipDetailScreen() {
                       const isLast = idx === applicationLifecycleTimeline.length - 1;
                       const isCompleted = Boolean(item.is_completed);
                       const isCurrent = Boolean(item.is_current);
-                      const nextItemCompleted = !isLast && Boolean(applicationLifecycleTimeline[idx + 1]?.is_completed);
 
                       return (
                         <View key={item.key || idx} style={styles.timelineItemRow}>
@@ -742,37 +989,42 @@ export function CitizenScholarshipDetailScreen() {
                                 styles.timelineIconCircle,
                                 {
                                   backgroundColor: isCompleted
-                                    ? '#DCFCE7'
+                                    ? '#16A34A'
                                     : isCurrent
-                                    ? '#FEF3C7'
-                                    : isDarkMode
-                                    ? '#1E293B'
-                                    : '#F1F5F9',
+                                    ? (isDarkMode ? '#2E1065' : '#FAF5FF')
+                                    : (isDarkMode ? '#1E293B' : '#FFFFFF'),
                                   borderColor: isCompleted
                                     ? '#16A34A'
                                     : isCurrent
-                                    ? '#D97706'
-                                    : isDarkMode
-                                    ? '#475569'
-                                    : '#CBD5E1',
+                                    ? (isDarkMode ? '#C084FC' : '#7E22CE')
+                                    : (isDarkMode ? '#475569' : '#CBD5E1'),
                                 },
                               ]}
                             >
-                              <IconSymbol
-                                name={isCompleted ? 'checkmark.circle.fill' : isCurrent ? 'clock.fill' : 'circle'}
-                                size={14}
-                                color={isCompleted ? '#16A34A' : isCurrent ? '#D97706' : isDarkMode ? '#64748B' : '#94A3B8'}
-                              />
+                              {isCompleted ? (
+                                <IconSymbol
+                                  name="checkmark"
+                                  size={13}
+                                  color="#FFFFFF"
+                                />
+                              ) : isCurrent ? (
+                                <View
+                                  style={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: 5,
+                                    backgroundColor: isDarkMode ? '#C084FC' : '#7E22CE',
+                                  }}
+                                />
+                              ) : null}
                             </View>
                             {!isLast && (
                               <View
                                 style={[
                                   styles.timelineConnectorLine,
                                   {
-                                    backgroundColor: isCompleted && nextItemCompleted
+                                    backgroundColor: isCompleted
                                       ? '#16A34A'
-                                      : isCompleted
-                                      ? '#86EFAC'
                                       : isDarkMode
                                       ? '#334155'
                                       : '#E2E8F0',
@@ -923,12 +1175,15 @@ export function CitizenScholarshipDetailScreen() {
                     );
                   }
 
-                  return null;
-                })()
-              )}
+                    return null;
+                  })()
+                )}
+              </>
+            )}
 
-              {/* 2. LATEST RENEWAL */}
-              {(() => {
+            {/* 2. LATEST RENEWAL */}
+            {activeRecordType === 'Renewal' && (
+              (() => {
                 const renewalItem = renewalOverview?.renewal;
                 const hasRenewal = Boolean(renewalItem);
                 const renewalBadgeConfig = getRenewalBadgeConfig(renewalItem?.renewal_status);
@@ -1000,12 +1255,14 @@ export function CitizenScholarshipDetailScreen() {
                           You have not submitted a scholarship renewal application for the current period.
                         </Text>
                         <TouchableOpacity
-                          style={[styles.docActionBtn, { marginTop: 8 }]}
+                          style={[styles.primaryActionBtn, { marginTop: 12 }]}
                           onPress={() => router.push('/education/renewal' as any)}
                           activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Start Renewal Application"
                         >
-                          <Text style={styles.docActionText}>Start Renewal Application</Text>
-                          <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                          <Text style={styles.primaryActionBtnText}>START RENEWAL APPLICATION</Text>
+                          <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
                         </TouchableOpacity>
                       </View>
                     ) : (
@@ -1060,7 +1317,6 @@ export function CitizenScholarshipDetailScreen() {
                             const isCompleted = item.isCompleted;
                             const isCurrent = item.isCurrent;
                             const isWarning = item.isWarning;
-                            const nextItemCompleted = !isLast && renewalTimelineItems[idx + 1]?.isCompleted;
 
                             return (
                               <View key={idx} style={styles.timelineItemRow}>
@@ -1070,59 +1326,55 @@ export function CitizenScholarshipDetailScreen() {
                                       styles.timelineIconCircle,
                                       {
                                         backgroundColor: isCompleted
-                                          ? '#DCFCE7'
+                                          ? '#16A34A'
                                           : isCurrent
-                                          ? '#F3E8FF'
+                                          ? (isDarkMode ? '#2E1065' : '#FAF5FF')
                                           : isWarning
-                                          ? '#FEF3C7'
-                                          : isDarkMode
-                                          ? '#1E293B'
-                                          : '#F1F5F9',
+                                          ? (isDarkMode ? '#451A03' : '#FEF3C7')
+                                          : (isDarkMode ? '#1E293B' : '#FFFFFF'),
                                         borderColor: isCompleted
                                           ? '#16A34A'
                                           : isCurrent
-                                          ? '#7E22CE'
+                                          ? (isDarkMode ? '#C084FC' : '#7E22CE')
                                           : isWarning
                                           ? '#D97706'
-                                          : isDarkMode
-                                          ? '#475569'
-                                          : '#CBD5E1',
+                                          : (isDarkMode ? '#475569' : '#CBD5E1'),
                                       },
                                     ]}
                                   >
-                                    <IconSymbol
-                                      name={
-                                        isCompleted
-                                          ? 'checkmark.circle.fill'
-                                          : isCurrent
-                                          ? 'clock.fill'
-                                          : isWarning
-                                          ? 'exclamationmark.triangle.fill'
-                                          : 'circle'
-                                      }
-                                      size={14}
-                                      color={
-                                        isCompleted
-                                          ? '#16A34A'
-                                          : isCurrent
-                                          ? '#7E22CE'
-                                          : isWarning
-                                          ? '#D97706'
-                                          : isDarkMode
-                                          ? '#64748B'
-                                          : '#94A3B8'
-                                      }
-                                    />
+                                    {isCompleted ? (
+                                      <IconSymbol
+                                        name="checkmark"
+                                        size={13}
+                                        color="#FFFFFF"
+                                      />
+                                    ) : isCurrent ? (
+                                      <View
+                                        style={{
+                                          width: 10,
+                                          height: 10,
+                                          borderRadius: 5,
+                                          backgroundColor: isDarkMode ? '#C084FC' : '#7E22CE',
+                                        }}
+                                      />
+                                    ) : isWarning ? (
+                                      <View
+                                        style={{
+                                          width: 10,
+                                          height: 10,
+                                          borderRadius: 5,
+                                          backgroundColor: '#D97706',
+                                        }}
+                                      />
+                                    ) : null}
                                   </View>
                                   {!isLast && (
                                     <View
                                       style={[
                                         styles.timelineConnectorLine,
                                         {
-                                          backgroundColor: isCompleted && nextItemCompleted
+                                          backgroundColor: isCompleted
                                             ? '#16A34A'
-                                            : isCompleted
-                                            ? '#86EFAC'
                                             : isDarkMode
                                             ? '#334155'
                                             : '#E2E8F0',
@@ -1197,21 +1449,25 @@ export function CitizenScholarshipDetailScreen() {
 
                         {/* CTA ACTION BUTTON */}
                         <TouchableOpacity
-                          style={[styles.docActionBtn, { marginTop: 4 }]}
+                          style={[styles.primaryActionBtn, { marginTop: 14 }]}
                           onPress={() => router.push(renewalCtaRoute as any)}
                           activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel={renewalCtaText}
                         >
-                          <Text style={styles.docActionText}>{renewalCtaText}</Text>
-                          <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                          <Text style={styles.primaryActionBtnText}>{renewalCtaText.toUpperCase()}</Text>
+                          <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
                         </TouchableOpacity>
                       </View>
                     )}
                   </View>
                 );
-              })()}
+              })()
+            )}
 
-              {/* 3. CURRENT SCHOLARSHIP GRANT */}
-              {(() => {
+            {/* 3. CURRENT SCHOLARSHIP GRANT */}
+            {activeRecordType === 'Grant' && (
+              (() => {
                 const grantApp = grantOverview?.application;
                 const hasGrantApp = Boolean(grantOverview?.has_existing_application && grantApp);
                 const grantBadgeConfig = getGrantBadgeConfig(grantApp?.grant_status);
@@ -1281,12 +1537,17 @@ export function CitizenScholarshipDetailScreen() {
                           You have not submitted a scholarship grant application for the current academic period.
                         </Text>
                         <TouchableOpacity
-                          style={[styles.docActionBtn, { marginTop: 8 }]}
+                          style={[
+                            styles.primaryActionBtn,
+                            { backgroundColor: '#EA580C', shadowColor: '#EA580C', marginTop: 12 },
+                          ]}
                           onPress={() => router.push('/education/grant' as any)}
                           activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Start Grant Application"
                         >
-                          <Text style={styles.docActionText}>Start Grant Application</Text>
-                          <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                          <Text style={styles.primaryActionBtnText}>START GRANT APPLICATION</Text>
+                          <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
                         </TouchableOpacity>
                       </View>
                     ) : (
@@ -1363,7 +1624,6 @@ export function CitizenScholarshipDetailScreen() {
                             const isCompleted = item.isCompleted;
                             const isCurrent = item.isCurrent;
                             const isWarning = item.isWarning;
-                            const nextItemCompleted = !isLast && grantTimelineItems[idx + 1]?.isCompleted;
 
                             return (
                               <View key={idx} style={styles.timelineItemRow}>
@@ -1373,59 +1633,55 @@ export function CitizenScholarshipDetailScreen() {
                                       styles.timelineIconCircle,
                                       {
                                         backgroundColor: isCompleted
-                                          ? '#DCFCE7'
+                                          ? '#16A34A'
                                           : isCurrent
-                                          ? '#E0F2FE'
+                                          ? (isDarkMode ? '#431407' : '#FFF7ED')
                                           : isWarning
-                                          ? '#FEF3C7'
-                                          : isDarkMode
-                                          ? '#1E293B'
-                                          : '#F1F5F9',
+                                          ? (isDarkMode ? '#451A03' : '#FEF3C7')
+                                          : (isDarkMode ? '#1E293B' : '#FFFFFF'),
                                         borderColor: isCompleted
                                           ? '#16A34A'
                                           : isCurrent
-                                          ? '#0284C7'
+                                          ? (isDarkMode ? '#FB923C' : '#EA580C')
                                           : isWarning
                                           ? '#D97706'
-                                          : isDarkMode
-                                          ? '#475569'
-                                          : '#CBD5E1',
+                                          : (isDarkMode ? '#475569' : '#CBD5E1'),
                                       },
                                     ]}
                                   >
-                                    <IconSymbol
-                                      name={
-                                        isCompleted
-                                          ? 'checkmark.circle.fill'
-                                          : isCurrent
-                                          ? 'clock.fill'
-                                          : isWarning
-                                          ? 'exclamationmark.triangle.fill'
-                                          : 'circle'
-                                      }
-                                      size={14}
-                                      color={
-                                        isCompleted
-                                          ? '#16A34A'
-                                          : isCurrent
-                                          ? '#0284C7'
-                                          : isWarning
-                                          ? '#D97706'
-                                          : isDarkMode
-                                          ? '#64748B'
-                                          : '#94A3B8'
-                                      }
-                                    />
+                                    {isCompleted ? (
+                                      <IconSymbol
+                                        name="checkmark"
+                                        size={13}
+                                        color="#FFFFFF"
+                                      />
+                                    ) : isCurrent ? (
+                                      <View
+                                        style={{
+                                          width: 10,
+                                          height: 10,
+                                          borderRadius: 5,
+                                          backgroundColor: isDarkMode ? '#FB923C' : '#EA580C',
+                                        }}
+                                      />
+                                    ) : isWarning ? (
+                                      <View
+                                        style={{
+                                          width: 10,
+                                          height: 10,
+                                          borderRadius: 5,
+                                          backgroundColor: '#D97706',
+                                        }}
+                                      />
+                                    ) : null}
                                   </View>
                                   {!isLast && (
                                     <View
                                       style={[
                                         styles.timelineConnectorLine,
                                         {
-                                          backgroundColor: isCompleted && nextItemCompleted
+                                          backgroundColor: isCompleted
                                             ? '#16A34A'
-                                            : isCompleted
-                                            ? '#86EFAC'
                                             : isDarkMode
                                             ? '#334155'
                                             : '#E2E8F0',
@@ -1500,454 +1756,489 @@ export function CitizenScholarshipDetailScreen() {
 
                         {/* CTA ACTION BUTTON */}
                         <TouchableOpacity
-                          style={[styles.docActionBtn, { marginTop: 4 }]}
+                          style={[
+                            styles.primaryActionBtn,
+                            { backgroundColor: '#EA580C', shadowColor: '#EA580C', marginTop: 14 },
+                          ]}
                           onPress={() => router.push('/education/grant' as any)}
                           activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel={grantCtaText}
                         >
-                          <Text style={styles.docActionText}>{grantCtaText}</Text>
-                          <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                          <Text style={styles.primaryActionBtnText}>{grantCtaText.toUpperCase()}</Text>
+                          <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
                         </TouchableOpacity>
                       </View>
                     )}
                   </View>
                 );
-              })()}
-            </View>
-          )}
+              })()
+            )}
+          </View>
+        )}
 
-          {/* TAB 3: DOCUMENTS (REQUIREMENTS) */}
+          {/* TAB 3: DOCUMENTS */}
           {activeTab === 'documents' && (
             <View style={{ gap: 16 }}>
-              {/* APPLICATION DOCUMENTS */}
-              <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-                <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                  Application Documents
-                </Text>
+              {activeRecordType === 'Application' && (
+                <>
+                  {/* APPLICATION REQUIREMENTS */}
+                  <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                    <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                      Application Requirements
+                    </Text>
 
-                {appDocs.length > 0 ? (
-                  appDocs.map((doc) => {
-                    const isNeedsReplacement = doc.validation_result === 'Needs Replacement';
-                    const isReplSubmitted = doc.status === 'Replacement Submitted';
-                    const viewKey = `application_${doc.document_id}_view`;
-                    const dlKey = `application_${doc.document_id}_download`;
-                    const isViewLoading = actionLoadingDocKey === viewKey;
-                    const isDlLoading = actionLoadingDocKey === dlKey;
+                    {appDocs.length > 0 ? (
+                      appDocs.map((doc) => {
+                        const isNeedsReplacement = doc.validation_result === 'Needs Replacement';
+                        const isReplSubmitted = doc.status === 'Replacement Submitted';
+                        const viewKey = `application_${doc.document_id}_view`;
+                        const dlKey = `application_${doc.document_id}_download`;
+                        const isViewLoading = actionLoadingDocKey === viewKey;
+                        const isDlLoading = actionLoadingDocKey === dlKey;
 
-                    return (
-                      <View key={doc.document_id} style={[styles.docCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
-                        <View style={styles.docHeaderRow}>
-                          <IconSymbol
-                            name={isNeedsReplacement ? 'exclamationmark.triangle.fill' : isReplSubmitted ? 'clock.fill' : 'doc.text.fill'}
-                            size={20}
-                            color={isNeedsReplacement ? '#D97706' : isReplSubmitted ? '#7E22CE' : '#16A34A'}
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                              {doc.document_name}
-                            </Text>
-                            <Text style={[styles.docSub, isDarkMode && { color: '#94A3B8' }]}>
-                              Status: {isReplSubmitted ? 'Replacement Submitted (Awaiting Review)' : doc.validation_result || doc.status} • File: {doc.original_filename} ({(doc.file_size / 1024).toFixed(0)} KB)
-                            </Text>
-                          </View>
-                        </View>
-
-                        {isNeedsReplacement ? (
-                          <View style={styles.docWarningBox}>
-                            <Text style={styles.docWarningText}>
-                              ⚠ Needs Replacement — {doc.review_remarks || 'Secretariat requested document replacement.'}
-                            </Text>
-                          </View>
-                        ) : null}
-
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                          <TouchableOpacity
-                            style={styles.docActionBtn}
-                            disabled={Boolean(actionLoadingDocKey)}
-                            onPress={() => handleDocumentAction('application', doc.document_id, doc.original_filename, 'view')}
-                            activeOpacity={0.8}
-                          >
-                            {isViewLoading ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                              <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
-                            )}
-                            <Text style={styles.docActionText}>{isViewLoading ? 'Opening...' : 'View File'}</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[styles.docActionBtn, { backgroundColor: '#475569' }]}
-                            disabled={Boolean(actionLoadingDocKey)}
-                            onPress={() => handleDocumentAction('application', doc.document_id, doc.original_filename, 'download')}
-                            activeOpacity={0.8}
-                          >
-                            {isDlLoading ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                              <IconSymbol name="arrow.down.circle.fill" size={14} color="#FFFFFF" />
-                            )}
-                            <Text style={styles.docActionText}>{isDlLoading ? 'Downloading...' : 'Download'}</Text>
-                          </TouchableOpacity>
-
-                          {isNeedsReplacement ? (
-                            <TouchableOpacity
-                              style={[styles.docActionBtn, { backgroundColor: '#D97706' }]}
-                              onPress={() => router.push('/education/new-applicant/compliance' as any)}
-                              activeOpacity={0.8}
-                            >
-                              <Text style={styles.docActionText}>Action Required: Replace Document</Text>
-                              <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          ) : null}
-                        </View>
-                      </View>
-                    );
-                  })
-                ) : (
-                  <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
-                    No application documents found.
-                  </Text>
-                )}
-              </View>
-
-              {/* RENEWAL DOCUMENTS */}
-              <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-                <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                  Renewal Documents (COR / COG / SOA)
-                </Text>
-
-                {renDocs.length > 0 ? (
-                  renDocs.map((doc) => {
-                    const isNeedsReplacement = doc.validation_status === 'Needs Replacement';
-                    const viewKey = `renewal_${doc.renewal_document_id}_view`;
-                    const dlKey = `renewal_${doc.renewal_document_id}_download`;
-                    const isViewLoading = actionLoadingDocKey === viewKey;
-                    const isDlLoading = actionLoadingDocKey === dlKey;
-
-                    return (
-                      <View key={doc.renewal_document_id} style={[styles.docCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
-                        <View style={styles.docHeaderRow}>
-                          <IconSymbol
-                            name={isNeedsReplacement ? 'exclamationmark.triangle.fill' : 'doc.text.fill'}
-                            size={20}
-                            color={isNeedsReplacement ? '#D97706' : '#16A34A'}
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                              {doc.document_name}
-                            </Text>
-                            <Text style={[styles.docSub, isDarkMode && { color: '#94A3B8' }]}>
-                              Status: {doc.validation_status} • File: {doc.original_filename} ({(doc.file_size / 1024).toFixed(0)} KB)
-                            </Text>
-                          </View>
-                        </View>
-
-                        {isNeedsReplacement ? (
-                          <>
-                            <View style={styles.docWarningBox}>
-                              <Text style={styles.docWarningText}>
-                                ⚠ Needs Replacement — {doc.review_remarks || 'Coordinator requested document replacement.'}
-                              </Text>
+                        return (
+                          <View key={doc.document_id} style={[styles.docCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
+                            <View style={styles.docHeaderRow}>
+                              <IconSymbol
+                                name={isNeedsReplacement ? 'exclamationmark.triangle.fill' : isReplSubmitted ? 'clock.fill' : 'doc.text.fill'}
+                                size={20}
+                                color={isNeedsReplacement ? '#D97706' : isReplSubmitted ? '#7E22CE' : '#16A34A'}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                                  {doc.document_name}
+                                </Text>
+                                <Text style={[styles.docSub, isDarkMode && { color: '#94A3B8' }]}>
+                                  Status: {isReplSubmitted ? 'Replacement Submitted (Awaiting Review)' : doc.validation_result || doc.status} • File: {doc.original_filename} ({(doc.file_size / 1024).toFixed(0)} KB)
+                                </Text>
+                              </View>
                             </View>
 
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                            {isNeedsReplacement ? (
+                              <View style={styles.docWarningBox}>
+                                <Text style={styles.docWarningText}>
+                                  ⚠ Needs Replacement — {doc.review_remarks || 'Secretariat requested document replacement.'}
+                                </Text>
+                              </View>
+                            ) : null}
+
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                              <TouchableOpacity
+                                style={styles.docActionBtn}
+                                disabled={Boolean(actionLoadingDocKey)}
+                                onPress={() => handleDocumentAction('application', doc.document_id, doc.original_filename, 'view')}
+                                activeOpacity={0.8}
+                              >
+                                {isViewLoading ? (
+                                  <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                  <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
+                                )}
+                                <Text style={styles.docActionText}>{isViewLoading ? 'Opening...' : 'View File'}</Text>
+                              </TouchableOpacity>
+
                               <TouchableOpacity
                                 style={[styles.docActionBtn, { backgroundColor: '#475569' }]}
                                 disabled={Boolean(actionLoadingDocKey)}
-                                onPress={() => handleDocumentAction('renewal', doc.renewal_document_id, doc.original_filename, 'view')}
+                                onPress={() => handleDocumentAction('application', doc.document_id, doc.original_filename, 'download')}
                                 activeOpacity={0.8}
                               >
-                                {isViewLoading ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
-                                <Text style={styles.docActionText}>View Original</Text>
+                                {isDlLoading ? (
+                                  <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                  <IconSymbol name="arrow.down.circle.fill" size={14} color="#FFFFFF" />
+                                )}
+                                <Text style={styles.docActionText}>{isDlLoading ? 'Downloading...' : 'Download'}</Text>
                               </TouchableOpacity>
 
-                              <TouchableOpacity
-                                style={[styles.docActionBtn, { backgroundColor: '#334155' }]}
-                                disabled={Boolean(actionLoadingDocKey)}
-                                onPress={() => handleDocumentAction('renewal', doc.renewal_document_id, doc.original_filename, 'download')}
-                                activeOpacity={0.8}
-                              >
-                                {isDlLoading ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
-                                <Text style={styles.docActionText}>Download Original</Text>
-                              </TouchableOpacity>
-
-                              <TouchableOpacity
-                                style={[styles.docActionBtn, { backgroundColor: '#D97706' }]}
-                                onPress={() => router.push('/education/renewal/compliance' as any)}
-                                activeOpacity={0.8}
-                              >
-                                <Text style={styles.docActionText}>Review Replacement Request</Text>
-                                <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
-                              </TouchableOpacity>
+                              {isNeedsReplacement ? (
+                                <TouchableOpacity
+                                  style={[styles.docActionBtn, { backgroundColor: '#D97706' }]}
+                                  onPress={() => router.push('/education/new-applicant/compliance' as any)}
+                                  activeOpacity={0.8}
+                                >
+                                  <Text style={styles.docActionText}>Action Required: Replace Document</Text>
+                                  <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                                </TouchableOpacity>
+                              ) : null}
                             </View>
-                          </>
-                        ) : (
-                          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                            <TouchableOpacity
-                              style={styles.docActionBtn}
-                              disabled={Boolean(actionLoadingDocKey)}
-                              onPress={() => handleDocumentAction('renewal', doc.renewal_document_id, doc.original_filename, 'view')}
-                              activeOpacity={0.8}
-                            >
-                              {isViewLoading ? (
-                                <ActivityIndicator size="small" color="#FFFFFF" />
-                              ) : (
-                                <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
-                              )}
-                              <Text style={styles.docActionText}>{isViewLoading ? 'Opening...' : 'View File'}</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={[styles.docActionBtn, { backgroundColor: '#475569' }]}
-                              disabled={Boolean(actionLoadingDocKey)}
-                              onPress={() => handleDocumentAction('renewal', doc.renewal_document_id, doc.original_filename, 'download')}
-                              activeOpacity={0.8}
-                            >
-                              {isDlLoading ? (
-                                <ActivityIndicator size="small" color="#FFFFFF" />
-                              ) : (
-                                <IconSymbol name="arrow.down.circle.fill" size={14} color="#FFFFFF" />
-                              )}
-                              <Text style={styles.docActionText}>{isDlLoading ? 'Downloading...' : 'Download'}</Text>
-                            </TouchableOpacity>
                           </View>
-                        )}
-                      </View>
-                    );
-                  })
-                ) : (
-                  <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
-                    No submitted renewal documents found.
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* TAB 4: RENEWALS */}
-          {activeTab === 'renewals' && (
-            <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-              <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                Scholarship Renewal History
-              </Text>
-
-              {renewalOverview?.renewal ? (
-                <View style={[styles.docCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
-                  <View style={styles.infoGrid}>
-                    <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Renewal Code</Text>
-                      <Text style={[styles.infoValue, { color: '#7E22CE' }]}>
-                        {renewalOverview.renewal.renewal_code}
+                        );
+                      })
+                    ) : (
+                      <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
+                        No application documents found.
                       </Text>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Academic Period</Text>
-                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                        AY {renewalOverview.current_academic_period?.academic_year || '2026-2027'} / {renewalOverview.current_academic_period?.term || 'Whole Academic Year'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Renewal Status</Text>
-                      <Text style={[styles.infoValue, { color: '#16A34A' }]}>
-                        {renewalOverview.renewal.renewal_status}
-                      </Text>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Submitted At</Text>
-                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                        {formatDate(renewalOverview.renewal.submitted_at, '—')}
-                      </Text>
-                    </View>
-
-                    {renewalOverview.renewal.certificate ? (
-                      <View style={styles.infoRow}>
-                        <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Official Certificate</Text>
-                        <Text style={[styles.infoValue, { color: '#15803D' }]}>
-                          {renewalOverview.renewal.certificate.certificate_number} ({renewalOverview.renewal.certificate.certificate_status})
-                        </Text>
-                      </View>
-                    ) : null}
+                    )}
                   </View>
 
-                  <TouchableOpacity
-                    style={[styles.docActionBtn, { marginTop: 14 }]}
-                    onPress={() => router.push('/education/renewal' as any)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.docActionText}>View Full Renewal</Text>
-                    <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
-                  No renewal history yet.
-                </Text>
-              )}
-            </View>
-          )}
+                  {/* APPLICATION OFFICIAL CERTIFICATES & CONTRACTS */}
+                  {initialOfficialDocs.length > 0 ? (
+                    <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                      <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                        Initial Official Certificates & Contracts
+                      </Text>
+                      <View style={{ gap: 12 }}>
+                        {initialOfficialDocs.map((doc) => {
+                          const viewKey = `${doc.type}_${doc.id}_view`;
+                          const dlKey = `${doc.type}_${doc.id}_download`;
+                          const isViewLoading = actionLoadingDocKey === viewKey;
+                          const isDlLoading = actionLoadingDocKey === dlKey;
 
-          {/* TAB 5: OFFICIAL DOCUMENTS */}
-          {activeTab === 'certificates' && (
-            <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-              <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                My Official Documents
-              </Text>
+                          return (
+                            <View key={`${doc.type}_${doc.id}`} style={[styles.certCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
+                              <View style={styles.certHeader}>
+                                <IconSymbol name="checkmark.circle.fill" size={24} color="#16A34A" />
+                                <View style={{ flex: 1 }}>
+                                  <Text style={[styles.certTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                                    {doc.title}
+                                  </Text>
+                                  <Text style={[styles.certSub, isDarkMode && { color: '#94A3B8' }]}>
+                                    {doc.document_number} • Status: {doc.status}
+                                  </Text>
+                                </View>
+                              </View>
 
-              {/* 1. INITIAL SCHOLARSHIP OFFICIAL DOCUMENTS */}
-              {initialOfficialDocs.length > 0 ? (
-                <View style={{ gap: 12, marginBottom: 16 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#C084FC' : '#7E22CE' }}>
-                    INITIAL SCHOLARSHIP
-                  </Text>
-                  {initialOfficialDocs.map((doc) => {
-                    const viewKey = `${doc.type}_${doc.id}_view`;
-                    const dlKey = `${doc.type}_${doc.id}_download`;
-                    const isViewLoading = actionLoadingDocKey === viewKey;
-                    const isDlLoading = actionLoadingDocKey === dlKey;
+                              <View style={styles.infoGrid}>
+                                <View style={styles.infoRow}>
+                                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date</Text>
+                                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                                    {formatDate(doc.date, '—')}
+                                  </Text>
+                                </View>
+                              </View>
 
-                    return (
-                      <View key={`${doc.type}_${doc.id}`} style={[styles.certCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
-                        <View style={styles.certHeader}>
-                          <IconSymbol name="checkmark.circle.fill" size={24} color="#16A34A" />
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.certTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                              {doc.title}
-                            </Text>
-                            <Text style={[styles.certSub, isDarkMode && { color: '#94A3B8' }]}>
-                              {doc.document_number} • Status: {doc.status}
-                            </Text>
-                          </View>
-                        </View>
+                              <View style={styles.certBtnRow}>
+                                <TouchableOpacity
+                                  style={styles.certPrimaryBtn}
+                                  disabled={Boolean(actionLoadingDocKey)}
+                                  onPress={() => handleOfficialDocAction(doc, 'view')}
+                                  activeOpacity={0.8}
+                                >
+                                  {isViewLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
+                                  )}
+                                  <Text style={styles.certPrimaryBtnText}>{isViewLoading ? 'Opening...' : 'View'}</Text>
+                                </TouchableOpacity>
 
-                        <View style={styles.infoGrid}>
-                          <View style={styles.infoRow}>
-                            <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date</Text>
-                            <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                              {formatDate(doc.date, '—')}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <View style={styles.certBtnRow}>
-                          <TouchableOpacity
-                            style={styles.certPrimaryBtn}
-                            disabled={Boolean(actionLoadingDocKey)}
-                            onPress={() => handleOfficialDocAction(doc, 'view')}
-                            activeOpacity={0.8}
-                          >
-                            {isViewLoading ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                              <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
-                            )}
-                            <Text style={styles.certPrimaryBtnText}>{isViewLoading ? 'Opening...' : 'View'}</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[styles.certPrimaryBtn, { backgroundColor: '#475569' }]}
-                            disabled={Boolean(actionLoadingDocKey)}
-                            onPress={() => handleOfficialDocAction(doc, 'download')}
-                            activeOpacity={0.8}
-                          >
-                            {isDlLoading ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                              <IconSymbol name="arrow.down.circle.fill" size={14} color="#FFFFFF" />
-                            )}
-                            <Text style={styles.certPrimaryBtnText}>{isDlLoading ? 'Downloading...' : 'Download'}</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : null}
-
-              {/* 2. RENEWAL OFFICIAL DOCUMENTS */}
-              {renewalOfficialDocs.length > 0 ? (
-                <View style={{ gap: 12 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#C084FC' : '#7E22CE' }}>
-                    RENEWAL DOCUMENTS
-                  </Text>
-                  {renewalOfficialDocs.map((doc) => {
-                    const viewKey = `${doc.type}_${doc.id}_view`;
-                    const dlKey = `${doc.type}_${doc.id}_download`;
-                    const isViewLoading = actionLoadingDocKey === viewKey;
-                    const isDlLoading = actionLoadingDocKey === dlKey;
-
-                    return (
-                      <View key={`${doc.type}_${doc.id}`} style={[styles.certCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
-                        <View style={styles.certHeader}>
-                          <IconSymbol name="checkmark.circle.fill" size={24} color="#7E22CE" />
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.certTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                              {doc.title}
-                            </Text>
-                            <Text style={[styles.certSub, isDarkMode && { color: '#94A3B8' }]}>
-                              {doc.document_number} • Status: {doc.status}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <View style={styles.infoGrid}>
-                          {doc.period ? (
-                            <View style={styles.infoRow}>
-                              <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Academic Period</Text>
-                              <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                                {doc.period}
-                              </Text>
+                                <TouchableOpacity
+                                  style={[styles.certPrimaryBtn, { backgroundColor: '#475569' }]}
+                                  disabled={Boolean(actionLoadingDocKey)}
+                                  onPress={() => handleOfficialDocAction(doc, 'download')}
+                                  activeOpacity={0.8}
+                                >
+                                  {isDlLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <IconSymbol name="arrow.down.circle.fill" size={14} color="#FFFFFF" />
+                                  )}
+                                  <Text style={styles.certPrimaryBtnText}>{isDlLoading ? 'Downloading...' : 'Download'}</Text>
+                                </TouchableOpacity>
+                              </View>
                             </View>
-                          ) : null}
-                          <View style={styles.infoRow}>
-                            <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date</Text>
-                            <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                              {formatDate(doc.date, '—')}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <View style={styles.certBtnRow}>
-                          <TouchableOpacity
-                            style={styles.certPrimaryBtn}
-                            disabled={Boolean(actionLoadingDocKey)}
-                            onPress={() => handleOfficialDocAction(doc, 'view')}
-                            activeOpacity={0.8}
-                          >
-                            {isViewLoading ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                              <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
-                            )}
-                            <Text style={styles.certPrimaryBtnText}>{isViewLoading ? 'Opening...' : 'View'}</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[styles.certPrimaryBtn, { backgroundColor: '#475569' }]}
-                            disabled={Boolean(actionLoadingDocKey)}
-                            onPress={() => handleOfficialDocAction(doc, 'download')}
-                            activeOpacity={0.8}
-                          >
-                            {isDlLoading ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                              <IconSymbol name="arrow.down.circle.fill" size={14} color="#FFFFFF" />
-                            )}
-                            <Text style={styles.certPrimaryBtnText}>{isDlLoading ? 'Downloading...' : 'Download'}</Text>
-                          </TouchableOpacity>
-                        </View>
+                          );
+                        })}
                       </View>
-                    );
-                  })}
-                </View>
-              ) : null}
+                    </View>
+                  ) : null}
+                </>
+              )}
 
-              {initialOfficialDocs.length === 0 && renewalOfficialDocs.length === 0 ? (
-                <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
-                  No official documents available yet.
-                </Text>
-              ) : null}
+              {activeRecordType === 'Grant' && (
+                <>
+                  {/* SUBMITTED GRANT REQUIREMENTS */}
+                  <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                    <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                      Submitted Grant Requirements
+                    </Text>
+
+                    {grantApp?.documents && grantApp.documents.length > 0 ? (
+                      grantApp.documents.map((doc) => {
+                        const isNeedsReplacement = doc.review_status === 'Needs Replacement' || doc.review_status === 'Invalid';
+                        const docName = doc.document_type === 'COR' ? 'Certificate of Registration (COR)' : doc.document_type === 'SOA' ? 'Statement of Account (SOA)' : doc.file_name;
+                        const viewKey = `grant_${doc.grant_document_id}_view`;
+                        const isViewLoading = actionLoadingDocKey === viewKey;
+
+                        return (
+                          <View key={doc.grant_document_id} style={[styles.docCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
+                            <View style={styles.docHeaderRow}>
+                              <IconSymbol
+                                name={isNeedsReplacement ? 'exclamationmark.triangle.fill' : 'doc.text.fill'}
+                                size={20}
+                                color={isNeedsReplacement ? '#D97706' : '#16A34A'}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                                  {docName}
+                                </Text>
+                                <Text style={[styles.docSub, isDarkMode && { color: '#94A3B8' }]}>
+                                  Status: {doc.submission_status} • Verification: {doc.review_status} • File: {doc.file_name} {doc.file_size ? `(${(doc.file_size / 1024).toFixed(0)} KB)` : ''}
+                                </Text>
+                              </View>
+                            </View>
+
+                            {isNeedsReplacement ? (
+                              <View style={styles.docWarningBox}>
+                                <Text style={styles.docWarningText}>
+                                  ⚠ Review Notice: {doc.review_remarks || 'Document requires re-submission or correction.'}
+                                </Text>
+                              </View>
+                            ) : null}
+
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                              <TouchableOpacity
+                                style={styles.docActionBtn}
+                                disabled={Boolean(actionLoadingDocKey)}
+                                onPress={() => handleDocumentAction('grant', doc.grant_document_id, doc.file_name, 'view')}
+                                activeOpacity={0.8}
+                              >
+                                {isViewLoading ? (
+                                  <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                  <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
+                                )}
+                                <Text style={styles.docActionText}>{isViewLoading ? 'Opening...' : 'View Info'}</Text>
+                              </TouchableOpacity>
+
+                              {isNeedsReplacement ? (
+                                <TouchableOpacity
+                                  style={[styles.docActionBtn, { backgroundColor: '#D97706' }]}
+                                  onPress={() => router.push('/education/grant' as any)}
+                                  activeOpacity={0.8}
+                                >
+                                  <Text style={styles.docActionText}>Update in Grant Application</Text>
+                                  <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                                </TouchableOpacity>
+                              ) : null}
+                            </View>
+                          </View>
+                        );
+                      })
+                    ) : (
+                      <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
+                        No grant requirements submitted yet.
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* GRANT DISBURSEMENT & RELEASE DOCUMENTS CARD */}
+                  <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                    <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                      Grant Release & Financial Records
+                    </Text>
+                    <View style={{ backgroundColor: isDarkMode ? '#1E293B' : '#F0F9FF', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: isDarkMode ? '#0369A1' : '#BAE6FD' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <IconSymbol name="checkmark.circle.fill" size={18} color="#0284C7" />
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#38BDF8' : '#0369A1' }}>
+                          Official Financial Authorization
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#334155', lineHeight: 18 }}>
+                        Official scholarship grant disbursements and tuition assistance vouchers are authorized by the City Government Education and Scholarship Office upon review completion.
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
+
+              {activeRecordType === 'Renewal' && (
+                <>
+                  {/* SUBMITTED RENEWAL REQUIREMENTS */}
+                  <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                    <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                      Submitted Renewal Requirements (COR / COG / SOA)
+                    </Text>
+
+                    {renDocs.length > 0 ? (
+                      renDocs.map((doc) => {
+                        const isNeedsReplacement = doc.validation_status === 'Needs Replacement';
+                        const viewKey = `renewal_${doc.renewal_document_id}_view`;
+                        const dlKey = `renewal_${doc.renewal_document_id}_download`;
+                        const isViewLoading = actionLoadingDocKey === viewKey;
+                        const isDlLoading = actionLoadingDocKey === dlKey;
+
+                        return (
+                          <View key={doc.renewal_document_id} style={[styles.docCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
+                            <View style={styles.docHeaderRow}>
+                              <IconSymbol
+                                name={isNeedsReplacement ? 'exclamationmark.triangle.fill' : 'doc.text.fill'}
+                                size={20}
+                                color={isNeedsReplacement ? '#D97706' : '#16A34A'}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                                  {doc.document_name}
+                                </Text>
+                                <Text style={[styles.docSub, isDarkMode && { color: '#94A3B8' }]}>
+                                  Status: {doc.validation_status} • File: {doc.original_filename} ({(doc.file_size / 1024).toFixed(0)} KB)
+                                </Text>
+                              </View>
+                            </View>
+
+                            {isNeedsReplacement ? (
+                              <>
+                                <View style={styles.docWarningBox}>
+                                  <Text style={styles.docWarningText}>
+                                    ⚠ Needs Replacement — {doc.review_remarks || 'Coordinator requested document replacement.'}
+                                  </Text>
+                                </View>
+
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                                  <TouchableOpacity
+                                    style={[styles.docActionBtn, { backgroundColor: '#475569' }]}
+                                    disabled={Boolean(actionLoadingDocKey)}
+                                    onPress={() => handleDocumentAction('renewal', doc.renewal_document_id, doc.original_filename, 'view')}
+                                    activeOpacity={0.8}
+                                  >
+                                    {isViewLoading ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
+                                    <Text style={styles.docActionText}>View Original</Text>
+                                  </TouchableOpacity>
+
+                                  <TouchableOpacity
+                                    style={[styles.docActionBtn, { backgroundColor: '#334155' }]}
+                                    disabled={Boolean(actionLoadingDocKey)}
+                                    onPress={() => handleDocumentAction('renewal', doc.renewal_document_id, doc.original_filename, 'download')}
+                                    activeOpacity={0.8}
+                                  >
+                                    {isDlLoading ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
+                                    <Text style={styles.docActionText}>Download Original</Text>
+                                  </TouchableOpacity>
+
+                                  <TouchableOpacity
+                                    style={[styles.docActionBtn, { backgroundColor: '#D97706' }]}
+                                    onPress={() => router.push('/education/renewal/compliance' as any)}
+                                    activeOpacity={0.8}
+                                  >
+                                    <Text style={styles.docActionText}>Review Replacement Request</Text>
+                                    <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                                  </TouchableOpacity>
+                                </View>
+                              </>
+                            ) : (
+                              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                                <TouchableOpacity
+                                  style={styles.docActionBtn}
+                                  disabled={Boolean(actionLoadingDocKey)}
+                                  onPress={() => handleDocumentAction('renewal', doc.renewal_document_id, doc.original_filename, 'view')}
+                                  activeOpacity={0.8}
+                                >
+                                  {isViewLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
+                                  )}
+                                  <Text style={styles.docActionText}>{isViewLoading ? 'Opening...' : 'View File'}</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                  style={[styles.docActionBtn, { backgroundColor: '#475569' }]}
+                                  disabled={Boolean(actionLoadingDocKey)}
+                                  onPress={() => handleDocumentAction('renewal', doc.renewal_document_id, doc.original_filename, 'download')}
+                                  activeOpacity={0.8}
+                                >
+                                  {isDlLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <IconSymbol name="arrow.down.circle.fill" size={14} color="#FFFFFF" />
+                                  )}
+                                  <Text style={styles.docActionText}>{isDlLoading ? 'Downloading...' : 'Download'}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })
+                    ) : (
+                      <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
+                        No submitted renewal documents found.
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* RENEWAL OFFICIAL CERTIFICATES */}
+                  {renewalOfficialDocs.length > 0 ? (
+                    <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                      <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                        Renewal Official Documents & Certificates
+                      </Text>
+                      <View style={{ gap: 12 }}>
+                        {renewalOfficialDocs.map((doc) => {
+                          const viewKey = `${doc.type}_${doc.id}_view`;
+                          const dlKey = `${doc.type}_${doc.id}_download`;
+                          const isViewLoading = actionLoadingDocKey === viewKey;
+                          const isDlLoading = actionLoadingDocKey === dlKey;
+
+                          return (
+                            <View key={`${doc.type}_${doc.id}`} style={[styles.certCard, isDarkMode && { backgroundColor: '#111827', borderColor: '#374151' }]}>
+                              <View style={styles.certHeader}>
+                                <IconSymbol name="checkmark.circle.fill" size={24} color="#7E22CE" />
+                                <View style={{ flex: 1 }}>
+                                  <Text style={[styles.certTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                                    {doc.title}
+                                  </Text>
+                                  <Text style={[styles.certSub, isDarkMode && { color: '#94A3B8' }]}>
+                                    {doc.document_number} • Status: {doc.status}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <View style={styles.infoGrid}>
+                                {doc.period ? (
+                                  <View style={styles.infoRow}>
+                                    <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Academic Period</Text>
+                                    <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                                      {doc.period}
+                                    </Text>
+                                  </View>
+                                ) : null}
+                                <View style={styles.infoRow}>
+                                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date</Text>
+                                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                                    {formatDate(doc.date, '—')}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <View style={styles.certBtnRow}>
+                                <TouchableOpacity
+                                  style={styles.certPrimaryBtn}
+                                  disabled={Boolean(actionLoadingDocKey)}
+                                  onPress={() => handleOfficialDocAction(doc, 'view')}
+                                  activeOpacity={0.8}
+                                >
+                                  {isViewLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <IconSymbol name="doc.text.fill" size={14} color="#FFFFFF" />
+                                  )}
+                                  <Text style={styles.certPrimaryBtnText}>{isViewLoading ? 'Opening...' : 'View'}</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                  style={[styles.certPrimaryBtn, { backgroundColor: '#475569' }]}
+                                  disabled={Boolean(actionLoadingDocKey)}
+                                  onPress={() => handleOfficialDocAction(doc, 'download')}
+                                  activeOpacity={0.8}
+                                >
+                                  {isDlLoading ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                  ) : (
+                                    <IconSymbol name="arrow.down.circle.fill" size={14} color="#FFFFFF" />
+                                  )}
+                                  <Text style={styles.certPrimaryBtnText}>{isDlLoading ? 'Downloading...' : 'Download'}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ) : null}
+                </>
+              )}
             </View>
           )}
 

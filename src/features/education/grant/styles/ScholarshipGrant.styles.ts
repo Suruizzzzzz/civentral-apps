@@ -10,48 +10,22 @@ export const styles = StyleSheet.create({
     paddingBottom: 140,
     flexGrow: 1,
   },
-  moduleHeaderCard: {
-    backgroundColor: '#EA580C',
+  headerContainer: {
+    width: '100%',
     borderRadius: 16,
-    padding: 18,
+    overflow: 'hidden',
     marginBottom: 16,
-    shadowColor: '#EA580C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#EA580C',
   },
-  moduleHeaderCardDark: {
-    backgroundColor: '#C2410C',
-    shadowColor: '#C2410C',
+  headerContainerDark: {
+    backgroundColor: 'transparent',
+    borderColor: '#FB923C',
   },
-  moduleHeaderTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  moduleHeaderIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moduleHeaderIconWrapDark: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-  moduleTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
-  moduleSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
-    lineHeight: 19,
+  headerImage: {
+    width: '100%',
+    height: '100%',
   },
   recordCard: {
     backgroundColor: '#FFFFFF',

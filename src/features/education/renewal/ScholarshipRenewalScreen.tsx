@@ -21,6 +21,8 @@ import {
 } from "./api/renewalApi";
 import { styles } from "./styles/ScholarshipRenewal.styles";
 
+const renewalHeaderLight = require("@/assets/images/renewal-header-light.png");
+const renewalHeaderDark = require("@/assets/images/renewal-header-dark.png");
 const renewalWhite = require("@/assets/images/renewal-white.png");
 const renewalDark = require("@/assets/images/renewal-dark.png");
 const complianceLight = require("@/assets/images/compliance-light.png");
@@ -69,6 +71,26 @@ export function ScholarshipRenewalScreen() {
 
   const unresolvedComplianceCount = complianceDetails?.unresolved_compliance_requests?.length ?? 0;
 
+  const RENEWAL_HEADER_ASPECT_RATIO = isDarkMode ? 1791 / 497 : 1777 / 489;
+
+  const renderHeaderSkeleton = () => (
+    <View
+      style={[
+        styles.headerContainer,
+        isDarkMode && styles.headerContainerDark,
+        { aspectRatio: RENEWAL_HEADER_ASPECT_RATIO },
+      ]}
+    >
+      <Skeleton
+        width="100%"
+        borderRadius={16}
+        style={{
+          height: "100%",
+        }}
+      />
+    </View>
+  );
+
   return (
     <ScrollView
       contentContainerStyle={styles.container}
@@ -108,22 +130,28 @@ export function ScholarshipRenewalScreen() {
         </Text>
       </TouchableOpacity>
 
-      {/* HERO HEADER BANNER */}
-      <View
-        style={[
-          styles.headerBanner,
-          isDarkMode && { backgroundColor: "#1C2541", borderWidth: 1, borderColor: "#3A506B" },
-        ]}
-      >
-        <View style={styles.headerBadge}>
-          <IconSymbol name="pencil" size={14} color="#FFFFFF" />
-          <Text style={styles.headerBadgeText}>FOR SCHOLARS</Text>
+      {/* HERO HEADER: SKELETON OR IMAGE */}
+      {loading ? (
+        renderHeaderSkeleton()
+      ) : (
+        <View
+          style={[
+            styles.headerContainer,
+            isDarkMode && styles.headerContainerDark,
+            { aspectRatio: RENEWAL_HEADER_ASPECT_RATIO },
+          ]}
+          accessible={true}
+          accessibilityRole="header"
+        >
+          <Image
+            source={isDarkMode ? renewalHeaderDark : renewalHeaderLight}
+            style={styles.headerImage}
+            resizeMode="cover"
+            accessible={true}
+            accessibilityLabel="Scholarship Renewal Header"
+          />
         </View>
-        <Text style={styles.title}>Scholarship Renewal</Text>
-        <Text style={styles.sub}>
-          Submit renewal requirements, view active grant status & certificate issuance.
-        </Text>
-      </View>
+      )}
 
       {/* LOADING STATE */}
       {loading ? (

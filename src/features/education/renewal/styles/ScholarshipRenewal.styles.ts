@@ -35,50 +35,22 @@ export const styles = StyleSheet.create({
     color: "#15803D",
   },
 
-  /* Hero Header Banner - Green theme */
-  headerBanner: {
-    backgroundColor: "#15803D",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#15803D",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
+  /* Hero Header Container - Image */
+  headerContainer: {
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 16,
+    backgroundColor: "transparent",
   },
 
-  headerBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 12,
+  headerContainerDark: {
+    backgroundColor: "transparent",
   },
 
-  headerBadgeText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: 0.5,
-  },
-
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-
-  sub: {
-    fontSize: 13,
-    color: "#DCFCE7",
-    lineHeight: 18,
+  headerImage: {
+    width: "100%",
+    height: "100%",
   },
 
   /* Loading & Error States */

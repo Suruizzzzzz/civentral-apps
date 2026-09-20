@@ -8,10 +8,12 @@ import {
   Modal,
   RefreshControl,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -34,11 +36,14 @@ import {
 } from './api/citizenDocumentApi';
 import { styles } from './styles/ScholarshipDashboard.styles';
 
-const scholarshipBg = require('@/assets/images/scholarship-bg.png');
+const dashHeaderLight = require('@/assets/images/dash-header-light.png');
+const dashHeaderDark = require('@/assets/images/dash-header-dark.png');
 
 interface ProgressStage {
   id: number;
   label: string;
+  title: string;
+  description: string;
   subLabel?: string;
   date?: string | null;
   state: 'completed' | 'current' | 'upcoming';
@@ -132,6 +137,9 @@ function getStatusColors(status: string, isDarkMode: boolean) {
 export function ScholarshipDashboardScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const headerAspectRatio = isDarkMode ? 1872 / 497 : 1868 / 483;
 
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -145,8 +153,11 @@ export function ScholarshipDashboardScreen() {
   const [officialDocsData, setOfficialDocsData] = useState<CitizenOfficialDocumentsData | null>(null);
 
   // Per-record official documents modal state
-  const [selectedRecordForDocs, setSelectedRecordForDocs] = useState<HistoryItem | null>(null);
+  const [selectedRecordForDocs] = useState<HistoryItem | null>(null);
   const [docsModalVisible, setDocsModalVisible] = useState(false);
+
+  // Full progress modal state
+  const [progressModalVisible, setProgressModalVisible] = useState(false);
 
   // Feedback modal state (view/download)
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
@@ -314,10 +325,12 @@ export function ScholarshipDashboardScreen() {
     let grantSubLabel = 'No Application';
     let grantState: 'completed' | 'current' | 'upcoming' = 'upcoming';
     let grantDate: string | null = null;
+    let grantDesc = 'Educational financial assistance and stipend release processing.';
 
     if (hasGrantDisbursed) {
       grantSubLabel = 'Disbursed';
       grantState = 'completed';
+      grantDesc = 'Scholarship grant successfully disbursed to scholar account.';
       const releasedItem = grantReleases.find(
         (r) => r.release_status === 'Completed' || r.release_status === 'Released'
       );
@@ -325,29 +338,38 @@ export function ScholarshipDashboardScreen() {
     } else if (hasGrantProcessing) {
       grantSubLabel = 'Processing';
       grantState = 'current';
+      grantDesc = 'Grant disbursement release is currently being scheduled and processed.';
     } else if (grantOverview?.has_existing_application && grantOverview.application) {
       const gStatus = grantOverview.application.grant_status;
       grantState = 'current';
       if (gStatus === 'Approved for Payroll') {
         grantSubLabel = 'Approved for Payroll';
+        grantDesc = 'Grant application validated and approved for municipal payroll processing.';
       } else if (gStatus === 'For Compliance') {
         grantSubLabel = 'For Compliance';
+        grantDesc = 'Additional documentation required for grant compliance verification.';
       } else if (gStatus === 'Under Review' || gStatus === 'For Review') {
         grantSubLabel = 'Under Review';
+        grantDesc = 'Grant verification in progress by scholarship administrator.';
       } else if (gStatus === 'Submitted') {
         grantSubLabel = 'Submitted';
+        grantDesc = 'Grant application submitted and awaiting initial review.';
       } else if (gStatus === 'Draft') {
         grantSubLabel = 'Draft';
+        grantDesc = 'Grant application drafted and awaiting final submission.';
       } else {
         grantSubLabel = gStatus || 'In Progress';
+        grantDesc = `Grant status: ${gStatus}.`;
       }
     } else {
       if (scholar?.scholar_status === 'Active') {
         grantSubLabel = 'No Application';
         grantState = 'upcoming';
+        grantDesc = 'Grant application not yet submitted for this period.';
       } else {
         grantSubLabel = 'Pending';
         grantState = 'upcoming';
+        grantDesc = 'Grant processing unlocks upon official scholarship admission.';
       }
     }
 
@@ -360,24 +382,32 @@ export function ScholarshipDashboardScreen() {
       {
         id: 1,
         label: 'Submitted',
+        title: 'Application Submitted',
+        description: 'Initial scholarship application and credentials submitted.',
         date: stage1Date,
         state: stage1Completed ? 'completed' : stage1Current ? 'current' : 'upcoming',
       },
       {
         id: 2,
         label: 'Review',
+        title: 'Document & Secretariat Review',
+        description: 'Secretariat verification of applicant credentials and eligibility.',
         date: stage2Date,
         state: stage2Completed ? 'completed' : stage2Current ? 'current' : 'upcoming',
       },
       {
         id: 3,
         label: 'SSC Eval',
+        title: 'SSC Evaluation',
+        description: 'Scholarship Selection Committee review and continuation evaluation.',
         date: stage3Date,
         state: stage3Completed ? 'completed' : stage3Current ? 'current' : 'upcoming',
       },
       {
         id: 4,
         label: 'Approved',
+        title: 'Scholarship Approved',
+        description: 'Official municipal scholarship approval and scholar admission.',
         date: stage4Date,
         state: stage4Completed
           ? stage4Current
@@ -388,6 +418,8 @@ export function ScholarshipDashboardScreen() {
       {
         id: 5,
         label: 'Grant',
+        title: 'Scholarship Grant',
+        description: grantDesc,
         subLabel: grantSubLabel,
         date: grantDate,
         state: grantState,
@@ -400,6 +432,133 @@ export function ScholarshipDashboardScreen() {
       },
     ];
   }, [scholar, application, processTimeline, grantReleases, grantOverview]);
+
+  // Withdrawal detection
+  const isWithdrawn = Boolean(application?.application_status === 'Withdrawn');
+  const withdrawalDate = formatDate(application?.submitted_at) || 'Recorded';
+  const withdrawalReason = 'Citizen voluntarily withdrew application before committee evaluation.';
+
+  // Current active stage index for compact stepper
+  const currentStageIndex = useMemo(() => {
+    const idx = stages.findIndex((s) => s.state === 'current');
+    if (idx !== -1) return idx;
+    if (stages.every((s) => s.state === 'completed')) return stages.length - 1;
+    const completedCount = stages.filter((s) => s.state === 'completed').length;
+    return Math.max(0, completedCount - 1);
+  }, [stages]);
+
+  // Current status summary info for cards
+  const currentStatusInfo = useMemo(() => {
+    if (isWithdrawn) {
+      return {
+        label: 'Withdrawn',
+        description: 'Application voluntarily withdrawn before committee evaluation.',
+        dotColor: '#DC2626',
+        textColor: isDarkMode ? '#F87171' : '#DC2626',
+        badgeBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
+        badgeBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
+      };
+    }
+    if (scholar?.scholar_status === 'Active') {
+      if (stages[4].state === 'completed') {
+        return {
+          label: 'Grant Disbursed',
+          description: 'Scholarship grant released for the current academic period.',
+          dotColor: '#16A34A',
+          textColor: isDarkMode ? '#4ADE80' : '#16A34A',
+          badgeBg: isDarkMode ? '#064E3B' : '#DCFCE7',
+          badgeBorder: isDarkMode ? '#059669' : '#86EFAC',
+        };
+      }
+      if (stages[4].subLabel && stages[4].subLabel !== 'No Application' && stages[4].subLabel !== 'Pending') {
+        return {
+          label: stages[4].subLabel,
+          description: 'Scholarship grant application in progress.',
+          dotColor: '#7E22CE',
+          textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+          badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+          badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+        };
+      }
+      return {
+        label: 'Active Scholar',
+        description: 'Scholar in good standing under Academic Scholarship Program.',
+        dotColor: '#16A34A',
+        textColor: isDarkMode ? '#4ADE80' : '#16A34A',
+        badgeBg: isDarkMode ? '#064E3B' : '#DCFCE7',
+        badgeBorder: isDarkMode ? '#059669' : '#86EFAC',
+      };
+    }
+    if (application) {
+      const s = application.application_status;
+      if (s === 'Approved') {
+        return {
+          label: 'Approved',
+          description: 'Application approved for municipal scholarship admission.',
+          dotColor: '#16A34A',
+          textColor: isDarkMode ? '#4ADE80' : '#16A34A',
+          badgeBg: isDarkMode ? '#064E3B' : '#DCFCE7',
+          badgeBorder: isDarkMode ? '#059669' : '#86EFAC',
+        };
+      }
+      if (s === 'Ready for SSC' || s === 'For Evaluation') {
+        return {
+          label: 'For SSC Evaluation',
+          description: 'Scheduled for Scholarship Selection Committee evaluation.',
+          dotColor: '#7E22CE',
+          textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+          badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+          badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+        };
+      }
+      if (s === 'For Compliance' || s === 'Returned') {
+        return {
+          label: s,
+          description: 'Action required: document compliance or corrections needed.',
+          dotColor: '#D97706',
+          textColor: isDarkMode ? '#FBBF24' : '#D97706',
+          badgeBg: isDarkMode ? '#451A03' : '#FEF3C7',
+          badgeBorder: isDarkMode ? '#B45309' : '#FDE68A',
+        };
+      }
+      if (s === 'Under Review') {
+        return {
+          label: 'Under Review',
+          description: 'Secretariat verification of submitted documents in progress.',
+          dotColor: '#7E22CE',
+          textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+          badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+          badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+        };
+      }
+      if (s === 'Draft') {
+        return {
+          label: 'Draft',
+          description: 'Application started and awaiting final submission.',
+          dotColor: '#D97706',
+          textColor: isDarkMode ? '#FBBF24' : '#D97706',
+          badgeBg: isDarkMode ? '#451A03' : '#FEF3C7',
+          badgeBorder: isDarkMode ? '#B45309' : '#FDE68A',
+        };
+      }
+      return {
+        label: s || 'Submitted',
+        description: 'Application submitted and awaiting coordinator review.',
+        dotColor: '#7E22CE',
+        textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+        badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+        badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+      };
+    }
+    return {
+      label: 'No Active Record',
+      description: 'No active application or scholarship record found.',
+      dotColor: '#64748B',
+      textColor: isDarkMode ? '#94A3B8' : '#64748B',
+      badgeBg: isDarkMode ? '#1E293B' : '#F1F5F9',
+      badgeBorder: isDarkMode ? '#334155' : '#E2E8F0',
+    };
+  }, [isWithdrawn, scholar, application, stages, isDarkMode]);
 
 
   // -------------------------------------------------------------
@@ -609,12 +768,6 @@ export function ScholarshipDashboardScreen() {
     ];
   }, [selectedRecordForDocs, officialDocsData, scholar, application]);
 
-  // Open modal for a specific history record
-  const openDocsForRecord = (record: HistoryItem) => {
-    setSelectedRecordForDocs(record);
-    setDocsModalVisible(true);
-  };
-
   // View / Download action handler
   const handleOfficialDocAction = async (doc: ModalDocItem, mode: 'view' | 'download') => {
     const actionKey = `${doc.key}_${mode}`;
@@ -749,7 +902,21 @@ export function ScholarshipDashboardScreen() {
       {/* LOADING SKELETON */}
       {isLoading ? (
         <View style={{ gap: 16 }}>
-          <Skeleton height={110} borderRadius={16} />
+          <View
+            style={[
+              styles.headerContainer,
+              isDarkMode && styles.headerContainerDark,
+              { aspectRatio: headerAspectRatio, marginBottom: 0 },
+            ]}
+          >
+            <Skeleton
+              width="100%"
+              borderRadius={16}
+              style={{
+                height: "100%",
+              }}
+            />
+          </View>
           <Skeleton height={90} borderRadius={14} />
           <Skeleton height={180} borderRadius={14} />
         </View>
@@ -800,203 +967,324 @@ export function ScholarshipDashboardScreen() {
         /* ============================================================== */
         <View>
           {/* ============================================================ */}
-          {/* 1. SCHOLARSHIP DASHBOARD HEADER CARD                         */}
+          {/* 1. SCHOLARSHIP DASHBOARD HEADER IMAGE                         */}
           {/* ============================================================ */}
           <View
             style={[
-              styles.headerCard,
-              isDarkMode && {
-                backgroundColor: '#1C2541',
-                borderColor: '#3A506B',
-              },
+              styles.headerContainer,
+              isDarkMode && styles.headerContainerDark,
+              { aspectRatio: headerAspectRatio },
             ]}
+            accessible={true}
+            accessibilityRole="header"
           >
-            <View style={styles.headerCardContent}>
-              <View style={styles.headerCardTextCol}>
-                <Text
-                  style={[
-                    styles.headerCardTitle,
-                    isDarkMode && { color: '#C084FC' },
-                  ]}
-                >
-                  SCHOLARSHIP DASHBOARD
-                </Text>
-                <Text
-                  style={[
-                    styles.headerCardPurpose,
-                    isDarkMode && { color: '#94A3B8' },
-                  ]}
-                >
-                  Track your scholarship status, progress, grants, and official records.
-                </Text>
-              </View>
-
-              {/* Toga Artwork inside dedicated soft-violet box */}
-              <View
-                style={[
-                  styles.togaArtworkBox,
-                  isDarkMode && styles.togaArtworkBoxDark,
-                ]}
-              >
-                <Image
-                  source={scholarshipBg}
-                  style={styles.togaImage}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
+            <Image
+              source={isDarkMode ? dashHeaderDark : dashHeaderLight}
+              style={styles.headerImage}
+              resizeMode="cover"
+              accessible={true}
+              accessibilityLabel="Scholarship Dashboard Header"
+            />
           </View>
 
           {/* ============================================================ */}
-          {/* 2. FIVE-STAGE STATUS PROGRESS TRACKER                        */}
+          {/* 1. CURRENT SCHOLARSHIP                                       */}
           {/* ============================================================ */}
           <View
             style={[
-              styles.trackerContainer,
+              styles.currentScholarshipCard,
               isDarkMode && {
                 backgroundColor: '#1C2541',
                 borderColor: '#3A506B',
               },
             ]}
           >
-            <View style={styles.trackerHeaderRow}>
+            <View style={styles.currentCardHeaderRow}>
               <Text
                 style={[
-                  styles.trackerSectionLabel,
+                  styles.currentCardSectionLabel,
                   isDarkMode && { color: '#C084FC' },
                 ]}
               >
-                STATUS PROGRESS
+                CURRENT SCHOLARSHIP
               </Text>
-            </View>
-
-            {/* Five-Stage Progress Line */}
-            <View style={styles.stepsLineRow}>
               <View
                 style={[
-                  styles.stepsConnectorBackground,
-                  isDarkMode && { backgroundColor: '#334155' },
+                  styles.currentStatusBadge,
+                  {
+                    backgroundColor: currentStatusInfo.badgeBg,
+                    borderColor: currentStatusInfo.badgeBorder,
+                  },
                 ]}
-              />
+              >
+                <View
+                  style={[
+                    styles.currentStatusBadgeDot,
+                    { backgroundColor: currentStatusInfo.dotColor },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.currentStatusBadgeText,
+                    { color: currentStatusInfo.textColor },
+                  ]}
+                >
+                  {currentStatusInfo.label}
+                </Text>
+              </View>
+            </View>
 
-              {stages.map((stg) => {
-                const isCompleted = stg.state === 'completed';
-                const isCurrent = stg.state === 'current';
-                const isGrantActionable = stg.id === 5 && Boolean(stg.isActionable);
+            {/* Program Name */}
+            <Text
+              style={[
+                styles.currentProgramTitle,
+                isDarkMode && { color: '#F8FAFC' },
+              ]}
+              numberOfLines={2}
+            >
+              {scholarship?.program_name || 'Academic Scholarship Program'}
+            </Text>
 
-                const stepContent = (
-                  <>
-                    {/* Step indicator dot with non-breaking checkmark */}
-                    <View
-                      style={[
-                        styles.stepDot,
-                        isCompleted
-                          ? styles.stepDotCompleted
-                          : isCurrent
-                          ? styles.stepDotCurrent
-                          : styles.stepDotUpcoming,
-                        isDarkMode &&
-                          !isCompleted &&
-                          !isCurrent && {
-                            backgroundColor: '#1E293B',
-                            borderColor: '#475569',
-                          },
-                      ]}
-                    >
-                      {isCompleted ? (
-                        <IconSymbol
-                          name="checkmark"
-                          size={11}
-                          color="#FFFFFF"
-                        />
-                      ) : isCurrent ? (
-                        <View
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: 3,
-                            backgroundColor: '#FFFFFF',
-                          }}
-                        />
-                      ) : null}
-                    </View>
+            {/* Education Level / Category Subtitle */}
+            <Text
+              style={[
+                styles.currentProgramCategory,
+                isDarkMode && { color: '#CBD5E1' },
+              ]}
+              numberOfLines={1}
+            >
+              {scholarship?.category_name || 'City Government Educational Assistance Program'}
+            </Text>
 
-                    {/* Step concise label */}
-                    <Text
-                      style={[
-                        styles.stepLabel,
-                        isCompleted
-                          ? styles.stepLabelCompleted
-                          : isCurrent
-                          ? [styles.stepLabelActive, isDarkMode && { color: '#C084FC' }]
-                          : null,
-                        isDarkMode &&
-                          !isCompleted &&
-                          !isCurrent && { color: '#94A3B8' },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {stg.label}
-                    </Text>
+            {/* Chips row: Academic Period, Program Code, Scholar/App Code */}
+            <View style={styles.currentMetaRow}>
+              {currentPeriodString ? (
+                <View
+                  style={[
+                    styles.currentMetaChip,
+                    isDarkMode && {
+                      backgroundColor: '#111827',
+                      borderColor: '#374151',
+                    },
+                  ]}
+                >
+                  <IconSymbol
+                    name="calendar"
+                    size={12}
+                    color={isDarkMode ? '#C084FC' : '#7E22CE'}
+                  />
+                  <Text
+                    style={[
+                      styles.currentMetaChipText,
+                      isDarkMode && { color: '#E2E8F0' },
+                    ]}
+                  >
+                    {currentPeriodString}
+                  </Text>
+                </View>
+              ) : null}
 
-                    {/* Stage 5 sub-label (Grant dynamic state) */}
-                    {stg.subLabel ? (
-                      <Text
-                        style={[
-                          styles.stepSubLabel,
-                          isCompleted && styles.stepSubLabelCompleted,
-                          isCurrent && isDarkMode && { color: '#C084FC' },
-                          isDarkMode &&
-                            !isCompleted &&
-                            !isCurrent && { color: '#94A3B8' },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {stg.subLabel}
-                      </Text>
-                    ) : null}
+              {scholarship?.program_code ? (
+                <View
+                  style={[
+                    styles.currentMetaChip,
+                    styles.currentMetaChipViolet,
+                    isDarkMode && {
+                      backgroundColor: '#3B0764',
+                      borderColor: '#7E22CE',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.currentMetaChipText,
+                      styles.currentMetaChipVioletText,
+                      isDarkMode && { color: '#C084FC' },
+                    ]}
+                  >
+                    {scholarship.program_code}
+                  </Text>
+                </View>
+              ) : null}
 
-                    {/* Milestone date if useful & available */}
-                    {stg.date ? (
-                      <Text
-                        style={[
-                          styles.stepDate,
-                          isDarkMode && { color: '#64748B' },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {stg.date}
-                      </Text>
-                    ) : null}
-                  </>
-                );
-
-                if (isGrantActionable) {
-                  return (
-                    <TouchableOpacity
-                      key={stg.id}
-                      style={styles.stepColumn}
-                      onPress={() => router.push('/education/grant' as any)}
-                      activeOpacity={0.7}
-                      accessibilityRole="button"
-                      accessibilityLabel="Open Scholarship Grant"
-                    >
-                      {stepContent}
-                    </TouchableOpacity>
-                  );
-                }
-
-                return (
-                  <View key={stg.id} style={styles.stepColumn}>
-                    {stepContent}
-                  </View>
-                );
-              })}
+              {(scholar?.scholar_code || application?.application_code) ? (
+                <View
+                  style={[
+                    styles.currentMetaChip,
+                    isDarkMode && {
+                      backgroundColor: '#111827',
+                      borderColor: '#374151',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.currentMetaChipText,
+                      isDarkMode && { color: '#94A3B8' },
+                    ]}
+                  >
+                    ID: {scholar?.scholar_code || application?.application_code}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
           {/* ============================================================ */}
-          {/* 3. SCHOLARSHIP HISTORY                                       */}
+          {/* 2. SCHOLARSHIP PROGRESS (COMPACT SUMMARY)                    */}
+          {/* ============================================================ */}
+          <View
+            style={[
+              styles.progressCard,
+              isDarkMode && {
+                backgroundColor: '#1C2541',
+                borderColor: '#3A506B',
+              },
+            ]}
+          >
+            <View style={styles.progressCardHeaderRow}>
+              <Text
+                style={[
+                  styles.progressCardSectionLabel,
+                  isDarkMode && { color: '#C084FC' },
+                ]}
+              >
+                SCHOLARSHIP PROGRESS
+              </Text>
+            </View>
+
+            {/* Current Status Section */}
+            <View style={styles.progressStatusSection}>
+              <Text
+                style={[
+                  styles.progressStatusLabel,
+                  isDarkMode && { color: '#94A3B8' },
+                ]}
+              >
+                Current Status
+              </Text>
+              <View style={styles.progressStatusValueRow}>
+                <View
+                  style={[
+                    styles.currentStatusBadgeDot,
+                    { backgroundColor: currentStatusInfo.dotColor },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.progressStatusValue,
+                    isDarkMode && { color: '#F8FAFC' },
+                  ]}
+                >
+                  {currentStatusInfo.label}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.progressStatusDesc,
+                  isDarkMode && { color: '#CBD5E1' },
+                ]}
+              >
+                {currentStatusInfo.description}
+              </Text>
+            </View>
+
+            {/* Short Progress Indicator */}
+            <View style={styles.compactIndicatorContainer}>
+              {isWithdrawn ? (
+                <View
+                  style={[
+                    styles.compactTerminatedBar,
+                    isDarkMode && {
+                      backgroundColor: '#3B1D28',
+                      borderColor: '#991B1B',
+                    },
+                  ]}
+                >
+                  <IconSymbol
+                    name="xmark.circle.fill"
+                    size={14}
+                    color="#DC2626"
+                  />
+                  <Text
+                    style={[
+                      styles.compactTerminatedText,
+                      isDarkMode && { color: '#F87171' },
+                    ]}
+                  >
+                    Application Terminated — Voluntarily Withdrawn
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.compactStepperRow}>
+                    {stages.map((stg) => {
+                      const isCompleted = stg.state === 'completed';
+                      const isCurrent = stg.state === 'current';
+                      return (
+                        <View
+                          key={stg.id}
+                          style={[
+                            styles.compactStepSegment,
+                            isCompleted && styles.compactStepSegmentCompleted,
+                            isCurrent && [
+                              styles.compactStepSegmentCurrent,
+                              isDarkMode && { backgroundColor: '#C084FC' },
+                            ],
+                            isDarkMode &&
+                              !isCompleted &&
+                              !isCurrent && { backgroundColor: '#334155' },
+                          ]}
+                        />
+                      );
+                    })}
+                  </View>
+                  <View style={styles.compactStepLabelsRow}>
+                    <Text
+                      style={[
+                        styles.compactStepStageName,
+                        isDarkMode && { color: '#C084FC' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {stages[currentStageIndex]?.title || stages[currentStageIndex]?.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.compactStepCountText,
+                        isDarkMode && { color: '#94A3B8' },
+                      ]}
+                    >
+                      Stage {currentStageIndex + 1} of {stages.length}
+                      {stages[currentStageIndex]?.state === 'completed'
+                        ? ' • Completed'
+                        : ' • In Progress'}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            {/* View Full Progress Action Button */}
+            <TouchableOpacity
+              style={[
+                styles.viewProgressBtn,
+                isDarkMode && { backgroundColor: '#6B21A8' },
+              ]}
+              onPress={() => setProgressModalVisible(true)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="View full scholarship progress timeline"
+            >
+              <Text style={styles.viewProgressBtnText}>
+                VIEW FULL PROGRESS
+              </Text>
+              <IconSymbol name="chevron.right" size={13} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* ============================================================ */}
+          {/* 3. SCHOLARSHIP HISTORY (CONCISE PREVIEW)                     */}
           {/* ============================================================ */}
           <View style={styles.historyContainer}>
             <View style={styles.historyHeaderRow}>
@@ -1008,12 +1296,32 @@ export function ScholarshipDashboardScreen() {
               >
                 SCHOLARSHIP HISTORY
               </Text>
+              {historyList.length > 0 ? (
+                <View
+                  style={[
+                    styles.historyCountBadge,
+                    isDarkMode && {
+                      backgroundColor: '#3B0764',
+                      borderColor: '#7E22CE',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.historyCountBadgeText,
+                      isDarkMode && { color: '#C084FC' },
+                    ]}
+                  >
+                    {historyList.length} {historyList.length === 1 ? 'Record' : 'Records'}
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
-            {/* Table-like Directory List */}
+            {/* Concise Preview Box (shows at most 2 recent records) */}
             <View
               style={[
-                styles.historyDirectoryBox,
+                styles.historyPreviewBox,
                 isDarkMode && {
                   backgroundColor: '#1C2541',
                   borderColor: '#3A506B',
@@ -1032,99 +1340,47 @@ export function ScholarshipDashboardScreen() {
                   </Text>
                 </View>
               ) : (
-                historyList.map((rec, idx) => {
-                  const isLast = idx === historyList.length - 1;
+                historyList.slice(0, 2).map((rec, idx) => {
+                  const isLast = idx === Math.min(historyList.length, 2) - 1;
                   const colors = getStatusColors(rec.status, isDarkMode);
-                  const isCurrentApplication =
-                    rec.recordType === 'Application' &&
-                    (rec.isCurrent || (Boolean(application?.application_code) && rec.referenceCode === application?.application_code));
 
                   return (
                     <View
                       key={rec.id}
                       style={[
-                        styles.historyRow,
-                        isLast && styles.historyRowLast,
+                        styles.historyPreviewRow,
+                        isLast && styles.historyPreviewRowLast,
                         isDarkMode && { borderBottomColor: '#293548' },
                       ]}
                     >
-                      {/* CURRENT badge above */}
-                      {rec.isCurrent ? (
-                        <View style={styles.historyCurrentBadgeRow}>
-                          <View
-                            style={[
-                              styles.historyCurrentPill,
-                              isDarkMode && {
-                                backgroundColor: '#3B0764',
-                                borderColor: '#7E22CE',
-                              },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.historyCurrentPillText,
-                                isDarkMode && { color: '#C084FC' },
-                              ]}
-                            >
-                              CURRENT
-                            </Text>
-                          </View>
-                        </View>
-                      ) : null}
-
                       {/* Academic Period */}
                       <Text
                         style={[
-                          styles.historyPeriodText,
-                          isDarkMode && { color: '#F8FAFC' },
+                          styles.historyPreviewPeriodText,
+                          isDarkMode && { color: '#C084FC' },
                         ]}
-                        numberOfLines={1}
                       >
                         {rec.academicPeriod}
                       </Text>
 
-                      {/* Program Name (only in current scholarship context to avoid duplication) */}
-                      {rec.isCurrent && (scholarship?.program_name || scholarship?.category_name) ? (
-                        <Text
-                          style={[
-                            styles.historyProgramSubText,
-                            isDarkMode && { color: '#CBD5E1' },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {scholarship?.program_name || 'Academic Scholarship Program'}
-                          {scholarship?.category_name ? ` — ${scholarship.category_name}` : ''}
-                        </Text>
-                      ) : null}
+                      {/* Program Name */}
+                      <Text
+                        style={[
+                          styles.historyPreviewProgramText,
+                          isDarkMode && { color: '#F8FAFC' },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {rec.isCurrent && (scholarship?.program_name || scholarship?.category_name)
+                          ? `${scholarship?.program_name || 'Academic Scholarship'}${
+                              scholarship?.category_name ? ` — ${scholarship.category_name}` : ''
+                            }`
+                          : `${rec.recordType} Record`}
+                      </Text>
 
-                      {/* Meta line: Record Type & Ref Code */}
-                      <View style={styles.historyRowMeta}>
-                        <Text
-                          style={[
-                            styles.historyTypeTag,
-                            isDarkMode && {
-                              backgroundColor: '#111827',
-                              color: '#CBD5E1',
-                            },
-                          ]}
-                        >
-                          {rec.recordType.toUpperCase()}
-                        </Text>
-                        {rec.referenceCode ? (
-                          <Text
-                            style={[
-                              styles.historyRefCode,
-                              isDarkMode && { color: '#94A3B8' },
-                            ]}
-                          >
-                            REF: {rec.referenceCode}
-                          </Text>
-                        ) : null}
-                      </View>
-
-                      {/* Bottom line: Status, Date, and Documents > Link */}
-                      <View style={styles.historyRowBottom}>
-                        <View style={styles.historyStatusGroup}>
+                      {/* Bottom row: Status badge, Reference Code, and Documents link */}
+                      <View style={styles.historyPreviewBottomRow}>
+                        <View style={styles.historyPreviewStatusGroup}>
                           <View
                             style={[
                               styles.historyStatusDot,
@@ -1137,90 +1393,525 @@ export function ScholarshipDashboardScreen() {
                               { color: colors.textColor },
                             ]}
                           >
-                            {rec.status}
+                            {rec.status.toUpperCase()}
                           </Text>
-                          {rec.date ? (
+                          {rec.referenceCode ? (
                             <Text
                               style={[
-                                styles.historyDateText,
+                                styles.historyPreviewRefCode,
                                 isDarkMode && { color: '#64748B' },
                               ]}
                             >
-                              • {rec.date}
+                              • {rec.referenceCode}
                             </Text>
                           ) : null}
                         </View>
 
-                        {/* Actions: View Details (if current application context), View Grant (if Grant record), and Documents */}
-                        <View style={styles.historyActionsGroup}>
-                          {isCurrentApplication ? (
-                            <TouchableOpacity
-                              style={[
-                                styles.historyDocumentsLink,
-                                isDarkMode && { backgroundColor: '#3B0764' },
-                              ]}
-                              onPress={() => router.push('/education/dashboard/details' as any)}
-                              activeOpacity={0.7}
-                            >
-                              <Text
-                                style={[
-                                  styles.historyDocumentsLinkText,
-                                  isDarkMode && { color: '#C084FC' },
-                                ]}
-                              >
-                                View Details →
-                              </Text>
-                            </TouchableOpacity>
-                          ) : null}
-
-                          {rec.recordType === 'Grant' ? (
-                            <TouchableOpacity
-                              style={[
-                                styles.historyDocumentsLink,
-                                isDarkMode && { backgroundColor: '#3B0764' },
-                              ]}
-                              onPress={() => router.push('/education/grant' as any)}
-                              activeOpacity={0.7}
-                            >
-                              <Text
-                                style={[
-                                  styles.historyDocumentsLinkText,
-                                  isDarkMode && { color: '#C084FC' },
-                                ]}
-                              >
-                                View Grant →
-                              </Text>
-                            </TouchableOpacity>
-                          ) : null}
-
-                          {/* Per-record Documents > Link */}
-                          <TouchableOpacity
+                        <TouchableOpacity
+                          style={[
+                            styles.historyDocumentsLink,
+                            isDarkMode && { backgroundColor: '#3B0764' },
+                          ]}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/education/dashboard/details',
+                              params: {
+                                recordType: rec.recordType,
+                                recordId: rec.referenceCode || rec.id,
+                                academicPeriod: rec.academicPeriod,
+                                status: rec.status,
+                              },
+                            } as any)
+                          }
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel={`View details for ${rec.academicPeriod}`}
+                        >
+                          <Text
                             style={[
-                              styles.historyDocumentsLink,
-                              isDarkMode && { backgroundColor: '#3B0764' },
+                              styles.historyDocumentsLinkText,
+                              isDarkMode && { color: '#C084FC' },
                             ]}
-                            onPress={() => openDocsForRecord(rec)}
-                            activeOpacity={0.7}
                           >
-                            <Text
-                              style={[
-                                styles.historyDocumentsLinkText,
-                                isDarkMode && { color: '#C084FC' },
-                              ]}
-                            >
-                              Documents →
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
+                            Details →
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
                   );
                 })
               )}
             </View>
+
+            {/* LARGE PRIMARY ACTION: VIEW FULL SCHOLARSHIP HISTORY */}
+            <TouchableOpacity
+              style={[
+                styles.viewFullHistoryBtn,
+                isDarkMode && {
+                  backgroundColor: '#3B0764',
+                  borderColor: '#7E22CE',
+                  borderWidth: 1,
+                },
+              ]}
+              onPress={() => router.push('/education/dashboard/history' as any)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="View full scholarship history"
+            >
+              <View style={styles.viewFullHistoryBtnContent}>
+                <IconSymbol
+                  name="history"
+                  size={18}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.viewFullHistoryBtnText}>
+                  VIEW FULL SCHOLARSHIP HISTORY
+                </Text>
+              </View>
+              <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
         </View>
       )}
+
+      {/* ============================================================== */}
+      {/* FULL PROGRESS DETAILED TIMELINE MODAL                          */}
+      {/* ============================================================== */}
+      <Modal
+        visible={progressModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setProgressModalVisible(false)}
+      >
+        <View style={styles.progressModalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setProgressModalVisible(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss modal backdrop"
+          />
+          <View
+            style={[
+              styles.progressModalSheet,
+              { paddingBottom: Math.max(insets.bottom, 24) },
+              isDarkMode && {
+                backgroundColor: '#1C2541',
+                borderColor: '#3A506B',
+              },
+            ]}
+          >
+            {/* Header */}
+            <View
+              style={[
+                styles.progressModalHeader,
+                isDarkMode && { borderBottomColor: '#293548' },
+              ]}
+            >
+              <View style={styles.progressModalHeaderTextCol}>
+                <Text
+                  style={[
+                    styles.progressModalTitle,
+                    isDarkMode && { color: '#C084FC' },
+                  ]}
+                >
+                  Scholarship Progress
+                </Text>
+                <Text
+                  style={[
+                    styles.progressModalSubtitle,
+                    isDarkMode && { color: '#94A3B8' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {scholarship?.program_name || 'Academic Scholarship'}
+                  {scholarship?.category_name ? ` — ${scholarship.category_name}` : ' — Senior High School'}
+                </Text>
+                <Text
+                  style={[
+                    styles.progressModalSubtitle,
+                    { fontSize: 11, marginTop: 1 },
+                    isDarkMode && { color: '#64748B' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {currentPeriodString || '2026–2027 • Whole Academic Year'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.progressModalCloseBtn,
+                  isDarkMode && { backgroundColor: '#334155' },
+                ]}
+                onPress={() => setProgressModalVisible(false)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <IconSymbol
+                  name="xmark"
+                  size={20}
+                  color={isDarkMode ? '#F8FAFC' : '#0F172A'}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Body */}
+            <ScrollView
+              style={styles.progressModalBody}
+              contentContainerStyle={{ paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.verticalTimelineContainer}>
+                {isWithdrawn ? (
+                  /* ==================================================== */
+                  /* WITHDRAWAL TIMELINE TERMINATION                     */
+                  /* ==================================================== */
+                  <>
+                    {/* Render completed stages before withdrawal (e.g. Stage 1) */}
+                    <View style={styles.verticalTimelineRow}>
+                      <View style={styles.verticalTimelineLeftCol}>
+                        <View
+                          style={[
+                            styles.verticalTimelineDot,
+                            styles.verticalTimelineDotCompleted,
+                          ]}
+                        >
+                          <IconSymbol
+                            name="checkmark"
+                            size={13}
+                            color="#FFFFFF"
+                          />
+                        </View>
+                        <View style={[styles.verticalTimelineConnector, styles.verticalTimelineConnectorCompleted]} />
+                      </View>
+                      <View
+                        style={[
+                          styles.verticalTimelineContentCard,
+                          isDarkMode && {
+                            backgroundColor: '#1E293B',
+                            borderColor: '#334155',
+                          },
+                        ]}
+                      >
+                        <View style={styles.verticalTimelineHeaderRow}>
+                          <Text
+                            style={[
+                              styles.verticalTimelineTitle,
+                              isDarkMode && { color: '#F8FAFC' },
+                            ]}
+                          >
+                            Application Submitted
+                          </Text>
+                          <View
+                            style={[
+                              styles.verticalTimelineStatusPill,
+                              { backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7' },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.verticalTimelineStatusPillText,
+                                { color: isDarkMode ? '#4ADE80' : '#15803D' },
+                              ]}
+                            >
+                              COMPLETED
+                            </Text>
+                          </View>
+                        </View>
+                        {stages[0].date ? (
+                          <Text
+                            style={[
+                              styles.verticalTimelineDate,
+                              isDarkMode && { color: '#4ADE80' },
+                            ]}
+                          >
+                            {stages[0].date}
+                          </Text>
+                        ) : null}
+                        <Text
+                          style={[
+                            styles.verticalTimelineDesc,
+                            isDarkMode && { color: '#94A3B8' },
+                          ]}
+                        >
+                          Initial scholarship application and credentials submitted.
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Terminal Divider */}
+                    <View
+                      style={[
+                        styles.terminalDivider,
+                        isDarkMode && { backgroundColor: '#334155' },
+                      ]}
+                    />
+
+                    {/* TERMINAL WITHDRAWN CARD */}
+                    <View
+                      style={[
+                        styles.withdrawnTerminalCard,
+                        isDarkMode && {
+                          backgroundColor: '#3B1D28',
+                          borderColor: '#991B1B',
+                        },
+                      ]}
+                    >
+                      <View style={styles.withdrawnTerminalHeaderRow}>
+                        <Text
+                          style={[
+                            styles.withdrawnTerminalTitle,
+                            isDarkMode && { color: '#F87171' },
+                          ]}
+                        >
+                          APPLICATION WITHDRAWN
+                        </Text>
+                        <View
+                          style={[
+                            styles.withdrawnBadge,
+                            isDarkMode && {
+                              backgroundColor: '#4C1D24',
+                              borderColor: '#F87171',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.withdrawnBadgeText,
+                              isDarkMode && { color: '#F87171' },
+                            ]}
+                          >
+                            TERMINATED
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.withdrawnMetaRow}>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaLabel,
+                            isDarkMode && { color: '#FCA5A5' },
+                          ]}
+                        >
+                          Withdrawn on:
+                        </Text>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaVal,
+                            isDarkMode && { color: '#F87171' },
+                          ]}
+                        >
+                          {withdrawalDate}
+                        </Text>
+                      </View>
+
+                      <View style={styles.withdrawnMetaRow}>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaLabel,
+                            isDarkMode && { color: '#FCA5A5' },
+                          ]}
+                        >
+                          Reason:
+                        </Text>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaVal,
+                            isDarkMode && { color: '#F87171' },
+                          ]}
+                        >
+                          {withdrawalReason}
+                        </Text>
+                      </View>
+
+                      {application?.application_code ? (
+                        <View style={styles.withdrawnMetaRow}>
+                          <Text
+                            style={[
+                              styles.withdrawnMetaLabel,
+                              isDarkMode && { color: '#FCA5A5' },
+                            ]}
+                          >
+                            Reference:
+                          </Text>
+                          <Text
+                            style={[
+                              styles.withdrawnMetaVal,
+                              isDarkMode && { color: '#F87171' },
+                            ]}
+                          >
+                            {application.application_code}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      <Text
+                        style={[
+                          styles.withdrawnNotice,
+                          isDarkMode && { color: '#CBD5E1' },
+                        ]}
+                      >
+                        This scholarship application has been permanently terminated. You are eligible to apply for another available scholarship program.
+                      </Text>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.withdrawnBrowseBtn,
+                          isDarkMode && { backgroundColor: '#7E22CE' },
+                        ]}
+                        onPress={() => {
+                          setProgressModalVisible(false);
+                          router.push('/education/new-applicant/browse-scholarships' as any);
+                        }}
+                        activeOpacity={0.8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Browse available scholarships"
+                      >
+                        <Text style={styles.withdrawnBrowseBtnText}>
+                          Browse Available Scholarships
+                        </Text>
+                        <IconSymbol name="chevron.right" size={13} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  /* ==================================================== */
+                  /* NORMAL 5-STAGE PROGRESS TIMELINE                    */
+                  /* ==================================================== */
+                  stages.map((stg, idx) => {
+                    const isLast = idx === stages.length - 1;
+                    const isCompleted = stg.state === 'completed';
+                    const isCurrent = stg.state === 'current';
+                    const isUpcoming = stg.state === 'upcoming';
+
+                    return (
+                      <View key={stg.id} style={styles.verticalTimelineRow}>
+                        {/* Left column: Dot and vertical connector */}
+                        <View style={styles.verticalTimelineLeftCol}>
+                            <View
+                              style={[
+                                styles.verticalTimelineDot,
+                                isCompleted && styles.verticalTimelineDotCompleted,
+                                isCurrent && [
+                                  styles.verticalTimelineDotCurrent,
+                                  isDarkMode && { backgroundColor: '#2E1065', borderColor: '#C084FC' },
+                                ],
+                                isUpcoming && [
+                                  styles.verticalTimelineDotUpcoming,
+                                  isDarkMode && {
+                                    backgroundColor: '#1E293B',
+                                    borderColor: '#475569',
+                                  },
+                                ],
+                              ]}
+                            >
+                              {isCompleted ? (
+                                <IconSymbol
+                                  name="checkmark"
+                                  size={13}
+                                  color="#FFFFFF"
+                                />
+                              ) : isCurrent ? (
+                                <View
+                                  style={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: 5,
+                                    backgroundColor: isDarkMode ? '#C084FC' : '#7E22CE',
+                                  }}
+                                />
+                              ) : null}
+                            </View>
+
+                          {!isLast ? (
+                            <View
+                              style={[
+                                styles.verticalTimelineConnector,
+                                isCompleted && styles.verticalTimelineConnectorCompleted,
+                                isDarkMode && !isCompleted && { backgroundColor: '#334155' },
+                              ]}
+                            />
+                          ) : null}
+                        </View>
+
+                        {/* Content card */}
+                        <View
+                          style={[
+                            styles.verticalTimelineContentCard,
+                            isCurrent && styles.verticalTimelineContentCardActive,
+                            isDarkMode && {
+                              backgroundColor: '#1E293B',
+                              borderColor: isCurrent ? '#7E22CE' : '#334155',
+                            },
+                          ]}
+                        >
+                          <View style={styles.verticalTimelineHeaderRow}>
+                            <Text
+                              style={[
+                                styles.verticalTimelineTitle,
+                                isDarkMode && { color: '#F8FAFC' },
+                              ]}
+                            >
+                              {stg.title}
+                            </Text>
+
+                            <View
+                              style={[
+                                styles.verticalTimelineStatusPill,
+                                isCompleted
+                                  ? { backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7' }
+                                  : isCurrent
+                                  ? { backgroundColor: isDarkMode ? '#3B0764' : '#F3E8FF' }
+                                  : { backgroundColor: isDarkMode ? '#0F172A' : '#F1F5F9' },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.verticalTimelineStatusPillText,
+                                  isCompleted
+                                    ? { color: isDarkMode ? '#4ADE80' : '#15803D' }
+                                    : isCurrent
+                                    ? { color: isDarkMode ? '#C084FC' : '#7E22CE' }
+                                    : { color: isDarkMode ? '#64748B' : '#94A3B8' },
+                                ]}
+                              >
+                                {isCompleted ? 'COMPLETED' : isCurrent ? 'IN PROGRESS' : 'UPCOMING'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {stg.date ? (
+                            <Text
+                              style={[
+                                styles.verticalTimelineDate,
+                                isDarkMode && { color: '#4ADE80' },
+                              ]}
+                            >
+                              {stg.date}
+                            </Text>
+                          ) : null}
+
+                          <Text
+                            style={[
+                              styles.verticalTimelineDesc,
+                              isDarkMode && { color: '#CBD5E1' },
+                            ]}
+                          >
+                            {stg.description}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* ============================================================== */}
       {/* 5. PER-RECORD OFFICIAL DOCUMENTS MODAL                         */}

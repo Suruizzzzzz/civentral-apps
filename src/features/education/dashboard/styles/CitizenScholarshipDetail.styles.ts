@@ -3,18 +3,17 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   container: {
     padding: 16,
-    paddingBottom: 40,
+    paddingTop: 14,
+    paddingBottom: 140,
+    flexGrow: 1,
   },
 
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-
-  backIcon: {
-    transform: [{ rotate: '180deg' }],
-    marginRight: 4,
+    gap: 6,
+    marginBottom: 14,
+    alignSelf: 'flex-start',
   },
 
   backText: {
@@ -144,14 +143,14 @@ export const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 18,
+    padding: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 16,
+    marginBottom: 18,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
   },
 
@@ -159,24 +158,26 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#0F172A',
-    marginBottom: 14,
+    letterSpacing: 0.3,
+    marginBottom: 16,
+    textTransform: 'uppercase',
   },
 
   infoGrid: {
-    gap: 12,
+    gap: 2,
   },
 
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
 
   infoRowStacked: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
@@ -184,21 +185,25 @@ export const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 13,
     color: '#64748B',
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
 
   infoValue: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: '#0F172A',
     fontWeight: '700',
     textAlign: 'right',
+    flexShrink: 1,
+    marginLeft: 12,
   },
 
   infoValueStacked: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: '#0F172A',
     fontWeight: '700',
-    marginTop: 3,
+    marginTop: 4,
+    lineHeight: 19,
   },
 
   /* TIMELINE ITEM & CONNECTING LINES */
@@ -227,9 +232,9 @@ export const styles = StyleSheet.create({
   },
 
   timelineIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -238,11 +243,12 @@ export const styles = StyleSheet.create({
   },
 
   timelineConnectorLine: {
-    width: 3,
+    width: 2.5,
     flex: 1,
     backgroundColor: '#E2E8F0',
-    marginVertical: 3,
+    marginVertical: 2,
     borderRadius: 1.5,
+    alignSelf: 'center',
     zIndex: 1,
     minHeight: 24,
   },
@@ -322,6 +328,31 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
+  },
+
+  primaryActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#7E22CE',
+    minHeight: 50,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    marginTop: 18,
+    shadowColor: '#7E22CE',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+
+  primaryActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 
   docActionBtn: {
