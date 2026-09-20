@@ -1288,27 +1288,46 @@ export default function ScholarshipGrantScreen() {
         visible={confirmModalVisible}
         animationType="fade"
         transparent
-        onRequestClose={() => setConfirmModalVisible(false)}
+        onRequestClose={() => !submitting && setConfirmModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.confirmModalCard, isDarkMode && styles.confirmModalCardDark]}>
-            <Text style={[styles.confirmModalTitle, isDarkMode && { color: '#F8FAFC' }]}>
-              SUBMIT GRANT APPLICATION
+          <View
+            style={[styles.confirmModalCard, isDarkMode && styles.confirmModalCardDark]}
+            accessibilityRole="alert"
+          >
+            <View style={[styles.confirmIconContainer, isDarkMode && styles.confirmIconContainerDark]}>
+              <IconSymbol
+                name="doc.text.fill"
+                size={26}
+                color={isDarkMode ? '#FB923C' : '#EA580C'}
+              />
+            </View>
+
+            <Text
+              style={[styles.confirmModalTitle, isDarkMode && { color: '#F8FAFC' }]}
+              accessibilityRole="header"
+            >
+              Submit Grant Application
             </Text>
             <Text style={[styles.confirmModalSub, isDarkMode && { color: '#94A3B8' }]}>
-              {"You're ready to submit your scholarship grant application for review. Once submitted, the application will be reviewed according to the scholarship process."}
+              {"You're ready to submit your scholarship grant application for review. Once submitted, it will be reviewed according to the scholarship process."}
             </Text>
 
             <View style={[styles.summaryCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Grant Reference</Text>
+              <View style={[styles.summaryRow, isDarkMode && { borderBottomColor: '#1E293B' }]}>
+                <Text style={[styles.summaryLabel, isDarkMode && { color: '#94A3B8' }]}>GRANT REFERENCE</Text>
                 <Text style={[styles.summaryValueRef, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
                   {application?.grant_application_code || '--'}
                 </Text>
               </View>
               <View style={[styles.summaryRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
-                <Text style={styles.summaryLabel}>Institution</Text>
-                <Text style={[styles.summaryLabel, isDarkMode && { color: '#F8FAFC' }, { fontWeight: '700' }]}>
+                <Text style={[styles.summaryLabel, isDarkMode && { color: '#94A3B8' }]}>INSTITUTION</Text>
+                <Text
+                  style={[
+                    styles.summaryValueInst,
+                    isDarkMode && { color: '#F8FAFC' },
+                  ]}
+                >
                   {institutionDisplayName}
                 </Text>
               </View>
@@ -1320,6 +1339,8 @@ export default function ScholarshipGrantScreen() {
                 onPress={() => setConfirmModalVisible(false)}
                 disabled={submitting}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel grant submission"
               >
                 <Text style={[styles.cancelBtnText, isDarkMode && { color: '#CBD5E1' }]}>
                   Cancel
@@ -1331,6 +1352,8 @@ export default function ScholarshipGrantScreen() {
                 onPress={handleConfirmSubmit}
                 disabled={submitting}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm and submit grant application"
               >
                 {submitting ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
