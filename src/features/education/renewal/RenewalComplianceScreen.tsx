@@ -185,8 +185,8 @@ export function RenewalComplianceScreen() {
     }
   }
 
-  const isCorRequested = Boolean(requestedDocTypes['COR']);
-  const isCogRequested = Boolean(requestedDocTypes['COG']);
+  const isCorRequested = Boolean(requestedDocTypes['COR'] || requestedDocTypes['ENROLLMENT_PROOF']);
+  const isCogRequested = Boolean(requestedDocTypes['COG'] || requestedDocTypes['ACADEMIC_RECORD']);
   const isSoaRequested = Boolean(requestedDocTypes['SOA']);
 
   const isClarificationRequired = Boolean(
@@ -225,6 +225,11 @@ export function RenewalComplianceScreen() {
       }
 
       if (files.cor) {
+        formData.append('enrollment_proof', {
+          uri: files.cor.uri,
+          name: files.cor.name || 'cor.pdf',
+          type: files.cor.mimeType || 'application/pdf',
+        } as any);
         formData.append('cor', {
           uri: files.cor.uri,
           name: files.cor.name || 'cor.pdf',
@@ -233,6 +238,11 @@ export function RenewalComplianceScreen() {
       }
 
       if (files.cog) {
+        formData.append('academic_record', {
+          uri: files.cog.uri,
+          name: files.cog.name || 'cog.pdf',
+          type: files.cog.mimeType || 'application/pdf',
+        } as any);
         formData.append('cog', {
           uri: files.cog.uri,
           name: files.cog.name || 'cog.pdf',

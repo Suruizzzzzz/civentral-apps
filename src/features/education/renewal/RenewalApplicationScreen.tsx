@@ -285,11 +285,11 @@ export function RenewalApplicationScreen() {
     }
   };
 
-  const isFormComplete = Boolean(files.cor && files.cog && files.soa);
+  const isFormComplete = Boolean(files.cor && files.cog);
 
   const handleSubmitPress = () => {
     if (!isFormComplete) {
-      Alert.alert('Incomplete Documents', 'Please select all three required documents (COR, COG, and SOA) before submitting.');
+      Alert.alert('Incomplete Documents', 'Please select both required documents (Certificate of Registration and Certificate of Grades) before submitting.');
       return;
     }
     setSubmitError(null);
@@ -297,7 +297,7 @@ export function RenewalApplicationScreen() {
   };
 
   const handleConfirmSubmit = async () => {
-    if (!files.cor || !files.cog || !files.soa) return;
+    if (!files.cor || !files.cog) return;
 
     try {
       setSubmitting(true);
@@ -305,23 +305,38 @@ export function RenewalApplicationScreen() {
       setSubmitError(null);
 
       const formData = new FormData();
+      // Canonical Proof of Enrollment + legacy alias
+      formData.append('enrollment_proof', {
+        uri: files.cor.uri,
+        name: files.cor.name || 'cor.pdf',
+        type: files.cor.mimeType || 'application/pdf',
+      } as any);
       formData.append('cor', {
         uri: files.cor.uri,
         name: files.cor.name || 'cor.pdf',
         type: files.cor.mimeType || 'application/pdf',
       } as any);
 
+      // Canonical Academic Record + legacy alias
+      formData.append('academic_record', {
+        uri: files.cog.uri,
+        name: files.cog.name || 'cog.pdf',
+        type: files.cog.mimeType || 'application/pdf',
+      } as any);
       formData.append('cog', {
         uri: files.cog.uri,
         name: files.cog.name || 'cog.pdf',
         type: files.cog.mimeType || 'application/pdf',
       } as any);
 
-      formData.append('soa', {
-        uri: files.soa.uri,
-        name: files.soa.name || 'soa.pdf',
-        type: files.soa.mimeType || 'application/pdf',
-      } as any);
+      // Optional Statement of Account (SOA)
+      if (files.soa) {
+        formData.append('soa', {
+          uri: files.soa.uri,
+          name: files.soa.name || 'soa.pdf',
+          type: files.soa.mimeType || 'application/pdf',
+        } as any);
+      }
 
       await submitCitizenRenewal(formData);
 
@@ -734,12 +749,12 @@ export function RenewalApplicationScreen() {
                   Statement of Account
                 </Text>
               </View>
-              <View style={[styles.docCodeBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
-                <Text style={[styles.docCodeText, isDarkMode && { color: '#A7F3D0' }]}>SOA</Text>
+              <View style={[styles.docCodeBadge, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' }]}>
+                <Text style={[styles.docCodeText, isDarkMode && { color: '#94A3B8' }]}>SOA (Optional)</Text>
               </View>
             </View>
             <Text style={[styles.docDesc, isDarkMode && { color: '#94A3B8' }]}>
-              Official statement of tuition fees or assessment slip (PDF, JPG, PNG up to 10MB).
+              Official statement of tuition fees or assessment slip (Optional for renewal; PDF, JPG, PNG up to 10MB).
             </Text>
 
             <View style={[

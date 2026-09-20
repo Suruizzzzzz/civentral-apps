@@ -112,7 +112,7 @@ export interface SubmitRenewalResult {
 
 export interface AffectedDocumentInfo {
   renewal_document_id: number;
-  document_type: "COR" | "COG" | "SOA";
+  document_type: string;
   file_name: string;
   file_size: number;
   validation_status: string;
@@ -293,7 +293,7 @@ export async function submitCitizenComplianceResponse(
 
 export async function validateCitizenRenewalDocument(
   fileAsset: DocumentPicker.DocumentPickerAsset,
-  documentType: "COR" | "COG" | "SOA"
+  documentType: string
 ): Promise<DocumentValidationResult | null> {
   const postUrl = `${EDUCATION_API_BASE_URL}/scholarship-renewals/citizen/validate-document`;
 
