@@ -94,7 +94,7 @@ export function RenewalComplianceScreen() {
         hasHydratedRef.current = true;
       }
     } catch (err: any) {
-      console.error('[RenewalComplianceScreen] fetch error:', err);
+      console.log('[RenewalComplianceScreen] fetch error:', err);
       setFetchError(err?.message || 'No active compliance action required for your scholarship renewal.');
     } finally {
       setLoading(false);
@@ -294,8 +294,8 @@ export function RenewalComplianceScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={isDarkMode ? '#C084FC' : '#9333EA'}
-          colors={['#9333EA']}
+          tintColor={isDarkMode ? '#38BDF8' : '#0284C7'}
+          colors={['#0284C7']}
         />
       }
     >
@@ -308,10 +308,10 @@ export function RenewalComplianceScreen() {
         <IconSymbol
           name="chevron.right"
           size={16}
-          color={isDarkMode ? '#C084FC' : '#9333EA'}
+          color={isDarkMode ? '#34D399' : '#16A34A'}
           style={styles.backIcon}
         />
-        <Text style={[styles.backText, isDarkMode && { color: '#C084FC' }]}>
+        <Text style={[styles.backText, isDarkMode && { color: '#34D399' }]}>
           Back to Overview
         </Text>
       </TouchableOpacity>
@@ -333,21 +333,72 @@ export function RenewalComplianceScreen() {
           <Skeleton height={220} borderRadius={16} />
         </View>
       ) : fetchError ? (
-        <View style={{ alignItems: 'center', padding: 24 }}>
-          <IconSymbol name="exclamationmark.triangle.fill" size={40} color="#EF4444" />
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#EF4444', marginTop: 12 }}>
-            No Compliance Action Required
-          </Text>
-          <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginTop: 4, marginBottom: 16 }}>
-            {fetchError}
-          </Text>
-          <TouchableOpacity
-            style={{ backgroundColor: '#9333EA', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 }}
-            onPress={() => router.replace('/education/renewal' as any)}
+        // Distinguish legitimate "no compliance needed" (backend 403) from real API failures
+        fetchError.toLowerCase().includes('no active compliance') ? (
+          // LEGITIMATE EMPTY STATE — matches NewApplicantComplianceScreen visual language
+          <View
+            style={[
+              styles.instructionCard,
+              isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+              { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
+            ]}
           >
-            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Return to Overview</Text>
-          </TouchableOpacity>
-        </View>
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <IconSymbol
+                name="checkmark.circle.fill"
+                size={32}
+                color={isDarkMode ? '#34D399' : '#16A34A'}
+              />
+            </View>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A', marginTop: 10, marginBottom: 4 }}>
+              No Compliance Action Required
+            </Text>
+            <Text style={{ fontSize: 13, color: isDarkMode ? '#94A3B8' : '#64748B', textAlign: 'center', marginBottom: 20 }}>
+              Your scholarship renewal has no outstanding compliance requests.
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: isDarkMode ? '#059669' : '#16A34A', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 }}
+              onPress={() => router.replace('/education/renewal' as any)}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Return to Overview</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // ACTUAL API / NETWORK ERROR — keep the error treatment
+          <View
+            style={[
+              styles.instructionCard,
+              { borderColor: '#EF4444', borderWidth: 1, padding: 16 },
+              isDarkMode && { backgroundColor: '#1E293B', borderColor: '#991B1B' },
+            ]}
+          >
+            <Text style={{ color: '#EF4444', fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
+              Unable to load compliance details.
+            </Text>
+            <Text style={{ color: isDarkMode ? '#94A3B8' : '#64748B', fontSize: 13, marginBottom: 12 }}>
+              {fetchError}
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#0284C7', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, alignSelf: 'flex-start' }}
+              onPress={() => {
+                setLoading(true);
+                loadData();
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )
       ) : submitSuccess ? (
         /* SUCCESS SCREEN STATE */
         <View style={[styles.instructionCard, { alignItems: 'center', paddingVertical: 32 }, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>

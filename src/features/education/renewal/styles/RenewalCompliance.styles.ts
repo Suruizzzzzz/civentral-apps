@@ -19,7 +19,7 @@ export const styles = StyleSheet.create({
   backText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#9333EA',
+    color: '#16A34A',
   },
   header: {
     marginBottom: 20,
@@ -175,7 +175,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#9333EA',
+    backgroundColor: '#0284C7',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -245,7 +245,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   submitBtn: {
-    backgroundColor: '#9333EA',
+    backgroundColor: '#0284C7',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
@@ -254,7 +254,7 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   submitBtnDisabled: {
-    backgroundColor: '#D8B4FE',
+    backgroundColor: '#94A3B8',
   },
   submitBtnText: {
     fontSize: 16,
@@ -308,7 +308,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#9333EA',
+    backgroundColor: '#0284C7',
     alignItems: 'center',
   },
   modalConfirmText: {

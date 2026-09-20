@@ -40,7 +40,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "#15803D",
     borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     shadowColor: "#15803D",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -123,137 +123,194 @@ export const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  /* Card Layouts */
+  /* Primary Action Cards (New Applicant / Compliance pattern) */
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
-    padding: 18,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    padding: 20,
     marginBottom: 16,
+
     shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 2,
+  },
+
+  cardMainRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 16,
+  },
+
+  artworkImage: {
+    width: 105,
+    height: 105,
+  },
+
+  renewalArtworkImage: {
+    width: 130,
+    height: 130,
+  },
+
+  cardContent: {
+    flex: 1,
   },
 
   badgeRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 8,
   },
 
-  programTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#0F172A",
-    marginBottom: 4,
-  },
-
-  programCode: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#64748B",
-    marginBottom: 14,
-  },
-
-  infoRow: {
+  recBadge: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-
-  infoLabel: {
-    fontSize: 12,
-    color: "#64748B",
-    fontWeight: "600",
-  },
-
-  infoValue: {
-    fontSize: 12,
-    color: "#0F172A",
-    fontWeight: "700",
-  },
-
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0F172A",
-    marginBottom: 12,
-    marginTop: 8,
-  },
-
-  docItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    gap: 12,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-
-  docBadge: {
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: 8,
+    gap: 4,
+    backgroundColor: "#15803D",
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
+    borderRadius: 12,
   },
 
-  docBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
+  recBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+
+  warningBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  warningBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#B45309",
+  },
+
+  successBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  successBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
     color: "#15803D",
   },
 
-  docTextCol: {
-    flex: 1,
-  },
-
-  docName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 2,
-  },
-
-  docDesc: {
-    fontSize: 12,
-    color: "#64748B",
-    lineHeight: 17,
-  },
-
-  banner: {
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 16,
+  neutralBadge: {
     flexDirection: "row",
-    gap: 12,
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
 
-  bannerTitle: {
-    fontSize: 15,
+  neutralBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+
+  cardTitle: {
+    fontSize: 17,
     fontWeight: "800",
-    marginBottom: 4,
+    color: "#0F172A",
+    marginBottom: 6,
   },
 
-  bannerText: {
-    fontSize: 12,
+  cardSub: {
+    fontSize: 13,
+    color: "#64748B",
     lineHeight: 18,
+  },
+
+  cardBottomRow: {
+    flexDirection: "column",
+    alignItems: "stretch",
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+
+  pillGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+    marginBottom: 12,
+  },
+
+  infoPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  infoPillText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+
+  primaryActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#15803D",
+    width: "100%",
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+
+  primaryActionBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+
+  secondaryActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: "#15803D",
+    width: "100%",
+    paddingVertical: 11,
+    borderRadius: 20,
+  },
+
+  secondaryActionBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#15803D",
   },
 });

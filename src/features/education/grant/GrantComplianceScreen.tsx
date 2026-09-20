@@ -12,6 +12,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { validateFileSize } from '@/src/utils/fileValidation';
+import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
@@ -44,6 +45,23 @@ export default function GrantComplianceScreen() {
     }
   };
 
+  const renderBackButton = () => (
+    <TouchableOpacity
+      style={styles.backBtn}
+      onPress={handleGoBack}
+      activeOpacity={0.7}
+    >
+      <IconSymbol
+        name="chevron.left"
+        size={16}
+        color={isDarkMode ? '#FB923C' : '#EA580C'}
+      />
+      <Text style={[styles.backText, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
+        Back to Scholarship Grant
+      </Text>
+    </TouchableOpacity>
+  );
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -53,8 +71,8 @@ export default function GrantComplianceScreen() {
         setApplication(data.application);
       }
     } catch (err: any) {
-      console.error('[GrantComplianceScreen] load error:', err);
-      Alert.alert('Error', err.message || 'Failed to load grant compliance status.');
+      console.log('[GrantComplianceScreen] load error:', err);
+      Alert.alert('Error', sanitizeErrorMessage(err?.message, 'Failed to load grant compliance status.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -87,7 +105,7 @@ export default function GrantComplianceScreen() {
       if (!res.canceled && res.assets && res.assets.length > 0) {
         const asset = res.assets[0];
 
-        // 10MB file size limit validation using shared utility (LOW-03)
+        // 10MB file size limit validation
         const validation = validateFileSize(asset, 10, docType);
         if (!validation.valid) {
           Alert.alert('File Too Large', validation.errorMessage || `The selected ${docType} file exceeds the maximum limit of 10MB.`);
@@ -109,7 +127,7 @@ export default function GrantComplianceScreen() {
       }
     } catch (err: any) {
       console.error('[GrantComplianceScreen] Pick/Upload error:', err);
-      Alert.alert('Upload Failed', err.message || `Failed to upload replacement ${docType}.`);
+      Alert.alert('Upload Failed', sanitizeErrorMessage(err?.message, `Failed to upload replacement ${docType}.`));
     } finally {
       setUploadingDoc(null);
     }
@@ -119,12 +137,7 @@ export default function GrantComplianceScreen() {
     return (
       <View style={[styles.container, isDarkMode && { backgroundColor: '#0F172A' }]}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <TouchableOpacity style={styles.backBtn} onPress={handleGoBack} activeOpacity={0.7}>
-            <IconSymbol name="chevron.left" size={16} color={isDarkMode ? '#FB923C' : '#EA580C'} />
-            <Text style={[styles.backText, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
-              Back to Scholarship Grant
-            </Text>
-          </TouchableOpacity>
+          {renderBackButton()}
           <Skeleton height={140} borderRadius={16} />
           <View style={{ height: 16 }} />
           <Skeleton height={200} borderRadius={16} />
@@ -147,19 +160,13 @@ export default function GrantComplianceScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backBtn} onPress={handleGoBack} activeOpacity={0.7}>
-          <IconSymbol name="chevron.left" size={16} color={isDarkMode ? '#FB923C' : '#EA580C'} />
-          <Text style={[styles.backText, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
-            Back to Scholarship Grant
-          </Text>
-        </TouchableOpacity>
+        {renderBackButton()}
 
         {/* Header Summary */}
         <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-            <View>
-              <Text style={[styles.cardTitle, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>
                 Grant Compliance
               </Text>
               <Text style={[styles.cardSubtitle, isDarkMode && { color: '#94A3B8' }, { marginBottom: 4 }]}>
@@ -183,16 +190,43 @@ export default function GrantComplianceScreen() {
 
         {/* Contextual Status */}
         {!isComplianceRequired ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, marginTop: 4 }}>
-            <IconSymbol name="checkmark.circle.fill" size={16} color="#16A34A" />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#86EFAC' : '#166534' }}>
-                No active compliance requests.
-              </Text>
-              <Text style={{ fontSize: 11.5, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2 }}>
-                All submitted documents are in order or undergoing standard review.
-              </Text>
+          /* LEGITIMATE EMPTY STATE — matches Civentral/New Applicant Compliance visual design */
+          <View
+            style={[
+              styles.card,
+              isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+              { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
+            ]}
+          >
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <IconSymbol
+                name="checkmark.circle.fill"
+                size={32}
+                color={isDarkMode ? '#34D399' : '#16A34A'}
+              />
             </View>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A', marginTop: 10, marginBottom: 4 }}>
+              No Compliance Action Required
+            </Text>
+            <Text style={{ fontSize: 13, color: isDarkMode ? '#94A3B8' : '#64748B', textAlign: 'center', marginBottom: 20 }}>
+              Your scholarship grant has no outstanding document correction requests.
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: isDarkMode ? '#C2410C' : '#EA580C', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 }}
+              onPress={handleGoBack}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Return to Overview</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={{ gap: 14 }}>
@@ -204,14 +238,14 @@ export default function GrantComplianceScreen() {
             >
               <View style={styles.complianceActionHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <IconSymbol name="exclamationmark.triangle.fill" size={18} color="#EA580C" />
-                  <Text style={[styles.complianceActionTitle, isDarkMode && { color: '#FB923C' }]}>
+                  <IconSymbol name="exclamationmark.triangle.fill" size={18} color="#D97706" />
+                  <Text style={[styles.complianceActionTitle, isDarkMode && { color: '#FDE68A' }]}>
                     Document Correction Required
                   </Text>
                 </View>
                 <Badge label="Action Required" variant="warning" />
               </View>
-              <Text style={[styles.complianceActionSub, isDarkMode && { color: '#FED7AA' }]}>
+              <Text style={[styles.complianceActionSub, isDarkMode && { color: '#FEF3C7' }]}>
                 The Scholarship Secretariat has flagged requirement(s) that need correction. Please review the notes below and submit replacement document(s).
               </Text>
             </View>
@@ -266,7 +300,7 @@ export default function GrantComplianceScreen() {
                   <TouchableOpacity
                     style={[
                       styles.primaryBtn,
-                      { marginTop: 12 },
+                      { marginTop: 12, backgroundColor: '#EA580C' },
                       uploadingDoc === doc.document_type && styles.primaryBtnDisabled,
                     ]}
                     onPress={() => handlePickAndUploadDocument(doc.document_type)}
@@ -294,3 +328,4 @@ export default function GrantComplianceScreen() {
   );
 }
 
+export { GrantComplianceScreen };
