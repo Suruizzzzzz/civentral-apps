@@ -1,5 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { validateFileSize } from '@/src/utils/fileValidation';
+import { formatDateTime } from '@/src/utils/dateUtils';
 import { File as ExpoFile } from 'expo-file-system';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -727,13 +728,7 @@ export function NewApplicantApplicationScreen() {
             <View style={styles.metaRow}>
               <Text style={[styles.metaLabel, isDarkMode && { color: '#94A3B8' }]}>Submitted At</Text>
               <Text style={[styles.metaValue, isDarkMode && { color: '#F8FAFC' }]}>
-                {new Date(submitResult.submitted_at).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {formatDateTime(submitResult.submitted_at)}
               </Text>
             </View>
           </View>
