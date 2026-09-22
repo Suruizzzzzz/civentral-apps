@@ -209,13 +209,7 @@ export function MyApplicationScreen() {
       {/* BACK BUTTON */}
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => {
-          if (router.canGoBack()) {
-            router.back();
-          } else {
-            router.push('/education/new-applicant' as any);
-          }
-        }}
+        onPress={() => router.replace('/education' as any)}
         activeOpacity={0.7}
       >
         <View
@@ -238,7 +232,7 @@ export function MyApplicationScreen() {
             },
           ]}
         >
-          Back to New Applicant
+          Back to Dashboard
         </Text>
       </TouchableOpacity>
 

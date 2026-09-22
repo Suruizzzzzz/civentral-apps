@@ -3,9 +3,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  Alert,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -17,6 +20,7 @@ import {
   fetchCitizenDashboard,
   fetchCitizenTrackedItems,
   TrackedItem,
+  withdrawCitizenApplication,
 } from './api/scholarshipDashboardApi';
 import { CitizenGrantOverviewData, fetchCitizenGrantOverview } from '../grant/api/grantApi';
 import { CitizenGrantReleaseItem, fetchCitizenGrantReleases } from '../grant/api/grantReleaseApi';
@@ -126,6 +130,55 @@ export function ScholarshipHistoryScreen() {
   const [grantOverview, setGrantOverview] = useState<CitizenGrantOverviewData | null>(null);
   const [grantReleases, setGrantReleases] = useState<CitizenGrantReleaseItem[]>([]);
   const [trackedItems, setTrackedItems] = useState<TrackedItem[]>([]);
+
+  // Withdrawal modal state
+  const [isWithdrawModalVisible, setIsWithdrawModalVisible] = useState(false);
+  const [withdrawTargetId, setWithdrawTargetId] = useState<number | null>(null);
+  const [withdrawReason, setWithdrawReason] = useState('Applying to a different scholarship program');
+  const [otherReasonText, setOtherReasonText] = useState('');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
+  const allowedWithdrawStatuses = [
+    'Submitted',
+    'Under Review',
+    'For Compliance',
+    'Ready for SSC',
+    'Returned',
+  ];
+
+  const handleConfirmWithdrawal = async () => {
+    if (!withdrawTargetId) return;
+
+    let finalReason = withdrawReason;
+    if (withdrawReason === 'Other') {
+      const trimmed = otherReasonText.trim();
+      if (!trimmed) {
+        Alert.alert('Reason Required', 'Please provide specific details for "Other" reason.');
+        return;
+      }
+      finalReason = `Other: ${trimmed}`;
+    }
+
+    try {
+      setIsWithdrawing(true);
+      await withdrawCitizenApplication(withdrawTargetId, finalReason);
+      setIsWithdrawModalVisible(false);
+      setWithdrawReason('Applying to a different scholarship program');
+      setOtherReasonText('');
+      Alert.alert(
+        'Application Withdrawn',
+        'Your scholarship application has been withdrawn successfully.',
+        [{ text: 'OK', onPress: () => loadData() }]
+      );
+    } catch (err: any) {
+      Alert.alert(
+        'Unable to Withdraw Application',
+        err?.message || 'Application has already progressed beyond the withdrawal boundary and can no longer be withdrawn.'
+      );
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -807,6 +860,49 @@ export function ScholarshipHistoryScreen() {
                           isDarkMode && { borderTopColor: '#293548' },
                         ]}
                       >
+                        {/* Withdraw Action — only for Application type with allowed status and valid rawId */}
+                        {rec.recordType === 'Application' &&
+                          rec.rawId != null &&
+                          allowedWithdrawStatuses.includes(rec.status) && (
+                            <TouchableOpacity
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingVertical: 8,
+                                paddingHorizontal: 14,
+                                borderRadius: 8,
+                                backgroundColor: isDarkMode ? '#3B1D28' : '#FEF2F2',
+                                borderWidth: 1,
+                                borderColor: isDarkMode ? '#991B1B' : '#FCA5A5',
+                                gap: 6,
+                              }}
+                              onPress={() => {
+                                setWithdrawTargetId(rec.rawId!);
+                                setWithdrawReason('Applying to a different scholarship program');
+                                setOtherReasonText('');
+                                setIsWithdrawModalVisible(true);
+                              }}
+                              activeOpacity={0.7}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Withdraw application ${rec.referenceCode || rec.academicPeriod}`}
+                            >
+                              <IconSymbol
+                                name="xmark.circle"
+                                size={14}
+                                color={isDarkMode ? '#F87171' : '#DC2626'}
+                              />
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: '700',
+                                  color: isDarkMode ? '#F87171' : '#DC2626',
+                                }}
+                              >
+                                Withdraw
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+
                         {/* View Details Primary Action */}
                         <TouchableOpacity
                           style={[
@@ -847,6 +943,216 @@ export function ScholarshipHistoryScreen() {
         )}
       </ScrollView>
 
+      {/* WITHDRAWAL CONFIRMATION MODAL */}
+      <Modal
+        visible={isWithdrawModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isWithdrawing) setIsWithdrawModalVisible(false);
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: '#F43F5E',
+              padding: 20,
+              backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: '800',
+                color: '#E11D48',
+                marginBottom: 8,
+              }}
+            >
+              Withdraw Application?
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 13,
+                color: isDarkMode ? '#CBD5E1' : '#475569',
+                lineHeight: 18,
+                marginBottom: 14,
+              }}
+            >
+              Are you sure you want to withdraw this application? This action cannot be undone. Once withdrawn, you may apply for any eligible scholarship program.
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: '700',
+                color: isDarkMode ? '#F8FAFC' : '#1E293B',
+                marginBottom: 8,
+              }}
+            >
+              Reason for Withdrawal:
+            </Text>
+
+            {[
+              'Applying to a different scholarship program',
+              'Transferred school or course',
+              'No longer eligible',
+              'Personal reasons',
+              'Other',
+            ].map((opt) => {
+              const isSelected = withdrawReason === opt;
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
+                    borderRadius: 8,
+                    marginBottom: 4,
+                    backgroundColor: isSelected
+                      ? isDarkMode
+                        ? '#334155'
+                        : '#FFE4E6'
+                      : 'transparent',
+                  }}
+                  onPress={() => setWithdrawReason(opt)}
+                >
+                  <View
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      borderWidth: 2,
+                      borderColor: isSelected ? '#E11D48' : '#94A3B8',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 8,
+                    }}
+                  >
+                    {isSelected && (
+                      <View
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: '#E11D48',
+                        }}
+                      />
+                    )}
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: isSelected
+                        ? '#E11D48'
+                        : isDarkMode
+                        ? '#CBD5E1'
+                        : '#334155',
+                      fontWeight: isSelected ? '700' : '500',
+                    }}
+                  >
+                    {opt}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+
+            {withdrawReason === 'Other' && (
+              <View style={{ marginTop: 8, marginBottom: 12 }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: isDarkMode ? '#94A3B8' : '#64748B',
+                    marginBottom: 4,
+                  }}
+                >
+                  Specify reason details:
+                </Text>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: isDarkMode ? '#475569' : '#CBD5E1',
+                    backgroundColor: isDarkMode ? '#0F172A' : '#FFFFFF',
+                    color: isDarkMode ? '#F8FAFC' : '#0F172A',
+                    borderRadius: 8,
+                    padding: 8,
+                    fontSize: 12,
+                    minHeight: 60,
+                    textAlignVertical: 'top',
+                  }}
+                  multiline
+                  numberOfLines={3}
+                  placeholder="Enter details..."
+                  placeholderTextColor="#94A3B8"
+                  value={otherReasonText}
+                  onChangeText={setOtherReasonText}
+                />
+              </View>
+            )}
+
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+                gap: 10,
+                marginTop: 14,
+              }}
+            >
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 9,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  backgroundColor: isDarkMode ? '#334155' : '#E2E8F0',
+                }}
+                onPress={() => setIsWithdrawModalVisible(false)}
+                disabled={isWithdrawing}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '600',
+                    color: isDarkMode ? '#CBD5E1' : '#475569',
+                  }}
+                >
+                  Keep Application
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 9,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  backgroundColor: '#E11D48',
+                  opacity: isWithdrawing ? 0.6 : 1,
+                }}
+                onPress={handleConfirmWithdrawal}
+                disabled={isWithdrawing}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFFFFF' }}>
+                  {isWithdrawing ? 'Withdrawing...' : 'Confirm Withdrawal'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

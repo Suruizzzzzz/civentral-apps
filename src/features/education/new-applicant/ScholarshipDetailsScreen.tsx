@@ -1,15 +1,29 @@
-import { formatDate } from '@/utils/dateUtils';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { formatDate } from "@/utils/dateUtils";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View
+} from "react-native";
 
-import { Badge } from '@/src/components/ui/Badge';
-import { IconSymbol } from '@/src/components/ui/icon-symbol';
-import { Skeleton } from '@/src/components/ui/Skeleton';
-import { useTheme } from '@/src/context/ThemeContext';
-import { CitizenDashboardData, fetchCitizenDashboard } from '../dashboard/api/scholarshipDashboardApi';
-import { getScholarshipProgramDetails, sanitizeScholarshipProgramContent, ScholarshipProgram } from './api/ScholarshipProgramApi';
-import { styles } from './styles/ScholarshipDetails.styles';
+import { Badge } from "@/src/components/ui/Badge";
+import { IconSymbol } from "@/src/components/ui/icon-symbol";
+import { Skeleton } from "@/src/components/ui/Skeleton";
+import { useTheme } from "@/src/context/ThemeContext";
+import {
+  CitizenDashboardData,
+  fetchCitizenDashboard,
+} from "../dashboard/api/scholarshipDashboardApi";
+import {
+  getScholarshipProgramDetails,
+  sanitizeScholarshipProgramContent,
+  ScholarshipProgram,
+} from "./api/ScholarshipProgramApi";
+import { styles } from "./styles/ScholarshipDetails.styles";
 
 interface ApplyCTAState {
   canApply: boolean;
@@ -22,12 +36,12 @@ function computeApplyCTAState(
   program: ScholarshipProgram | null,
   dashboardData: CitizenDashboardData | null,
   isLoading: boolean,
-  isLoadingDashboard: boolean
+  isLoadingDashboard: boolean,
 ): ApplyCTAState {
   if (isLoading || isLoadingDashboard) {
     return {
       canApply: false,
-      buttonText: 'Checking Eligibility...',
+      buttonText: "Checking Eligibility...",
       noticeText: null,
       isLoadingState: true,
     };
@@ -36,45 +50,53 @@ function computeApplyCTAState(
   if (!program) {
     return {
       canApply: false,
-      buttonText: 'Program Unavailable',
-      noticeText: 'This scholarship program cannot be loaded.',
+      buttonText: "Program Unavailable",
+      noticeText: "This scholarship program cannot be loaded.",
     };
   }
 
   // 1. Program Status Check
-  if (program.program_status !== 'Active') {
+  if (program.program_status !== "Active") {
     return {
       canApply: false,
-      buttonText: 'Program Inactive',
-      noticeText: 'This scholarship program is currently not active.',
+      buttonText: "Program Inactive",
+      noticeText: "This scholarship program is currently not active.",
     };
   }
 
   // 2. Active Scholar Check (using actual scholar status / dashboard state)
   const isScholarActive =
-    dashboardData?.state === 'ACTIVE_SCHOLAR' ||
-    dashboardData?.state === 'ACTIVE_GRANT' ||
-    dashboardData?.state === 'SCHOLAR_WITHOUT_GRANT' ||
+    dashboardData?.state === "ACTIVE_SCHOLAR" ||
+    dashboardData?.state === "ACTIVE_GRANT" ||
+    dashboardData?.state === "SCHOLAR_WITHOUT_GRANT" ||
     (dashboardData?.scholar &&
-      (dashboardData.scholar.scholar_status === 'Active' ||
-        dashboardData.scholar.scholar_status === 'Enrolled'));
+      (dashboardData.scholar.scholar_status === "Active" ||
+        dashboardData.scholar.scholar_status === "Enrolled"));
 
   if (isScholarActive) {
     return {
       canApply: false,
-      buttonText: 'Already an Active Scholar',
-      noticeText: 'Citizens with an active scholarship are not eligible for new applications.',
+      buttonText: "Already an Active Scholar",
+      noticeText:
+        "Citizens with an active scholarship are not eligible for new applications.",
     };
   }
 
   // 3. Application In Progress / Duplicate Application Check
   const existingApp = dashboardData?.application;
-  const isAppInProgressState = dashboardData?.state === 'APPLICATION_IN_PROGRESS';
+  const isAppInProgressState =
+    dashboardData?.state === "APPLICATION_IN_PROGRESS";
 
   if (existingApp || isAppInProgressState) {
-    const appStatus = existingApp?.application_status || 'In Progress';
+    const appStatus = existingApp?.application_status || "In Progress";
     // Terminal statuses that do NOT block:
-    const isTerminalStatus = ['Rejected', 'Withdrawn', 'Cancelled'].includes(appStatus);
+
+    const isTerminalStatus = [
+      "Rejected",
+      "Disapproved",
+      "Withdrawn",
+      "Cancelled",
+    ].includes(appStatus);
 
     if (!isTerminalStatus) {
       // Check if program_id matches when available
@@ -90,32 +112,35 @@ function computeApplyCTAState(
   }
 
   // 4. Application Period Check
-  const period = program.application_period || (program.application_periods && program.application_periods[0]);
+  const period =
+    program.application_period ||
+    (program.application_periods && program.application_periods[0]);
 
   if (!period) {
     return {
       canApply: false,
-      buttonText: 'No Active Application Period',
-      noticeText: 'There is currently no application period scheduled for this program.',
+      buttonText: "No Active Application Period",
+      noticeText:
+        "There is currently no application period scheduled for this program.",
     };
   }
 
   // Authoritative backend status check first
-  const periodStatus = (period.status || '').toLowerCase();
+  const periodStatus = (period.status || "").toLowerCase();
 
-  if (periodStatus === 'closed') {
+  if (periodStatus === "closed") {
     return {
       canApply: false,
-      buttonText: 'Application Period Closed',
-      noticeText: 'The application period for this scholarship has closed.',
+      buttonText: "Application Period Closed",
+      noticeText: "The application period for this scholarship has closed.",
     };
   }
 
-  if (periodStatus === 'scheduled' || periodStatus === 'upcoming') {
+  if (periodStatus === "scheduled" || periodStatus === "upcoming") {
     return {
       canApply: false,
-      buttonText: 'Application Opening Soon',
-      noticeText: `Opening Date: ${formatDate(period.opening_date, 'TBA')}`,
+      buttonText: "Application Opening Soon",
+      noticeText: `Opening Date: ${formatDate(period.opening_date, "TBA")}`,
     };
   }
 
@@ -128,16 +153,16 @@ function computeApplyCTAState(
     if (now < openDate) {
       return {
         canApply: false,
-        buttonText: 'Application Opening Soon',
-        noticeText: `Opening Date: ${formatDate(period.opening_date, '—')}`,
+        buttonText: "Application Opening Soon",
+        noticeText: `Opening Date: ${formatDate(period.opening_date, "—")}`,
       };
     }
 
     if (now > closeDate) {
       return {
         canApply: false,
-        buttonText: 'Application Period Closed',
-        noticeText: `The application period ended on ${formatDate(period.closing_date, '—')}.`,
+        buttonText: "Application Period Closed",
+        noticeText: `The application period ended on ${formatDate(period.closing_date, "—")}.`,
       };
     }
   }
@@ -145,21 +170,25 @@ function computeApplyCTAState(
   // Open & Allowed!
   return {
     canApply: true,
-    buttonText: 'Apply for Scholarship',
-    noticeText: 'Application period is currently open.',
+    buttonText: "Apply for Scholarship",
+    noticeText: "Application period is currently open.",
   };
 }
 
 export function ScholarshipDetailsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ program_id?: string; source?: string }>();
+  const params = useLocalSearchParams<{
+    program_id?: string;
+    source?: string;
+  }>();
   const programId = params.program_id ? parseInt(params.program_id, 10) : null;
-  const isDashboardSource = params.source === 'dashboard';
+  const isDashboardSource = params.source === "dashboard";
 
   const { isDarkMode } = useTheme();
 
   const [program, setProgram] = useState<ScholarshipProgram | null>(null);
-  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(null);
+  const [dashboardData, setDashboardData] =
+    useState<CitizenDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -167,7 +196,7 @@ export function ScholarshipDetailsScreen() {
 
   const loadDetails = async () => {
     if (!programId) {
-      setError('No scholarship program selected.');
+      setError("No scholarship program selected.");
       setIsLoading(false);
       setIsLoadingDashboard(false);
       return;
@@ -177,13 +206,13 @@ export function ScholarshipDetailsScreen() {
       setError(null);
       const data = await getScholarshipProgramDetails(programId);
       if (!data) {
-        setError('Scholarship program not found.');
+        setError("Scholarship program not found.");
       } else {
         setProgram(sanitizeScholarshipProgramContent(data));
       }
     } catch (err: any) {
-      console.error('[ScholarshipDetailsScreen] fetch error:', err);
-      setError('Unable to load scholarship details.');
+      console.error("[ScholarshipDetailsScreen] fetch error:", err);
+      setError("Unable to load scholarship details.");
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +221,10 @@ export function ScholarshipDetailsScreen() {
       const dash = await fetchCitizenDashboard();
       setDashboardData(dash);
     } catch (dashErr) {
-      console.warn('[ScholarshipDetailsScreen] dashboard fetch error:', dashErr);
+      console.warn(
+        "[ScholarshipDetailsScreen] dashboard fetch error:",
+        dashErr,
+      );
     } finally {
       setIsLoadingDashboard(false);
       setRefreshing(false);
@@ -209,12 +241,17 @@ export function ScholarshipDetailsScreen() {
     loadDetails();
   }, [programId]);
 
-  const ctaState = computeApplyCTAState(program, dashboardData, isLoading, isLoadingDashboard);
+  const ctaState = computeApplyCTAState(
+    program,
+    dashboardData,
+    isLoading,
+    isLoadingDashboard,
+  );
 
   const handleApplyPress = () => {
     if (!programId) return;
     router.push({
-      pathname: '/education/new-applicant/application' as any,
+      pathname: "/education/new-applicant/application" as any,
       params: { program_id: String(programId) },
     });
   };
@@ -224,14 +261,14 @@ export function ScholarshipDetailsScreen() {
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}
       style={{
-        backgroundColor: isDarkMode ? '#0B132B' : '#F8FAFC',
+        backgroundColor: isDarkMode ? "#0B132B" : "#F8FAFC",
       }}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={isDarkMode ? '#38BDF8' : '#0284C7'}
-          colors={['#0284C7']}
+          tintColor={isDarkMode ? "#38BDF8" : "#0284C7"}
+          colors={["#0284C7"]}
         />
       }
     >
@@ -244,33 +281,48 @@ export function ScholarshipDetailsScreen() {
         <View
           style={[
             styles.backIconCircle,
-            isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
+            isDarkMode && {
+              backgroundColor: "#1C2541",
+              borderColor: "#3A506B",
+            },
           ]}
         >
           <IconSymbol
             name="chevron.left"
             size={18}
-            color={isDarkMode ? '#38BDF8' : '#0284C7'}
+            color={isDarkMode ? "#38BDF8" : "#0284C7"}
           />
         </View>
-        <Text style={[styles.backText, isDarkMode && { color: '#38BDF8' }]}>
-          {isDashboardSource ? 'Back to Dashboard' : 'Back'}
+        <Text style={[styles.backText, isDarkMode && { color: "#38BDF8" }]}>
+          {isDashboardSource ? "Back to Dashboard" : "Back"}
         </Text>
       </TouchableOpacity>
 
       {/* ERROR STATE */}
       {error ? (
-        <View style={[styles.sectionCard, { borderColor: '#EF4444', borderWidth: 1, padding: 16 }]}>
-          <Text style={{ color: '#EF4444', fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
+        <View
+          style={[
+            styles.sectionCard,
+            { borderColor: "#EF4444", borderWidth: 1, padding: 16 },
+          ]}
+        >
+          <Text
+            style={{
+              color: "#EF4444",
+              fontSize: 16,
+              fontWeight: "600",
+              marginBottom: 8,
+            }}
+          >
             {error}
           </Text>
           <TouchableOpacity
             style={{
-              backgroundColor: '#0284C7',
+              backgroundColor: "#0284C7",
               paddingVertical: 8,
               paddingHorizontal: 16,
               borderRadius: 8,
-              alignSelf: 'flex-start',
+              alignSelf: "flex-start",
             }}
             onPress={() => {
               setIsLoading(true);
@@ -278,7 +330,7 @@ export function ScholarshipDetailsScreen() {
               loadDetails();
             }}
           >
-            <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Retry</Text>
+            <Text style={{ color: "#FFFFFF", fontWeight: "600" }}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : isLoading ? (
@@ -290,50 +342,137 @@ export function ScholarshipDetailsScreen() {
       ) : program ? (
         <>
           {/* HEADER CARD */}
-          <View style={[styles.headerCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+          <View
+            style={[
+              styles.headerCard,
+              isDarkMode && {
+                backgroundColor: "#1E293B",
+                borderColor: "#334155",
+              },
+            ]}
+          >
             <View style={styles.badgeRow}>
-              <Badge variant="info" label={program.category_name || 'General'} />
               <Badge
-                variant={program.program_status === 'Active' ? 'success' : 'neutral'}
+                variant="info"
+                label={program.category_name || "General"}
+              />
+              <Badge
+                variant={
+                  program.program_status === "Active" ? "success" : "neutral"
+                }
                 label={program.program_status}
               />
             </View>
 
-            <Text style={[styles.programTitle, isDarkMode && { color: '#F8FAFC' }]}>
+            <Text
+              style={[styles.programTitle, isDarkMode && { color: "#F8FAFC" }]}
+            >
               {program.program_name}
             </Text>
-            <Text style={[styles.programCode, isDarkMode && { color: '#94A3B8' }]}>
+            <Text
+              style={[styles.programCode, isDarkMode && { color: "#94A3B8" }]}
+            >
               Program Code: {program.program_code}
             </Text>
           </View>
 
           {/* SCHOLARSHIP STATUS TIMELINE (FOR DASHBOARD VIEW) */}
-          {isDashboardSource && dashboardData?.process_timeline && dashboardData.process_timeline.length > 0 ? (
-            <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-              <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC', marginBottom: 12 }]}>
+          {isDashboardSource &&
+          dashboardData?.process_timeline &&
+          dashboardData.process_timeline.length > 0 ? (
+            <View
+              style={[
+                styles.sectionCard,
+                isDarkMode && {
+                  backgroundColor: "#1E293B",
+                  borderColor: "#334155",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  isDarkMode && { color: "#F8FAFC", marginBottom: 12 },
+                ]}
+              >
                 Scholarship Status & Timeline
               </Text>
               <View>
                 {dashboardData.process_timeline.map((item, idx) => (
-                  <View key={item.key || idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <View style={{ alignItems: 'center', width: 28, marginRight: 8 }}>
-                      <View style={{
-                        width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
-                        backgroundColor: item.is_completed ? '#DCFCE7' : item.is_current ? '#FEF3C7' : '#F1F5F9'
-                      }}>
+                  <View
+                    key={item.key || idx}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <View
+                      style={{
+                        alignItems: "center",
+                        width: 28,
+                        marginRight: 8,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 11,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: item.is_completed
+                            ? "#DCFCE7"
+                            : item.is_current
+                              ? "#FEF3C7"
+                              : "#F1F5F9",
+                        }}
+                      >
                         <IconSymbol
-                          name={item.is_completed ? 'checkmark.circle.fill' : item.is_current ? 'clock.fill' : 'circle'}
+                          name={
+                            item.is_completed
+                              ? "checkmark.circle.fill"
+                              : item.is_current
+                                ? "clock.fill"
+                                : "circle"
+                          }
                           size={14}
-                          color={item.is_completed ? '#16A34A' : item.is_current ? '#D97706' : '#94A3B8'}
+                          color={
+                            item.is_completed
+                              ? "#16A34A"
+                              : item.is_current
+                                ? "#D97706"
+                                : "#94A3B8"
+                          }
                         />
                       </View>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "700",
+                          color: isDarkMode ? "#F8FAFC" : "#0F172A",
+                        }}
+                      >
                         {item.title}
                       </Text>
-                      <Text style={{ fontSize: 12, color: item.is_completed ? '#16A34A' : item.is_current ? '#D97706' : '#94A3B8', marginTop: 2 }}>
-                        {item.date ? formatDate(item.date) : item.is_completed ? 'Completed' : 'Pending'}
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: item.is_completed
+                            ? "#16A34A"
+                            : item.is_current
+                              ? "#D97706"
+                              : "#94A3B8",
+                          marginTop: 2,
+                        }}
+                      >
+                        {item.date
+                          ? formatDate(item.date)
+                          : item.is_completed
+                            ? "Completed"
+                            : "Pending"}
                       </Text>
                     </View>
                   </View>
@@ -343,58 +482,123 @@ export function ScholarshipDetailsScreen() {
           ) : null}
 
           {/* 1. OVERVIEW */}
-          <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+          <View
+            style={[
+              styles.sectionCard,
+              isDarkMode && {
+                backgroundColor: "#1E293B",
+                borderColor: "#334155",
+              },
+            ]}
+          >
+            <Text
+              style={[styles.sectionTitle, isDarkMode && { color: "#F8FAFC" }]}
+            >
               1. Overview
             </Text>
-            <Text style={[styles.description, isDarkMode && { color: '#94A3B8' }]}>
-              {program.description || 'No detailed overview description available for this program.'}
+            <Text
+              style={[styles.description, isDarkMode && { color: "#94A3B8" }]}
+            >
+              {program.description ||
+                "No detailed overview description available for this program."}
             </Text>
           </View>
 
           {/* 2. ELIGIBILITY REQUIREMENTS */}
-          <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+          <View
+            style={[
+              styles.sectionCard,
+              isDarkMode && {
+                backgroundColor: "#1E293B",
+                borderColor: "#334155",
+              },
+            ]}
+          >
+            <Text
+              style={[styles.sectionTitle, isDarkMode && { color: "#F8FAFC" }]}
+            >
               2. Eligibility Requirements
             </Text>
 
-            {program.eligibility_requirements && program.eligibility_requirements.length > 0 ? (
+            {program.eligibility_requirements &&
+            program.eligibility_requirements.length > 0 ? (
               program.eligibility_requirements.map((req: any, idx: number) => (
                 <View key={req.eligibility_id || idx} style={styles.listItem}>
-                  <IconSymbol name="checkmark.circle.fill" size={18} color="#16A34A" />
+                  <IconSymbol
+                    name="checkmark.circle.fill"
+                    size={18}
+                    color="#16A34A"
+                  />
                   <View style={styles.listContent}>
-                    <Text style={[styles.listTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                    <Text
+                      style={[
+                        styles.listTitle,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
                       {req.criteria_name}
                     </Text>
-                    <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
-                      Requirement: {req.display_requirement || req.condition_value}
+                    <Text
+                      style={[
+                        styles.listSub,
+                        isDarkMode && { color: "#94A3B8" },
+                      ]}
+                    >
+                      Requirement:{" "}
+                      {req.display_requirement || req.condition_value}
                     </Text>
                   </View>
                 </View>
               ))
             ) : (
-              <Text style={[styles.description, isDarkMode && { color: '#94A3B8' }]}>
+              <Text
+                style={[styles.description, isDarkMode && { color: "#94A3B8" }]}
+              >
                 No specific eligibility criteria configured.
               </Text>
             )}
           </View>
 
           {/* 3. REQUIRED DOCUMENTS */}
-          <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+          <View
+            style={[
+              styles.sectionCard,
+              isDarkMode && {
+                backgroundColor: "#1E293B",
+                borderColor: "#334155",
+              },
+            ]}
+          >
+            <Text
+              style={[styles.sectionTitle, isDarkMode && { color: "#F8FAFC" }]}
+            >
               3. Required Documents
             </Text>
 
-            {program.required_documents && program.required_documents.length > 0 ? (
+            {program.required_documents &&
+            program.required_documents.length > 0 ? (
               program.required_documents.map((doc: any, idx: number) => (
-                <View key={doc.document_requirement_id || idx} style={styles.listItem}>
+                <View
+                  key={doc.document_requirement_id || idx}
+                  style={styles.listItem}
+                >
                   <IconSymbol name="doc.text.fill" size={18} color="#0284C7" />
                   <View style={styles.listContent}>
-                    <Text style={[styles.listTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                    <Text
+                      style={[
+                        styles.listTitle,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
                       {doc.document_name} ({doc.requirement_level})
                     </Text>
                     {doc.description ? (
-                      <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
+                      <Text
+                        style={[
+                          styles.listSub,
+                          isDarkMode && { color: "#94A3B8" },
+                        ]}
+                      >
                         {doc.description}
                       </Text>
                     ) : null}
@@ -402,40 +606,74 @@ export function ScholarshipDetailsScreen() {
                 </View>
               ))
             ) : (
-              <Text style={[styles.description, isDarkMode && { color: '#94A3B8' }]}>
+              <Text
+                style={[styles.description, isDarkMode && { color: "#94A3B8" }]}
+              >
                 No mandatory document uploads specified.
               </Text>
             )}
           </View>
 
           {/* 4. APPLICATION SCHEDULE */}
-          <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+          <View
+            style={[
+              styles.sectionCard,
+              isDarkMode && {
+                backgroundColor: "#1E293B",
+                borderColor: "#334155",
+              },
+            ]}
+          >
+            <Text
+              style={[styles.sectionTitle, isDarkMode && { color: "#F8FAFC" }]}
+            >
               4. Application Schedule
             </Text>
 
             {program.application_period ? (
               <View style={styles.applyContainer}>
-                <Text style={[styles.listTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                  AY {program.application_period.academic_year} — {program.application_period.term}
+                <Text
+                  style={[styles.listTitle, isDarkMode && { color: "#F8FAFC" }]}
+                >
+                  AY {program.application_period.academic_year} —{" "}
+                  {program.application_period.term}
                 </Text>
-                <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
-                  Opening Date: {formatDate(program.application_period.opening_date, '—')}
+                <Text
+                  style={[styles.listSub, isDarkMode && { color: "#94A3B8" }]}
+                >
+                  Opening Date:{" "}
+                  {formatDate(program.application_period.opening_date, "—")}
                 </Text>
-                <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
-                  Closing Date: {formatDate(program.application_period.closing_date, '—')}
+                <Text
+                  style={[styles.listSub, isDarkMode && { color: "#94A3B8" }]}
+                >
+                  Closing Date:{" "}
+                  {formatDate(program.application_period.closing_date, "—")}
                 </Text>
               </View>
             ) : (
-              <Text style={[styles.description, isDarkMode && { color: '#94A3B8' }]}>
-                No active application period currently scheduled for this program.
+              <Text
+                style={[styles.description, isDarkMode && { color: "#94A3B8" }]}
+              >
+                No active application period currently scheduled for this
+                program.
               </Text>
             )}
           </View>
 
           {/* 5. PROGRAM BENEFITS */}
-          <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
+          <View
+            style={[
+              styles.sectionCard,
+              isDarkMode && {
+                backgroundColor: "#1E293B",
+                borderColor: "#334155",
+              },
+            ]}
+          >
+            <Text
+              style={[styles.sectionTitle, isDarkMode && { color: "#F8FAFC" }]}
+            >
               5. Program Benefits
             </Text>
 
@@ -443,17 +681,29 @@ export function ScholarshipDetailsScreen() {
               program.benefits.map((b: any, idx: number) => (
                 <View key={b.benefit_type_id || idx} style={styles.listItem}>
                   <View style={styles.listContent}>
-                    <Text style={[styles.listTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                    <Text
+                      style={[
+                        styles.listTitle,
+                        isDarkMode && { color: "#F8FAFC" },
+                      ]}
+                    >
                       {b.benefit_name}
                     </Text>
-                    <Text style={[styles.listSub, isDarkMode && { color: '#94A3B8' }]}>
+                    <Text
+                      style={[
+                        styles.listSub,
+                        isDarkMode && { color: "#94A3B8" },
+                      ]}
+                    >
                       ₱{b.amount.toLocaleString()} ({b.amount_basis})
                     </Text>
                   </View>
                 </View>
               ))
             ) : (
-              <Text style={[styles.description, isDarkMode && { color: '#94A3B8' }]}>
+              <Text
+                style={[styles.description, isDarkMode && { color: "#94A3B8" }]}
+              >
                 No specific financial benefit amounts configured.
               </Text>
             )}
@@ -461,10 +711,22 @@ export function ScholarshipDetailsScreen() {
 
           {/* 6. BOTTOM CTA CONTAINER */}
           {!isDashboardSource ? (
-            <View style={[styles.sectionCard, styles.applyContainer, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+            <View
+              style={[
+                styles.sectionCard,
+                styles.applyContainer,
+                isDarkMode && {
+                  backgroundColor: "#1E293B",
+                  borderColor: "#334155",
+                },
+              ]}
+            >
               {ctaState.canApply ? (
                 <TouchableOpacity
-                  style={[styles.activeApplyBtn, isDarkMode && { backgroundColor: '#38BDF8' }]}
+                  style={[
+                    styles.activeApplyBtn,
+                    isDarkMode && { backgroundColor: "#38BDF8" },
+                  ]}
                   onPress={handleApplyPress}
                   activeOpacity={0.8}
                 >
@@ -489,16 +751,38 @@ export function ScholarshipDetailsScreen() {
               )}
 
               {ctaState.noticeText ? (
-                <Text style={[styles.applyNotice, isDarkMode && { color: '#94A3B8' }]}>
+                <Text
+                  style={[
+                    styles.applyNotice,
+                    isDarkMode && { color: "#94A3B8" },
+                  ]}
+                >
                   {ctaState.noticeText}
                 </Text>
               ) : null}
             </View>
           ) : (
-            <View style={[styles.sectionCard, { alignItems: 'center', padding: 16 }, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+            <View
+              style={[
+                styles.sectionCard,
+                { alignItems: "center", padding: 16 },
+                isDarkMode && {
+                  backgroundColor: "#1E293B",
+                  borderColor: "#334155",
+                },
+              ]}
+            >
               <Badge variant="success" label="Active Scholar" />
-              <Text style={{ fontSize: 13, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 6, textAlign: 'center' }}>
-                You are currently viewing details for your active scholarship program.
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: isDarkMode ? "#94A3B8" : "#64748B",
+                  marginTop: 6,
+                  textAlign: "center",
+                }}
+              >
+                You are currently viewing details for your active scholarship
+                program.
               </Text>
             </View>
           )}
@@ -507,4 +791,3 @@ export function ScholarshipDetailsScreen() {
     </ScrollView>
   );
 }
-
