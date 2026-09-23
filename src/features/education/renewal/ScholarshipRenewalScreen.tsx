@@ -71,6 +71,15 @@ export function ScholarshipRenewalScreen() {
 
   const unresolvedComplianceCount = complianceDetails?.unresolved_compliance_requests?.length ?? 0;
 
+  // Gate compliance actionability strictly according to renewal state and actionability
+  const hasActionableCompliance = Boolean(
+    data &&
+    data.state !== "NOT_A_SCHOLAR" &&
+    data.state !== "SCHOLAR_INACTIVE" &&
+    data.renewal &&
+    data.renewal.citizen_action_required
+  );
+
   const RENEWAL_HEADER_ASPECT_RATIO = isDarkMode ? 1791 / 497 : 1777 / 489;
 
   const renderHeaderSkeleton = () => (
@@ -430,7 +439,7 @@ export function ScholarshipRenewalScreen() {
 
               <View style={styles.cardContent}>
                 <View style={styles.badgeRow}>
-                  {unresolvedComplianceCount > 0 ? (
+                  {hasActionableCompliance ? (
                     <View
                       style={[
                         styles.warningBadge,
@@ -448,7 +457,9 @@ export function ScholarshipRenewalScreen() {
                           isDarkMode && { color: "#FDE68A" },
                         ]}
                       >
-                        {unresolvedComplianceCount} Action Required
+                        {unresolvedComplianceCount > 0
+                          ? `${unresolvedComplianceCount} Action Required`
+                          : "Action Required"}
                       </Text>
                     </View>
                   ) : (
@@ -483,8 +494,10 @@ export function ScholarshipRenewalScreen() {
                 <Text
                   style={[styles.cardSub, isDarkMode && { color: "#CBD5E1" }]}
                 >
-                  {unresolvedComplianceCount > 0
-                    ? `Action required: You have ${unresolvedComplianceCount} document replacement request${unresolvedComplianceCount > 1 ? "s" : ""} to complete.`
+                  {hasActionableCompliance
+                    ? unresolvedComplianceCount > 0
+                      ? `Action required: You have ${unresolvedComplianceCount} document replacement request${unresolvedComplianceCount > 1 ? "s" : ""} to complete.`
+                      : "Action required: Review and submit clarification or document corrections for your scholarship renewal."
                     : "Your renewal has no outstanding requirements. Review and submit document corrections if requested for your scholarship renewal."}
                 </Text>
               </View>
@@ -525,9 +538,9 @@ export function ScholarshipRenewalScreen() {
                   ]}
                 >
                   <IconSymbol
-                    name={unresolvedComplianceCount > 0 ? "clock.fill" : "checkmark.circle.fill"}
+                    name={hasActionableCompliance ? "clock.fill" : "checkmark.circle.fill"}
                     size={13}
-                    color={unresolvedComplianceCount > 0 ? (isDarkMode ? "#FDE68A" : "#B45309") : (isDarkMode ? "#34D399" : "#16A34A")}
+                    color={hasActionableCompliance ? (isDarkMode ? "#FDE68A" : "#B45309") : (isDarkMode ? "#34D399" : "#16A34A")}
                   />
                   <Text
                     style={[
@@ -535,35 +548,39 @@ export function ScholarshipRenewalScreen() {
                       isDarkMode && { color: "#CBD5E1" },
                     ]}
                   >
-                    {unresolvedComplianceCount > 0
-                      ? `${unresolvedComplianceCount} Action required`
+                    {hasActionableCompliance
+                      ? unresolvedComplianceCount > 0
+                        ? `${unresolvedComplianceCount} Action required`
+                        : "Action required"
                       : "No pending action"}
                   </Text>
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.secondaryActionBtn,
-                  isDarkMode && { borderColor: "#4ADE80" },
-                ]}
-                onPress={() => router.push("/education/renewal/compliance" as any)}
-                activeOpacity={0.8}
-              >
-                <Text
+              {hasActionableCompliance && (
+                <TouchableOpacity
                   style={[
-                    styles.secondaryActionBtnText,
-                    isDarkMode && { color: "#4ADE80" },
+                    styles.secondaryActionBtn,
+                    isDarkMode && { borderColor: "#4ADE80" },
                   ]}
+                  onPress={() => router.push("/education/renewal/compliance" as any)}
+                  activeOpacity={0.8}
                 >
-                  View Compliance
-                </Text>
-                <IconSymbol
-                  name="chevron.right"
-                  size={14}
-                  color={isDarkMode ? "#4ADE80" : "#15803D"}
-                />
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.secondaryActionBtnText,
+                      isDarkMode && { color: "#4ADE80" },
+                    ]}
+                  >
+                    View Compliance
+                  </Text>
+                  <IconSymbol
+                    name="chevron.right"
+                    size={14}
+                    color={isDarkMode ? "#4ADE80" : "#15803D"}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </>

@@ -108,12 +108,34 @@ export function RenewalComplianceScreen() {
     }, [loadData])
   );
 
+  // Check if response represents a non-actionable / empty compliance state
+  const isNoActionRequired = Boolean(
+    !details ||
+    details.renewal_id === null ||
+    (
+      (!details.unresolved_compliance_requests || details.unresolved_compliance_requests.length === 0) &&
+      (!details.documents_needing_replacement || details.documents_needing_replacement.length === 0) &&
+      !details.ssc_return_context
+    )
+  );
+
+  // Fallback for previous 403 error strings if cached or served by older proxy
+  const isNonActionableError = Boolean(
+    fetchError &&
+    (
+      fetchError.toLowerCase().includes('no active compliance') ||
+      fetchError.toLowerCase().includes('does not have an active scholar record') ||
+      fetchError.toLowerCase().includes('no scholarship renewal record found')
+    )
+  );
+
   // Auto-save renewal compliance draft to local storage (debounced by 500ms)
   useEffect(() => {
-    if (!hasHydratedRef.current || !details?.renewal_id) return;
+    if (!hasHydratedRef.current || !details?.renewal_id || isNoActionRequired) return;
     const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
     if (!activeUserId) return;
 
+    const renewalId = details.renewal_id;
     const hasData =
       clarificationText.trim().length > 0 ||
       files.cor !== null ||
@@ -123,7 +145,7 @@ export function RenewalComplianceScreen() {
     if (!hasData) return;
 
     const timer = setTimeout(() => {
-      FormDraftService.saveDraft('renewal_compliance', activeUserId, details.renewal_id, {
+      FormDraftService.saveDraft('renewal_compliance', activeUserId, renewalId, {
         clarificationText,
         files,
       }).catch((err) => {
@@ -132,7 +154,7 @@ export function RenewalComplianceScreen() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [clarificationText, files, details?.renewal_id]);
+  }, [clarificationText, files, details?.renewal_id, isNoActionRequired]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -174,13 +196,13 @@ export function RenewalComplianceScreen() {
 
   // Determine what inputs are required
   const requestedDocTypes: Record<string, boolean> = {};
-  if (details) {
-    for (const req of details.unresolved_compliance_requests) {
+  if (details && !isNoActionRequired) {
+    for (const req of details.unresolved_compliance_requests || []) {
       if (req.request_type === 'Document Replacement' && req.affected_document) {
         requestedDocTypes[req.affected_document.document_type] = true;
       }
     }
-    for (const d of details.documents_needing_replacement) {
+    for (const d of details.documents_needing_replacement || []) {
       requestedDocTypes[d.document_type] = true;
     }
   }
@@ -190,10 +212,11 @@ export function RenewalComplianceScreen() {
   const isSoaRequested = Boolean(requestedDocTypes['SOA']);
 
   const isClarificationRequired = Boolean(
-    details?.ssc_return_context ||
-    details?.unresolved_compliance_requests.some((r) =>
-      ['Academic Clarification', 'Information Clarification', 'Other'].includes(r.request_type)
-    )
+    !isNoActionRequired &&
+    (details?.ssc_return_context ||
+      details?.unresolved_compliance_requests?.some((r) =>
+        ['Academic Clarification', 'Information Clarification', 'Other'].includes(r.request_type)
+      ))
   );
 
   const isFormValid = Boolean(
@@ -262,8 +285,9 @@ export function RenewalComplianceScreen() {
 
       // Clear draft on successful submission
       const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
-      if (activeUserId && details?.renewal_id) {
-        await FormDraftService.clearDraft('renewal_compliance', activeUserId, details.renewal_id).catch(() => {});
+      const completedRenewalId = details?.renewal_id;
+      if (activeUserId && completedRenewalId) {
+        await FormDraftService.clearDraft('renewal_compliance', activeUserId, completedRenewalId).catch(() => {});
       }
 
       setSubmitSuccess(true);
@@ -333,9 +357,8 @@ export function RenewalComplianceScreen() {
           <Skeleton height={220} borderRadius={16} />
         </View>
       ) : fetchError ? (
-        // Distinguish legitimate "no compliance needed" (backend 403) from real API failures
-        fetchError.toLowerCase().includes('no active compliance') ? (
-          // LEGITIMATE EMPTY STATE — matches NewApplicantComplianceScreen visual language
+        isNonActionableError ? (
+          /* LEGITIMATE EMPTY STATE (matches visual language) */
           <View
             style={[
               styles.instructionCard,
@@ -374,7 +397,7 @@ export function RenewalComplianceScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          // ACTUAL API / NETWORK ERROR — keep the error treatment
+          /* ACTUAL API / NETWORK ERROR — keep genuine error treatment */
           <View
             style={[
               styles.instructionCard,
@@ -414,6 +437,45 @@ export function RenewalComplianceScreen() {
             onPress={() => router.replace('/education/renewal' as any)}
           >
             <Text style={styles.submitBtnText}>Return to Renewal Overview</Text>
+          </TouchableOpacity>
+        </View>
+      ) : isNoActionRequired ? (
+        /* SUCCESSFUL HTTP 200 EMPTY STATE */
+        <View
+          style={[
+            styles.instructionCard,
+            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+            { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
+          ]}
+        >
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 14,
+            }}
+          >
+            <IconSymbol
+              name="checkmark.circle.fill"
+              size={32}
+              color={isDarkMode ? '#34D399' : '#16A34A'}
+            />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A', marginTop: 10, marginBottom: 4 }}>
+            No Compliance Action Required
+          </Text>
+          <Text style={{ fontSize: 13, color: isDarkMode ? '#94A3B8' : '#64748B', textAlign: 'center', marginBottom: 20 }}>
+            Your scholarship renewal has no outstanding compliance requests.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: isDarkMode ? '#059669' : '#16A34A', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 }}
+            onPress={() => router.replace('/education/renewal' as any)}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Return to Overview</Text>
           </TouchableOpacity>
         </View>
       ) : details ? (

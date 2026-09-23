@@ -141,11 +141,11 @@ export interface SscReturnContext {
 }
 
 export interface CitizenComplianceDetailsData {
-  renewal_id: number;
-  renewal_code: string;
-  renewal_status: string;
-  scholar: ScholarInfo;
-  program: ProgramInfo;
+  renewal_id: number | null;
+  renewal_code: string | null;
+  renewal_status: string | null;
+  scholar: ScholarInfo | null;
+  program: ProgramInfo | null;
   current_academic_period?: AcademicPeriodInfo | null;
   unresolved_compliance_requests: ComplianceRequestItem[];
   ssc_return_context?: SscReturnContext | null;
