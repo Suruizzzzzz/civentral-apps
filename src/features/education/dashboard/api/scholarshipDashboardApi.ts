@@ -44,6 +44,7 @@ export interface DashboardApplication {
   interview?: DashboardInterview | null;
   disapproval_category?: string | null;
   decision_remarks?: string | null;
+  decided_at?: string | null;
 }
 
 export interface TimelineItem {
@@ -67,7 +68,7 @@ export interface DashboardLatestUpdate {
 }
 
 export interface CitizenDashboardData {
-  state: 'NO_SCHOLARSHIP' | 'APPLICATION_IN_PROGRESS' | 'SCHOLAR_WITHOUT_GRANT' | 'ACTIVE_SCHOLAR' | 'ACTIVE_GRANT';
+  state: 'NO_SCHOLARSHIP' | 'APPLICATION_IN_PROGRESS' | 'APPLICATION_DISAPPROVED' | 'SCHOLAR_WITHOUT_GRANT' | 'ACTIVE_SCHOLAR' | 'ACTIVE_GRANT';
   scholar: DashboardScholar | null;
   scholarship: DashboardScholarship | null;
   academic_period: DashboardAcademicPeriod | null;

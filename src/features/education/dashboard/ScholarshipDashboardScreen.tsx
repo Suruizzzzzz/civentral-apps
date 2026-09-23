@@ -118,6 +118,7 @@ function getStatusColors(status: string, isDarkMode: boolean) {
     };
   }
   if (
+    s.includes('disapprov') ||
     s.includes('reject') ||
     s.includes('withdraw') ||
     s.includes('fail') ||
@@ -438,6 +439,12 @@ export function ScholarshipDashboardScreen() {
   const withdrawalDate = formatDate(application?.submitted_at) || 'Recorded';
   const withdrawalReason = 'Citizen voluntarily withdrew application before committee evaluation.';
 
+  // Disapproval detection
+  const isDisapproved = Boolean(application?.application_status === 'Disapproved');
+  const disapprovalDate = formatDate(application?.decided_at || dashboardData?.latest_update?.timestamp || application?.submitted_at) || 'Recorded';
+  const disapprovalCategory = application?.disapproval_category || 'Criteria Not Met';
+  const disapprovalRemarks = application?.decision_remarks || 'This application is no longer under active review.';
+
   // Current active stage index for compact stepper
   const currentStageIndex = useMemo(() => {
     const idx = stages.findIndex((s) => s.state === 'current');
@@ -453,6 +460,16 @@ export function ScholarshipDashboardScreen() {
       return {
         label: 'Withdrawn',
         description: 'Application voluntarily withdrawn before committee evaluation.',
+        dotColor: '#DC2626',
+        textColor: isDarkMode ? '#F87171' : '#DC2626',
+        badgeBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
+        badgeBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
+      };
+    }
+    if (isDisapproved) {
+      return {
+        label: 'Disapproved',
+        description: 'Application disapproved. This application is no longer under active review.',
         dotColor: '#DC2626',
         textColor: isDarkMode ? '#F87171' : '#DC2626',
         badgeBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
@@ -531,6 +548,16 @@ export function ScholarshipDashboardScreen() {
           badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
         };
       }
+      if (s === 'Disapproved') {
+        return {
+          label: 'Disapproved',
+          description: 'Application disapproved. This application is no longer under active review.',
+          dotColor: '#DC2626',
+          textColor: isDarkMode ? '#F87171' : '#DC2626',
+          badgeBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
+          badgeBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
+        };
+      }
       if (s === 'Draft') {
         return {
           label: 'Draft',
@@ -558,7 +585,7 @@ export function ScholarshipDashboardScreen() {
       badgeBg: isDarkMode ? '#1E293B' : '#F1F5F9',
       badgeBorder: isDarkMode ? '#334155' : '#E2E8F0',
     };
-  }, [isWithdrawn, scholar, application, stages, isDarkMode]);
+  }, [isWithdrawn, isDisapproved, scholar, application, stages, isDarkMode]);
 
 
   // -------------------------------------------------------------
@@ -1215,6 +1242,30 @@ export function ScholarshipDashboardScreen() {
                     Application Terminated — Voluntarily Withdrawn
                   </Text>
                 </View>
+              ) : isDisapproved ? (
+                <View
+                  style={[
+                    styles.compactTerminatedBar,
+                    isDarkMode && {
+                      backgroundColor: '#3B1D28',
+                      borderColor: '#991B1B',
+                    },
+                  ]}
+                >
+                  <IconSymbol
+                    name="xmark.circle.fill"
+                    size={14}
+                    color="#DC2626"
+                  />
+                  <Text
+                    style={[
+                      styles.compactTerminatedText,
+                      isDarkMode && { color: '#F87171' },
+                    ]}
+                  >
+                    Application Disapproved — No Longer Active
+                  </Text>
+                </View>
               ) : (
                 <>
                   <View style={styles.compactStepperRow}>
@@ -1755,6 +1806,258 @@ export function ScholarshipDashboardScreen() {
                         ]}
                       >
                         This scholarship application has been permanently terminated. You are eligible to apply for another available scholarship program.
+                      </Text>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.withdrawnBrowseBtn,
+                          isDarkMode && { backgroundColor: '#7E22CE' },
+                        ]}
+                        onPress={() => {
+                          setProgressModalVisible(false);
+                          router.push('/education/new-applicant/browse-scholarships' as any);
+                        }}
+                        activeOpacity={0.8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Browse available scholarships"
+                      >
+                        <Text style={styles.withdrawnBrowseBtnText}>
+                          Browse Available Scholarships
+                        </Text>
+                        <IconSymbol name="chevron.right" size={13} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : isDisapproved ? (
+                  /* ==================================================== */
+                  /* DISAPPROVAL TIMELINE TERMINATION                    */
+                  /* ==================================================== */
+                  <>
+                    {/* Render completed stages before disapproval */}
+                    <View style={styles.verticalTimelineRow}>
+                      <View style={styles.verticalTimelineLeftCol}>
+                        <View
+                          style={[
+                            styles.verticalTimelineDot,
+                            styles.verticalTimelineDotCompleted,
+                          ]}
+                        >
+                          <IconSymbol
+                            name="checkmark"
+                            size={13}
+                            color="#FFFFFF"
+                          />
+                        </View>
+                        <View style={[styles.verticalTimelineConnector, styles.verticalTimelineConnectorCompleted]} />
+                      </View>
+                      <View
+                        style={[
+                          styles.verticalTimelineContentCard,
+                          isDarkMode && {
+                            backgroundColor: '#1E293B',
+                            borderColor: '#334155',
+                          },
+                        ]}
+                      >
+                        <View style={styles.verticalTimelineHeaderRow}>
+                          <Text
+                            style={[
+                              styles.verticalTimelineTitle,
+                              isDarkMode && { color: '#F8FAFC' },
+                            ]}
+                          >
+                            Application Submitted
+                          </Text>
+                          <View
+                            style={[
+                              styles.verticalTimelineStatusPill,
+                              { backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7' },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.verticalTimelineStatusPillText,
+                                { color: isDarkMode ? '#4ADE80' : '#15803D' },
+                              ]}
+                            >
+                              COMPLETED
+                            </Text>
+                          </View>
+                        </View>
+                        {stages[0].date ? (
+                          <Text
+                            style={[
+                              styles.verticalTimelineDate,
+                              isDarkMode && { color: '#4ADE80' },
+                            ]}
+                          >
+                            {stages[0].date}
+                          </Text>
+                        ) : null}
+                        <Text
+                          style={[
+                            styles.verticalTimelineDesc,
+                            isDarkMode && { color: '#94A3B8' },
+                          ]}
+                        >
+                          Initial scholarship application and credentials submitted.
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Terminal Divider */}
+                    <View
+                      style={[
+                        styles.terminalDivider,
+                        isDarkMode && { backgroundColor: '#334155' },
+                      ]}
+                    />
+
+                    {/* TERMINAL DISAPPROVED CARD */}
+                    <View
+                      style={[
+                        styles.withdrawnTerminalCard,
+                        isDarkMode && {
+                          backgroundColor: '#3B1D28',
+                          borderColor: '#991B1B',
+                        },
+                      ]}
+                    >
+                      <View style={styles.withdrawnTerminalHeaderRow}>
+                        <Text
+                          style={[
+                            styles.withdrawnTerminalTitle,
+                            isDarkMode && { color: '#F87171' },
+                          ]}
+                        >
+                          APPLICATION DISAPPROVED
+                        </Text>
+                        <View
+                          style={[
+                            styles.withdrawnBadge,
+                            isDarkMode && {
+                              backgroundColor: '#4C1D24',
+                              borderColor: '#F87171',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.withdrawnBadgeText,
+                              isDarkMode && { color: '#F87171' },
+                            ]}
+                          >
+                            TERMINATED
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.withdrawnMetaRow}>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaLabel,
+                            isDarkMode && { color: '#FCA5A5' },
+                          ]}
+                        >
+                          Status:
+                        </Text>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaVal,
+                            isDarkMode && { color: '#F87171' },
+                          ]}
+                        >
+                          DISAPPROVED
+                        </Text>
+                      </View>
+
+                      <View style={styles.withdrawnMetaRow}>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaLabel,
+                            isDarkMode && { color: '#FCA5A5' },
+                          ]}
+                        >
+                          Reason:
+                        </Text>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaVal,
+                            isDarkMode && { color: '#F87171' },
+                          ]}
+                        >
+                          {disapprovalCategory}
+                        </Text>
+                      </View>
+
+                      {disapprovalRemarks ? (
+                        <View style={styles.withdrawnMetaRow}>
+                          <Text
+                            style={[
+                              styles.withdrawnMetaLabel,
+                              isDarkMode && { color: '#FCA5A5' },
+                            ]}
+                          >
+                            Remarks:
+                          </Text>
+                          <Text
+                            style={[
+                              styles.withdrawnMetaVal,
+                              isDarkMode && { color: '#F87171' },
+                            ]}
+                          >
+                            {disapprovalRemarks}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      <View style={styles.withdrawnMetaRow}>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaLabel,
+                            isDarkMode && { color: '#FCA5A5' },
+                          ]}
+                        >
+                          Decision Date:
+                        </Text>
+                        <Text
+                          style={[
+                            styles.withdrawnMetaVal,
+                            isDarkMode && { color: '#F87171' },
+                          ]}
+                        >
+                          {disapprovalDate}
+                        </Text>
+                      </View>
+
+                      {application?.application_code ? (
+                        <View style={styles.withdrawnMetaRow}>
+                          <Text
+                            style={[
+                              styles.withdrawnMetaLabel,
+                              isDarkMode && { color: '#FCA5A5' },
+                            ]}
+                          >
+                            Reference:
+                          </Text>
+                          <Text
+                            style={[
+                              styles.withdrawnMetaVal,
+                              isDarkMode && { color: '#F87171' },
+                            ]}
+                          >
+                            {application.application_code}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      <Text
+                        style={[
+                          styles.withdrawnNotice,
+                          isDarkMode && { color: '#CBD5E1' },
+                        ]}
+                      >
+                        This application is no longer under active review. The application remains available in your application history.
                       </Text>
 
                       <TouchableOpacity
