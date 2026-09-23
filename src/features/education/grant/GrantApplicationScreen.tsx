@@ -453,44 +453,9 @@ export function GrantApplicationScreen() {
     );
   }
 
-  const isEligible = overview?.eligible ?? false;
   const currentPeriod = overview?.current_academic_period;
   const scholar = overview?.scholar;
-
-  // Not Eligible State
-  if (!isEligible) {
-    return (
-      <View style={[styles.container, isDarkMode && { backgroundColor: '#0F172A' }]}>
-        <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 140 }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        >
-          {renderBackButton()}
-          <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <IconSymbol name="exclamationmark.triangle.fill" size={24} color="#D97706" />
-              <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>Grant Application Not Available</Text>
-            </View>
-            <Text style={{ fontSize: 13, color: isDarkMode ? '#CBD5E1' : '#475569', lineHeight: 20, marginBottom: 16 }}>
-              {overview?.reason || 'You are currently not eligible for Grant intake processing.'}
-            </Text>
-            {scholar && (
-              <View style={styles.infoGrid}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Scholar Code</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{scholar.scholar_code}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Program</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{scholar.program_name}</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
+  const canStartGrantApplication = Boolean(overview?.eligible);
 
   // STATE GUARD: Is this an editable draft vs existing non-draft application?
   const isDraft = !application || application.grant_status === 'Draft';
@@ -498,7 +463,7 @@ export function GrantApplicationScreen() {
     application?.grant_status ||
     (application as any)?.status ||
     (application as any)?.application_status ||
-    '--';
+    'Not Started';
 
   const activeInstType = application?.institution_type || 'Public';
   const docs = application?.documents || [];
@@ -516,14 +481,16 @@ export function GrantApplicationScreen() {
   const instBadgeVariant: 'success' | 'warning' = isRegistered ? 'success' : 'warning';
 
   const tuitionStatusLabel = application?.tuition_status || overview?.tuition_status || (isRegistered ? 'Ready for Processing' : 'On Hold — Institution Verification Required');
-  const isTuitionOnHold = tuitionStatusLabel.toLowerCase().includes('hold') || !isRegistered;
+  const isTuitionOnHold = Boolean(application) && (tuitionStatusLabel.toLowerCase().includes('hold') || !isRegistered);
   const holdExplanation = application?.hold_explanation || overview?.hold_explanation || 'Institution verification is required before tuition payment can proceed, while stipend processing may continue independently where applicable.';
 
   const complianceDocs = docs.filter(
     (d) => d.review_status === 'Needs Replacement' || d.review_status === 'Invalid'
   );
-  const isComplianceRequired =
-    application?.grant_status === 'For Compliance' || complianceDocs.length > 0;
+  const isComplianceRequired = Boolean(
+    application &&
+    (application.grant_status === 'For Compliance' || complianceDocs.length > 0)
+  );
 
   // Authoritative Backend Financial Figures
   const assessedTuition = application?.assessed_eligible_tuition ?? overview?.assessed_eligible_tuition;
@@ -642,6 +609,18 @@ export function GrantApplicationScreen() {
           borderLight: '#FED7AA',
           borderDark: '#9A3412',
           desc: 'Please upload the required enrollment documents and submit your application for review.',
+        };
+      case 'Not Started':
+      case '--':
+        return {
+          icon: 'info.circle.fill',
+          title: 'Not Started',
+          color: '#0284C7',
+          bgLight: '#F0F9FF',
+          bgDark: '#082F49',
+          borderLight: '#BAE6FD',
+          borderDark: '#0369A1',
+          desc: 'You have not submitted an educational grant application for the current academic period. Begin your application to confirm school enrollment and submit verification documents.',
         };
       default:
         return {
@@ -801,34 +780,36 @@ export function GrantApplicationScreen() {
         {/* ============================================================== */}
         {/* 3. EDUCATIONAL INSTITUTION CARD (COMPACT & PROFESSIONAL)        */}
         {/* ============================================================== */}
-        <View
-          style={[
-            styles.card,
-            { padding: 16, marginBottom: 14 },
-            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
-          ]}
-        >
-          <Text style={{ fontSize: 11, fontWeight: '700', color: isDarkMode ? '#94A3B8' : '#64748B', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-            Educational Institution
-          </Text>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A', marginBottom: 6 }}>
-            {institutionDisplayName}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Badge label={instBadgeLabel} variant={instBadgeVariant} />
-            <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
-              {activeInstType === 'Private' ? 'Private Institution' : 'Public Institution'}
+        {(Boolean(application) || Boolean(overview?.institution)) && (
+          <View
+            style={[
+              styles.card,
+              { padding: 16, marginBottom: 14 },
+              isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+            ]}
+          >
+            <Text style={{ fontSize: 11, fontWeight: '700', color: isDarkMode ? '#94A3B8' : '#64748B', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+              Educational Institution
             </Text>
-          </View>
-
-          {isTuitionOnHold && (
-            <View style={{ marginTop: 10, backgroundColor: isDarkMode ? '#451A03' : '#FFFBEB', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: isDarkMode ? '#B45309' : '#FDE68A' }}>
-              <Text style={{ fontSize: 11, color: isDarkMode ? '#FDE68A' : '#B45309', fontWeight: '600', lineHeight: 16 }}>
-                {holdExplanation}
+            <Text style={{ fontSize: 15, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A', marginBottom: 6 }}>
+              {institutionDisplayName}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Badge label={instBadgeLabel} variant={instBadgeVariant} />
+              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                {activeInstType === 'Private' ? 'Private Institution' : 'Public Institution'}
               </Text>
             </View>
-          )}
-        </View>
+
+            {isTuitionOnHold && (
+              <View style={{ marginTop: 10, backgroundColor: isDarkMode ? '#451A03' : '#FFFBEB', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: isDarkMode ? '#B45309' : '#FDE68A' }}>
+                <Text style={{ fontSize: 11, color: isDarkMode ? '#FDE68A' : '#B45309', fontWeight: '600', lineHeight: 16 }}>
+                  {holdExplanation}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* ============================================================== */}
         {/* 4. DOCUMENTS (COMPACT LIST OR ACTIVE DRAFT FORM)               */}
@@ -928,25 +909,27 @@ export function GrantApplicationScreen() {
               >
                 You have not submitted an educational grant application for the current academic period. Begin your application to confirm your enrolled school and submit verification documents.
               </Text>
-              <TouchableOpacity
-                style={[
-                  styles.primaryBtn,
-                  { width: '100%', maxWidth: 280, marginTop: 4, backgroundColor: '#EA580C' },
-                  submitting && styles.primaryBtnDisabled,
-                ]}
-                onPress={handleCreateApplication}
-                disabled={submitting}
-                activeOpacity={0.8}
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <IconSymbol name="doc.badge.plus" size={18} color="#FFFFFF" />
-                    <Text style={styles.primaryBtnText}>Start Grant Application</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              {canStartGrantApplication && (
+                <TouchableOpacity
+                  style={[
+                    styles.primaryBtn,
+                    { width: '100%', maxWidth: 280, marginTop: 4, backgroundColor: '#EA580C' },
+                    submitting && styles.primaryBtnDisabled,
+                  ]}
+                  onPress={handleCreateApplication}
+                  disabled={submitting}
+                  activeOpacity={0.8}
+                >
+                  {submitting ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <IconSymbol name="doc.badge.plus" size={18} color="#FFFFFF" />
+                      <Text style={styles.primaryBtnText}>Start Grant Application</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <View

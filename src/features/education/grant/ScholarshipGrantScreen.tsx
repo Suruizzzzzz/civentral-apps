@@ -164,44 +164,7 @@ export default function ScholarshipGrantScreen() {
     );
   }
 
-  const isEligible = overview?.eligible ?? false;
   const currentPeriod = overview?.current_academic_period;
-  const scholar = overview?.scholar;
-
-  // Not Eligible State
-  if (!isEligible) {
-    return (
-      <View style={[styles.container, isDarkMode && { backgroundColor: '#0F172A' }]}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        >
-          {renderBackButton()}
-          <View style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <IconSymbol name="exclamationmark.triangle.fill" size={24} color="#D97706" />
-              <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>Grant Application Not Available</Text>
-            </View>
-            <Text style={{ fontSize: 13, color: isDarkMode ? '#CBD5E1' : '#475569', lineHeight: 20, marginBottom: 16 }}>
-              {overview?.reason || 'You are currently not eligible for Grant intake processing.'}
-            </Text>
-            {scholar && (
-              <View style={styles.infoGrid}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Scholar Code</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{scholar.scholar_code}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Program</Text>
-                  <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>{scholar.program_name}</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
 
   const grantStatusText =
     application?.grant_status ||
@@ -214,8 +177,13 @@ export default function ScholarshipGrantScreen() {
   const complianceDocs = docs.filter(
     (d) => d.review_status === 'Needs Replacement' || d.review_status === 'Invalid'
   );
-  const isComplianceRequired =
-    application?.grant_status === 'For Compliance' || complianceDocs.length > 0;
+  const hasActionableCompliance = Boolean(
+    application &&
+    (
+      application.grant_status === 'For Compliance' ||
+      complianceDocs.length > 0
+    )
+  );
   const complianceCount = complianceDocs.length;
 
   // Contextual description for Grant Application card
@@ -389,8 +357,8 @@ export default function ScholarshipGrantScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* 3. PRIMARY CARD 2: COMPLIANCE (ENTIRE CARD TOUCHABLE) */}
-        <TouchableOpacity
+        {/* 3. PRIMARY CARD 2: COMPLIANCE */}
+        <View
           style={[
             styles.card,
             isDarkMode && {
@@ -398,8 +366,6 @@ export default function ScholarshipGrantScreen() {
               borderColor: '#0F3866',
             },
           ]}
-          onPress={handleOpenCompliance}
-          activeOpacity={0.85}
         >
           <View style={styles.cardMainRow}>
             <Image
@@ -410,7 +376,7 @@ export default function ScholarshipGrantScreen() {
 
             <View style={styles.cardContent}>
               <View style={styles.badgeRow}>
-                {isComplianceRequired ? (
+                {hasActionableCompliance ? (
                   <View
                     style={[
                       styles.warningBadge,
@@ -449,7 +415,7 @@ export default function ScholarshipGrantScreen() {
                         isDarkMode && { color: '#34D399' },
                       ]}
                     >
-                      All Clear
+                      No Action Needed
                     </Text>
                   </View>
                 )}
@@ -459,9 +425,9 @@ export default function ScholarshipGrantScreen() {
                 Compliance
               </Text>
               <Text style={[styles.cardSub, isDarkMode && { color: '#CBD5E1' }]}>
-                {isComplianceRequired
+                {hasActionableCompliance
                   ? `Action required: You have ${complianceCount > 0 ? complianceCount : 1} document correction request${complianceCount > 1 ? 's' : ''} to complete.`
-                  : 'Your grant application has no outstanding requirements. Review and submit document corrections if requested for your educational grant.'}
+                  : 'Your grant application has no outstanding compliance requirements.'}
               </Text>
             </View>
           </View>
@@ -501,9 +467,9 @@ export default function ScholarshipGrantScreen() {
                 ]}
               >
                 <IconSymbol
-                  name={isComplianceRequired ? 'clock.fill' : 'checkmark.circle.fill'}
+                  name={hasActionableCompliance ? 'clock.fill' : 'checkmark.circle.fill'}
                   size={13}
-                  color={isComplianceRequired ? (isDarkMode ? '#FDE68A' : '#B45309') : (isDarkMode ? '#34D399' : '#16A34A')}
+                  color={hasActionableCompliance ? (isDarkMode ? '#FDE68A' : '#B45309') : (isDarkMode ? '#34D399' : '#16A34A')}
                 />
                 <Text
                   style={[
@@ -511,35 +477,39 @@ export default function ScholarshipGrantScreen() {
                     isDarkMode && { color: '#CBD5E1' },
                   ]}
                 >
-                  {isComplianceRequired
+                  {hasActionableCompliance
                     ? `${complianceCount > 0 ? complianceCount : 1} Action required`
                     : 'No pending action'}
                 </Text>
               </View>
             </View>
 
-            <View
-              style={[
-                styles.secondaryActionBtn,
-                isDarkMode && { borderColor: '#FB923C' },
-              ]}
-            >
-              <Text
+            {hasActionableCompliance && (
+              <TouchableOpacity
                 style={[
-                  styles.secondaryActionBtnText,
-                  isDarkMode && { color: '#FB923C' },
+                  styles.secondaryActionBtn,
+                  isDarkMode && { borderColor: '#FB923C' },
                 ]}
+                onPress={handleOpenCompliance}
+                activeOpacity={0.8}
               >
-                View Compliance
-              </Text>
-              <IconSymbol
-                name="chevron.right"
-                size={14}
-                color={isDarkMode ? '#FB923C' : '#EA580C'}
-              />
-            </View>
+                <Text
+                  style={[
+                    styles.secondaryActionBtnText,
+                    isDarkMode && { color: '#FB923C' },
+                  ]}
+                >
+                  View Compliance
+                </Text>
+                <IconSymbol
+                  name="chevron.right"
+                  size={14}
+                  color={isDarkMode ? '#FB923C' : '#EA580C'}
+                />
+              </TouchableOpacity>
+            )}
           </View>
-        </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
