@@ -95,6 +95,7 @@ function getStatusColors(status: string, isDarkMode: boolean) {
   }
   if (
     s.includes('reject') ||
+    s.includes('disapprov') ||
     s.includes('withdraw') ||
     s.includes('fail') ||
     s.includes('cancel')

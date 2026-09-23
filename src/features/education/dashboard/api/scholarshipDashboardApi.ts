@@ -42,6 +42,8 @@ export interface DashboardApplication {
   submitted_at: string;
   requires_interview?: number;
   interview?: DashboardInterview | null;
+  disapproval_category?: string | null;
+  decision_remarks?: string | null;
 }
 
 export interface TimelineItem {

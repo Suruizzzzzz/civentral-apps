@@ -440,6 +440,64 @@ export function MyApplicationScreen() {
             </View>
           </View>
 
+          {/* FORMAL DISAPPROVAL NOTICE (WHEN DISAPPROVED / REJECTED) */}
+          {(application.application_status === 'Disapproved' || application.application_status === 'Rejected') && (
+            <View
+              style={[
+                styles.sectionCard,
+                {
+                  backgroundColor: isDarkMode ? '#2A1215' : '#FEF2F2',
+                  borderColor: isDarkMode ? '#991B1B' : '#FECACA',
+                  borderWidth: 1,
+                  padding: 16,
+                  borderRadius: 16,
+                  marginBottom: 16,
+                },
+              ]}
+            >
+              <View style={[styles.sectionHeaderRow, { marginBottom: 8 }]}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    { color: isDarkMode ? '#F87171' : '#DC2626', marginBottom: 0 },
+                  ]}
+                >
+                  Application Disapproved
+                </Text>
+                <Badge label="DECIDED" variant="danger" />
+              </View>
+
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: isDarkMode ? '#E2E8F0' : '#475569',
+                  marginBottom: 12,
+                  lineHeight: 18,
+                }}
+              >
+                Your scholarship application has been reviewed and officially disapproved by the Education & Scholarship Management Office.
+              </Text>
+
+              {application.disapproval_category ? (
+                <View style={[styles.infoRow, { marginBottom: 6 }]}>
+                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Disapproval Reason</Text>
+                  <Text style={[styles.infoValue, { fontWeight: '700', color: isDarkMode ? '#FCA5A5' : '#DC2626' }]}>
+                    {application.disapproval_category}
+                  </Text>
+                </View>
+              ) : null}
+
+              {application.decision_remarks ? (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Decision Remarks</Text>
+                  <Text style={[styles.infoValue, { color: isDarkMode ? '#CBD5E1' : '#334155' }]}>
+                    {application.decision_remarks}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+
           {/* B. SCHEDULED LIVE INTERVIEW NOTICE CARD (WHEN PRESENT) */}
           {application.interview ? (
             <View
