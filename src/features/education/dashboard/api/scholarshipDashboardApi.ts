@@ -35,6 +35,13 @@ export interface DashboardInterview {
   venue_or_link: string | null;
 }
 
+export interface DashboardActor {
+  user_id: number;
+  employee_id?: string | null;
+  full_name: string;
+  role_name?: string | null;
+}
+
 export interface DashboardApplication {
   application_id: number;
   application_code: string;
@@ -45,6 +52,8 @@ export interface DashboardApplication {
   disapproval_category?: string | null;
   decision_remarks?: string | null;
   decided_at?: string | null;
+  decided_by_user_id?: number | null;
+  decided_by?: DashboardActor | null;
 }
 
 export interface TimelineItem {

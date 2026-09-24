@@ -1370,6 +1370,23 @@ export function CitizenScholarshipDetailScreen() {
                           </View>
                         ) : null}
 
+                        {application?.decided_by?.full_name ? (
+                          <View style={styles.infoRow}>
+                            <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
+                              Decided By
+                            </Text>
+                            <Text
+                              style={[
+                                styles.infoValue,
+                                { fontWeight: '600', color: isDarkMode ? '#F8FAFC' : '#0F172A' },
+                              ]}
+                            >
+                              {application.decided_by.full_name}
+                              {application.decided_by.role_name ? ` (${application.decided_by.role_name})` : ''}
+                            </Text>
+                          </View>
+                        ) : null}
+
                         {recordReference && recordReference !== '—' ? (
                           <View style={styles.infoRow}>
                             <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
@@ -1798,7 +1815,7 @@ export function CitizenScholarshipDetailScreen() {
                                         marginTop: 2,
                                       }}
                                     >
-                                      Decided on {stg.date}
+                                      Decided on {stg.date}{application?.decided_by?.full_name ? ` by ${application.decided_by.full_name}` : ''}
                                     </Text>
                                   ) : null}
                                 </View>
