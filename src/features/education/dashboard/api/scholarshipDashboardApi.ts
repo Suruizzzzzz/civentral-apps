@@ -53,6 +53,9 @@ export interface TimelineItem {
   date: string | null;
   is_completed: boolean;
   is_current: boolean;
+  is_terminal?: boolean;
+  status_label?: string;
+  subtitle?: string;
 }
 
 export interface DashboardGrant {

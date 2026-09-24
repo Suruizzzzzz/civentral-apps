@@ -242,11 +242,30 @@ function getApplicationBadgeConfig(status?: string): { label: string; variant: '
       return { label: 'Approved', variant: 'success' };
     case 'Withdrawn':
       return { label: 'Withdrawn', variant: 'danger' };
+    case 'Disapproved':
     case 'Rejected':
-      return { label: 'Rejected', variant: 'danger' };
+      return { label: 'Disapproved', variant: 'danger' };
     default:
       return { label: status, variant: 'neutral' };
   }
+}
+
+export type ScholarshipStageState = 'completed' | 'current' | 'stopped' | 'not_reached' | 'upcoming';
+
+export interface ScholarshipStatusStage {
+  id: number;
+  stageNumber: number;
+  stageBadge: string;
+  stageCategory: string;
+  title: string;
+  description: string;
+  date: string | null;
+  state: ScholarshipStageState;
+  statusLabel: string;
+  reason: string | null;
+  remarks: string | null;
+  subtitle: string | null;
+  isTerminal: boolean;
 }
 
 export function CitizenScholarshipDetailScreen() {
@@ -454,11 +473,345 @@ export function CitizenScholarshipDetailScreen() {
   const scholarship = dashboardData?.scholarship;
   const academicPeriod = dashboardData?.academic_period;
   const application = dashboardData?.application;
-  const processTimeline = dashboardData?.process_timeline || [];
+  const processTimeline = React.useMemo(
+    () => dashboardData?.process_timeline || [],
+    [dashboardData?.process_timeline]
+  );
 
-  // Filter application timeline to exclude grant processing keys
-  const applicationLifecycleTimeline = processTimeline.filter(
-    (item) => !item.key.toLowerCase().includes('grant')
+  // Determine canonical Disapproved state (authoritative backend status takes priority)
+  const isApplicationDisapproved = Boolean(
+    activeRecordType === 'Application' &&
+      (application?.application_status === 'Disapproved' ||
+        params.status === 'Disapproved' ||
+        params.status?.toLowerCase() === 'rejected' ||
+        application?.application_status?.toLowerCase() === 'rejected')
+  );
+
+  // Define full 5-stage scholarship lifecycle model (parity with Dashboard)
+  const scholarshipStages: ScholarshipStatusStage[] = React.useMemo(() => {
+    // 1. Submitted stage
+    const submittedItem = processTimeline.find(
+      (i) => i.key === 'submitted' || i.title.toLowerCase().includes('submitted')
+    );
+    const stage1Completed = Boolean(
+      scholar ||
+        application?.submitted_at ||
+        submittedItem?.is_completed ||
+        processTimeline.length > 0
+    );
+    const stage1Current = !stage1Completed && application?.application_status === 'Draft';
+    const stage1Date = formatDate(
+      submittedItem?.date || application?.submitted_at || scholar?.admitted_at
+    );
+
+    // 2. Document & Secretariat Review stage
+    const reviewItem = processTimeline.find(
+      (i) =>
+        i.key === 'review' ||
+        i.key === 'under_review' ||
+        i.title.toLowerCase().includes('review')
+    );
+    const stage2Completed = Boolean(
+      scholar ||
+        reviewItem?.is_completed ||
+        ['Ready for SSC', 'For Evaluation', 'Approved'].includes(
+          application?.application_status || ''
+        )
+    );
+    const stage2Current =
+      !stage2Completed &&
+      !isApplicationDisapproved &&
+      (Boolean(reviewItem?.is_current) || application?.application_status === 'Under Review');
+    const stage2Date = formatDate(
+      reviewItem?.date || (stage2Completed ? application?.submitted_at : null)
+    );
+
+    // 3. SSC Evaluation stage
+    const sscItem = processTimeline.find(
+      (i) =>
+        i.key.toLowerCase().includes('ssc') ||
+        i.key.toLowerCase().includes('eval') ||
+        i.title.toLowerCase().includes('ssc') ||
+        i.title.toLowerCase().includes('eval')
+    );
+    const stage3Completed = Boolean(
+      scholar ||
+        sscItem?.is_completed ||
+        application?.application_status === 'Approved'
+    );
+    const stage3Current =
+      !stage3Completed &&
+      !isApplicationDisapproved &&
+      (Boolean(sscItem?.is_current) ||
+        ['Ready for SSC', 'For Evaluation', 'SSC Evaluation'].includes(
+          application?.application_status || ''
+        ));
+    const stage3Date = formatDate(sscItem?.date);
+
+    // 4. Scholarship Approved stage
+    const approvedItem = processTimeline.find(
+      (i) => i.key === 'approved' || i.title.toLowerCase().includes('approved')
+    );
+    const stage4Completed = Boolean(
+      scholar?.scholar_status === 'Active' ||
+        application?.application_status === 'Approved' ||
+        approvedItem?.is_completed
+    );
+    const stage4Date = formatDate(approvedItem?.date || scholar?.admitted_at);
+
+    // 5. Scholarship Grant stage
+    const grantApp = grantOverview?.application;
+    const hasGrantDisbursed = grantApp?.grant_status === 'Disbursed';
+    const hasGrantProcessing = ['Scheduled', 'Processing', 'Active', 'Pending'].includes(
+      grantApp?.grant_status || ''
+    );
+    let grantState: ScholarshipStageState = 'upcoming';
+    let grantSubLabel = 'Pending';
+    let grantDesc = 'Educational financial assistance and stipend release processing.';
+    let grantDate: string | null = null;
+
+    if (hasGrantDisbursed) {
+      grantState = 'completed';
+      grantSubLabel = 'Disbursed';
+      grantDesc = 'Scholarship grant successfully disbursed to scholar account.';
+    } else if (hasGrantProcessing) {
+      grantState = 'current';
+      grantSubLabel = 'Processing';
+      grantDesc = 'Grant disbursement release is currently being scheduled and processed.';
+    } else if (scholar?.scholar_status === 'Active') {
+      grantState = 'upcoming';
+      grantSubLabel = 'No Application';
+      grantDesc = 'Grant application not yet submitted for this period.';
+    } else {
+      grantState = 'upcoming';
+      grantSubLabel = 'Pending';
+      grantDesc = 'Grant processing unlocks upon official scholarship admission.';
+    }
+
+    if (isApplicationDisapproved) {
+      const decidedDate = formatDate(
+        application?.decided_at || dashboardData?.latest_update?.timestamp || application?.submitted_at
+      );
+      const disapprovalCategory = application?.disapproval_category || 'Criteria Not Met';
+      const disapprovalRemarks =
+        application?.decision_remarks || 'Application process concluded following eligibility review.';
+
+      const categoryLower = disapprovalCategory.toLowerCase();
+      const remarksLower = disapprovalRemarks.toLowerCase();
+
+      // Check if disapproval was due to mandatory eligibility criteria failure during Secretariat/eligibility review
+      const isEligibilityFailure =
+        categoryLower.includes('eligib') ||
+        categoryLower.includes('criteri') ||
+        categoryLower.includes('document') ||
+        categoryLower.includes('requirement') ||
+        categoryLower.includes('ineligible') ||
+        categoryLower.includes('qualification') ||
+        remarksLower.includes('eligib') ||
+        remarksLower.includes('criterion') ||
+        remarksLower.includes('criteria') ||
+        remarksLower.includes('gwa') ||
+        remarksLower.includes('percentage') ||
+        remarksLower.includes('grade') ||
+        remarksLower.includes('secretariat') ||
+        remarksLower.includes('document') ||
+        remarksLower.includes('credential');
+
+      // Check if SSC was actually reached or recorded as an evaluation step
+      const hasReachedSSC =
+        !isEligibilityFailure &&
+        (Boolean(sscItem && (sscItem.is_completed || sscItem.is_current || Boolean(sscItem.date))) ||
+          categoryLower.includes('ssc') ||
+          categoryLower.includes('committee') ||
+          categoryLower.includes('deliberation') ||
+          remarksLower.includes('committee') ||
+          remarksLower.includes('ssc deliberation'));
+
+      const isStage2Terminal = !hasReachedSSC;
+
+      return [
+        {
+          id: 1,
+          stageNumber: 1,
+          stageBadge: 'STAGE 1 OF 5',
+          stageCategory: 'Initial Submission',
+          title: 'Application Submitted',
+          description: 'Initial scholarship application and credentials submitted.',
+          date: stage1Date,
+          state: 'completed',
+          statusLabel: 'Completed',
+          reason: null,
+          remarks: null,
+          subtitle: null,
+          isTerminal: false,
+        },
+        {
+          id: 2,
+          stageNumber: 2,
+          stageBadge: 'STAGE 2 OF 5',
+          stageCategory: 'Secretariat Verification',
+          title: 'Document & Secretariat Review',
+          description: 'Secretariat verification of applicant credentials and eligibility.',
+          date: isStage2Terminal ? decidedDate : (stage2Date || stage1Date),
+          state: isStage2Terminal ? 'stopped' : 'completed',
+          statusLabel: isStage2Terminal ? 'Disapproved' : 'Completed',
+          reason: isStage2Terminal ? disapprovalCategory : null,
+          remarks: isStage2Terminal ? disapprovalRemarks : null,
+          subtitle: isStage2Terminal ? 'Application process ended at this stage' : null,
+          isTerminal: isStage2Terminal,
+        },
+        {
+          id: 3,
+          stageNumber: 3,
+          stageBadge: 'STAGE 3 OF 5',
+          stageCategory: 'Committee Evaluation',
+          title: 'SSC Evaluation',
+          description: 'Scholarship Selection Committee review and qualification evaluation.',
+          date: isStage2Terminal ? null : decidedDate,
+          state: isStage2Terminal ? 'not_reached' : 'stopped',
+          statusLabel: isStage2Terminal ? 'Not Reached' : 'Disapproved',
+          reason: isStage2Terminal ? null : disapprovalCategory,
+          remarks: isStage2Terminal ? null : disapprovalRemarks,
+          subtitle: isStage2Terminal
+            ? 'Process ended prior to committee evaluation'
+            : 'Application evaluated and disapproved. Process ended.',
+          isTerminal: !isStage2Terminal,
+        },
+        {
+          id: 4,
+          stageNumber: 4,
+          stageBadge: 'STAGE 4 OF 5',
+          stageCategory: 'Official Admission',
+          title: 'Scholarship Approved',
+          description: 'Official municipal scholarship approval and scholar admission.',
+          date: null,
+          state: 'not_reached',
+          statusLabel: 'Not Reached',
+          reason: null,
+          remarks: null,
+          subtitle: 'Process ended prior to approval',
+          isTerminal: false,
+        },
+        {
+          id: 5,
+          stageNumber: 5,
+          stageBadge: 'STAGE 5 OF 5',
+          stageCategory: 'Financial Assistance',
+          title: 'Scholarship Grant',
+          description: 'Educational financial assistance and stipend release processing.',
+          date: null,
+          state: 'not_reached',
+          statusLabel: 'Not Reached',
+          reason: null,
+          remarks: null,
+          subtitle: 'Locked — Requires active scholarship admission',
+          isTerminal: false,
+        },
+      ];
+    }
+
+    const stage4Current =
+      stage4Completed &&
+      grantState === 'upcoming' &&
+      grantSubLabel === 'No Application';
+
+    return [
+      {
+        id: 1,
+        stageNumber: 1,
+        stageBadge: 'STAGE 1 OF 5',
+        stageCategory: 'Initial Submission',
+        title: 'Application Submitted',
+        description: 'Initial scholarship application and credentials submitted.',
+        date: stage1Date,
+        state: stage1Completed ? 'completed' : stage1Current ? 'current' : 'upcoming',
+        statusLabel: stage1Completed ? 'Completed' : stage1Current ? 'In Progress' : 'Pending',
+        reason: null,
+        remarks: null,
+        subtitle: null,
+        isTerminal: false,
+      },
+      {
+        id: 2,
+        stageNumber: 2,
+        stageBadge: 'STAGE 2 OF 5',
+        stageCategory: 'Secretariat Verification',
+        title: 'Document & Secretariat Review',
+        description: 'Secretariat verification of applicant credentials and eligibility.',
+        date: stage2Date,
+        state: stage2Completed ? 'completed' : stage2Current ? 'current' : 'upcoming',
+        statusLabel: stage2Completed ? 'Completed' : stage2Current ? 'In Progress' : 'Pending',
+        reason: null,
+        remarks: null,
+        subtitle: null,
+        isTerminal: false,
+      },
+      {
+        id: 3,
+        stageNumber: 3,
+        stageBadge: 'STAGE 3 OF 5',
+        stageCategory: 'Committee Evaluation',
+        title: 'SSC Evaluation',
+        description: 'Scholarship Selection Committee review and qualification evaluation.',
+        date: stage3Date,
+        state: stage3Completed ? 'completed' : stage3Current ? 'current' : 'upcoming',
+        statusLabel: stage3Completed ? 'Completed' : stage3Current ? 'In Progress' : 'Pending',
+        reason: null,
+        remarks: null,
+        subtitle: null,
+        isTerminal: false,
+      },
+      {
+        id: 4,
+        stageNumber: 4,
+        stageBadge: 'STAGE 4 OF 5',
+        stageCategory: 'Official Admission',
+        title: 'Scholarship Approved',
+        description: 'Official municipal scholarship approval and scholar admission.',
+        date: stage4Date,
+        state: stage4Completed
+          ? stage4Current
+            ? 'current'
+            : 'completed'
+          : 'upcoming',
+        statusLabel: stage4Completed
+          ? stage4Current
+            ? 'In Progress'
+            : 'Completed'
+          : 'Pending',
+        reason: null,
+        remarks: null,
+        subtitle: null,
+        isTerminal: false,
+      },
+      {
+        id: 5,
+        stageNumber: 5,
+        stageBadge: 'STAGE 5 OF 5',
+        stageCategory: 'Financial Assistance',
+        title: 'Scholarship Grant',
+        description: grantDesc,
+        date: grantDate,
+        state: grantState,
+        statusLabel: grantSubLabel,
+        reason: null,
+        remarks: null,
+        subtitle: null,
+        isTerminal: false,
+      },
+    ];
+  }, [
+    scholar,
+    application,
+    processTimeline,
+    grantOverview,
+    isApplicationDisapproved,
+    dashboardData?.latest_update?.timestamp,
+  ]);
+
+  const stoppedStageInfo = React.useMemo(
+    () => scholarshipStages.find((s) => s.state === 'stopped'),
+    [scholarshipStages]
   );
 
   const appDocs = documentRecords?.application_documents || [];
@@ -497,7 +850,9 @@ export function CitizenScholarshipDetailScreen() {
   let headerSubtitle = 'City Government Educational Scholarship';
 
   if (activeRecordType === 'Application') {
-    const currentStatus = params.status || application?.application_status || scholar?.scholar_status || 'Active';
+    // Authoritative backend status takes priority over stale route params
+    const rawStatus = (application?.application_status || params.status || scholar?.scholar_status || 'Active');
+    const currentStatus = rawStatus.toLowerCase() === 'rejected' ? 'Disapproved' : rawStatus;
     recordBadgeConfig = getApplicationBadgeConfig(currentStatus);
     recordReference = params.recordId || application?.application_code || scholar?.scholar_code || '—';
     recordPeriod = params.academicPeriod || (academicPeriod ? `${academicPeriod.academic_year} • ${academicPeriod.term}` : 'AY 2026-2027 • Whole Academic Year');
@@ -685,16 +1040,34 @@ export function CitizenScholarshipDetailScreen() {
                     </View>
 
                     <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Scholar Status</Text>
-                      <Text style={[styles.infoValue, { color: '#16A34A' }]}>
-                        {scholar?.scholar_status || 'Active'}
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
+                        {scholar ? 'Scholar Status' : 'Application Status'}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.infoValue,
+                          {
+                            color: isApplicationDisapproved
+                              ? (isDarkMode ? '#F87171' : '#DC2626')
+                              : scholar
+                              ? '#16A34A'
+                              : '#7E22CE',
+                            fontWeight: isApplicationDisapproved ? '700' : '600',
+                          },
+                        ]}
+                      >
+                        {isApplicationDisapproved
+                          ? 'Disapproved'
+                          : scholar?.scholar_status || application?.application_status || 'Active'}
                       </Text>
                     </View>
 
                     <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Scholar Code</Text>
+                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
+                        {scholar ? 'Scholar Code' : 'Application Code'}
+                      </Text>
                       <Text style={[styles.infoValue, { color: '#7E22CE' }]}>
-                        {scholar?.scholar_code || application?.application_code || '—'}
+                        {scholar?.scholar_code || application?.application_code || recordReference || '—'}
                       </Text>
                     </View>
 
@@ -717,6 +1090,8 @@ export function CitizenScholarshipDetailScreen() {
                       <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
                         {scholar?.admitted_at
                           ? formatDate(scholar.admitted_at, '—')
+                          : isApplicationDisapproved
+                          ? 'Not Admitted (Disapproved)'
                           : 'Pending Admission'}
                       </Text>
                     </View>
@@ -875,211 +1250,595 @@ export function CitizenScholarshipDetailScreen() {
             <View style={{ gap: 16 }}>
               {activeRecordType === 'Application' && (
                 <>
-                  {/* SCHEDULED INTERVIEW NOTICE CARD */}
-              {application?.interview ? (
-                <View style={[styles.sectionCard, { backgroundColor: isDarkMode ? '#1E293B' : '#F0F9FF', borderColor: isDarkMode ? '#0284C7' : '#BAE6FD', borderWidth: 1 }]}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Text style={[styles.sectionTitle, { color: isDarkMode ? '#38BDF8' : '#0284C7', marginBottom: 0 }]}>
-                      Scheduled Live Interview Notice
-                    </Text>
-                    <Badge label={application.interview.status || 'Pending'} variant="info" />
-                  </View>
-
-                  <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#475569', marginBottom: 12 }}>
-                    Your scholarship application requires a live interview. Please be guided by the official schedule below:
-                  </Text>
-
-                  <View style={styles.infoGrid}>
-                    <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date</Text>
-                      <Text style={[styles.infoValue, { fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>
-                        {application.interview.scheduled_date || 'TBA'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Time</Text>
-                      <Text style={[styles.infoValue, { fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>
-                        {application.interview.scheduled_time || 'TBA'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Method</Text>
-                      <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
-                        {application.interview.method || 'Face-to-Face'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.infoRow}>
-                      <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Venue / Link</Text>
-                      <Text style={[styles.infoValue, { color: isDarkMode ? '#38BDF8' : '#0284C7', fontWeight: '600' }]}>
-                        {application.interview.venue_or_link || 'Education & Scholarship Office'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              ) : null}
-
-              {/* APPLICATION LIFECYCLE TIMELINE */}
-              <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }, { marginBottom: 0 }]}>
-                    Scholarship Application Lifecycle
-                  </Text>
-                  <View style={{ backgroundColor: isDarkMode ? '#1E293B' : '#F3E8FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: isDarkMode ? '#334155' : '#E9D5FF' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: isDarkMode ? '#C084FC' : '#7E22CE', letterSpacing: 0.5 }}>
-                      LIFECYCLE TRACKER
-                    </Text>
-                  </View>
-                </View>
-
-                {applicationLifecycleTimeline.length > 0 ? (
-                  <View style={{ marginTop: 8 }}>
-                    {applicationLifecycleTimeline.map((item, idx) => {
-                      const isLast = idx === applicationLifecycleTimeline.length - 1;
-                      const isCompleted = Boolean(item.is_completed);
-                      const isCurrent = Boolean(item.is_current);
-
-                      return (
-                        <View key={item.key || idx} style={styles.timelineItemRow}>
-                          <View style={styles.timelineLeftColumn}>
-                            <View
-                              style={[
-                                styles.timelineIconCircle,
-                                {
-                                  backgroundColor: isCompleted
-                                    ? '#16A34A'
-                                    : isCurrent
-                                    ? (isDarkMode ? '#2E1065' : '#FAF5FF')
-                                    : (isDarkMode ? '#1E293B' : '#FFFFFF'),
-                                  borderColor: isCompleted
-                                    ? '#16A34A'
-                                    : isCurrent
-                                    ? (isDarkMode ? '#C084FC' : '#7E22CE')
-                                    : (isDarkMode ? '#475569' : '#CBD5E1'),
-                                },
-                              ]}
-                            >
-                              {isCompleted ? (
-                                <IconSymbol
-                                  name="checkmark"
-                                  size={13}
-                                  color="#FFFFFF"
-                                />
-                              ) : isCurrent ? (
-                                <View
-                                  style={{
-                                    width: 10,
-                                    height: 10,
-                                    borderRadius: 5,
-                                    backgroundColor: isDarkMode ? '#C084FC' : '#7E22CE',
-                                  }}
-                                />
-                              ) : null}
-                            </View>
-                            {!isLast && (
-                              <View
-                                style={[
-                                  styles.timelineConnectorLine,
-                                  {
-                                    backgroundColor: isCompleted
-                                      ? '#16A34A'
-                                      : isDarkMode
-                                      ? '#334155'
-                                      : '#E2E8F0',
-                                  },
-                                ]}
-                              />
-                            )}
-                          </View>
-
+                  {/* TERMINAL DISAPPROVED STATUS CARD (WHEN DISAPPROVED) */}
+                  {isApplicationDisapproved ? (
+                    <View
+                      style={[
+                        styles.sectionCard,
+                        {
+                          backgroundColor: isDarkMode ? '#1F1418' : '#FFF5F5',
+                          borderColor: isDarkMode ? '#991B1B' : '#FECACA',
+                          borderWidth: 1,
+                        },
+                      ]}
+                    >
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: 12,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                           <View
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              backgroundColor: '#DC2626',
+                            }}
+                          />
+                          <Text
                             style={[
-                              styles.timelineContentCard,
-                              isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
-                              isCurrent && { borderColor: '#F59E0B', borderWidth: 1.5 },
+                              styles.sectionTitle,
+                              {
+                                color: isDarkMode ? '#F87171' : '#B91C1C',
+                                marginBottom: 0,
+                                fontSize: 15,
+                                fontWeight: '700',
+                              },
                             ]}
                           >
-                            <View style={styles.timelineContentHeader}>
-                              <Text style={[styles.timelineTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                                {item.title}
-                              </Text>
+                            APPLICATION DISAPPROVED
+                          </Text>
+                        </View>
+                        <Badge label="Disapproved" variant="danger" />
+                      </View>
+
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: isDarkMode ? '#CBD5E1' : '#475569',
+                          marginBottom: 14,
+                          lineHeight: 18,
+                        }}
+                      >
+                        This application is no longer under active review.
+                      </Text>
+
+                      <View style={styles.infoGrid}>
+                        <View style={styles.infoRow}>
+                          <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
+                            Status
+                          </Text>
+                          <Text
+                            style={[
+                              styles.infoValue,
+                              { fontWeight: '700', color: isDarkMode ? '#F87171' : '#DC2626' },
+                            ]}
+                          >
+                            Disapproved
+                          </Text>
+                        </View>
+
+                        {application?.decided_at ? (
+                          <View style={styles.infoRow}>
+                            <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
+                              Decision Date
+                            </Text>
+                            <Text
+                              style={[
+                                styles.infoValue,
+                                { fontWeight: '600', color: isDarkMode ? '#F8FAFC' : '#0F172A' },
+                              ]}
+                            >
+                              {formatDate(application.decided_at, '—')}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {application?.disapproval_category ? (
+                          <View style={styles.infoRow}>
+                            <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
+                              Reason
+                            </Text>
+                            <Text
+                              style={[
+                                styles.infoValue,
+                                { fontWeight: '600', color: isDarkMode ? '#FCA5A5' : '#B91C1C' },
+                              ]}
+                            >
+                              {application.disapproval_category}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {application?.decision_remarks ? (
+                          <View style={styles.infoRow}>
+                            <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
+                              Remarks
+                            </Text>
+                            <Text
+                              style={[
+                                styles.infoValue,
+                                { color: isDarkMode ? '#E2E8F0' : '#334155' },
+                              ]}
+                            >
+                              {application.decision_remarks}
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {recordReference && recordReference !== '—' ? (
+                          <View style={styles.infoRow}>
+                            <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>
+                              Reference
+                            </Text>
+                            <Text
+                              style={[
+                                styles.infoValue,
+                                { color: isDarkMode ? '#C084FC' : '#7E22CE', fontWeight: '600' },
+                              ]}
+                            >
+                              {recordReference}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                  ) : application?.interview ? (
+                    /* SCHEDULED INTERVIEW NOTICE CARD — ONLY SHOWN WHEN NOT DISAPPROVED */
+                    <View style={[styles.sectionCard, { backgroundColor: isDarkMode ? '#1E293B' : '#F0F9FF', borderColor: isDarkMode ? '#0284C7' : '#BAE6FD', borderWidth: 1 }]}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#38BDF8' : '#0284C7', marginBottom: 0 }]}>
+                          Scheduled Live Interview Notice
+                        </Text>
+                        <Badge label={application.interview.status || 'Pending'} variant="info" />
+                      </View>
+
+                      <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#475569', marginBottom: 12 }}>
+                        Your scholarship application requires a live interview. Please be guided by the official schedule below:
+                      </Text>
+
+                      <View style={styles.infoGrid}>
+                        <View style={styles.infoRow}>
+                          <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Date</Text>
+                          <Text style={[styles.infoValue, { fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>
+                            {application.interview.scheduled_date || 'TBA'}
+                          </Text>
+                        </View>
+
+                        <View style={styles.infoRow}>
+                          <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Time</Text>
+                          <Text style={[styles.infoValue, { fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>
+                            {application.interview.scheduled_time || 'TBA'}
+                          </Text>
+                        </View>
+
+                        <View style={styles.infoRow}>
+                          <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Method</Text>
+                          <Text style={[styles.infoValue, isDarkMode && { color: '#F8FAFC' }]}>
+                            {application.interview.method || 'Face-to-Face'}
+                          </Text>
+                        </View>
+
+                        <View style={styles.infoRow}>
+                          <Text style={[styles.infoLabel, isDarkMode && { color: '#94A3B8' }]}>Venue / Link</Text>
+                          <Text style={[styles.infoValue, { color: isDarkMode ? '#38BDF8' : '#0284C7', fontWeight: '600' }]}>
+                            {application.interview.venue_or_link || 'Education & Scholarship Office'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {/* APPLICATION LIFECYCLE TIMELINE (FULL 5-STAGE PROGRESSION MATCHING DASHBOARD) */}
+                  <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' }]}>
+                    {/* Header Row: Responsive with wrap safety */}
+                    <View style={{ marginBottom: 16 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[
+                              styles.sectionTitle,
+                              isDarkMode && { color: '#F8FAFC' },
+                              { marginBottom: 2, fontSize: 16, fontWeight: '700' },
+                            ]}
+                          >
+                            Scholarship Lifecycle
+                          </Text>
+                          <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                            Official 5-stage application & grant progression
+                          </Text>
+                        </View>
+                        <View
+                          style={{
+                            backgroundColor: isApplicationDisapproved
+                              ? (isDarkMode ? '#3B1D28' : '#FEF2F2')
+                              : (isDarkMode ? '#2E1065' : '#F3E8FF'),
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: isApplicationDisapproved
+                              ? (isDarkMode ? '#991B1B' : '#FCA5A5')
+                              : (isDarkMode ? '#7E22CE' : '#D8B4FE'),
+                            alignSelf: 'flex-start',
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: '800',
+                              color: isApplicationDisapproved
+                                ? (isDarkMode ? '#F87171' : '#DC2626')
+                                : (isDarkMode ? '#C084FC' : '#7E22CE'),
+                              letterSpacing: 0.6,
+                            }}
+                          >
+                            {isApplicationDisapproved ? 'TERMINATED' : '5-STAGE LIFECYCLE'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Stopping Summary Callout Banner (when Disapproved) */}
+                    {isApplicationDisapproved && stoppedStageInfo && (
+                      <View
+                        style={{
+                          backgroundColor: isDarkMode ? '#2D141E' : '#FFF1F2',
+                          borderColor: isDarkMode ? '#991B1B' : '#FECDD3',
+                          borderWidth: 1,
+                          borderRadius: 14,
+                          padding: 14,
+                          marginBottom: 18,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 12,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 19,
+                            backgroundColor: isDarkMode ? '#3B1D28' : '#FEE2E2',
+                            borderWidth: 1.5,
+                            borderColor: isDarkMode ? '#991B1B' : '#FCA5A5',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <IconSymbol name="xmark.circle.fill" size={20} color="#DC2626" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              fontSize: 13.5,
+                              fontWeight: '700',
+                              color: isDarkMode ? '#FCA5A5' : '#991B1B',
+                            }}
+                          >
+                            Application Stopped at Stage {stoppedStageInfo.stageNumber} of 5
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: isDarkMode ? '#F87171' : '#B91C1C',
+                              marginTop: 2,
+                              lineHeight: 17,
+                            }}
+                          >
+                            Process concluded during {stoppedStageInfo.title}. Subsequent stages were not reached.
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* 5-Stage Timeline Items */}
+                    <View style={{ marginTop: 4 }}>
+                      {scholarshipStages.map((stg, idx) => {
+                        const isLast = idx === scholarshipStages.length - 1;
+                        const isCompleted = stg.state === 'completed';
+                        const isStopped = stg.state === 'stopped';
+                        const isCurrent = stg.state === 'current';
+                        const isNotReached = stg.state === 'not_reached';
+
+                        return (
+                          <View key={stg.id} style={styles.timelineItemRow}>
+                            {/* Left column: Node and connector line */}
+                            <View style={styles.timelineLeftColumn}>
                               <View
                                 style={[
-                                  styles.timelineStatusPill,
-                                  {
-                                    backgroundColor: isCompleted
-                                      ? '#DCFCE7'
-                                      : isCurrent
-                                      ? '#FEF3C7'
-                                      : isDarkMode
-                                      ? '#0F172A'
-                                      : '#F1F5F9',
-                                    borderColor: isCompleted
-                                      ? '#BBF7D0'
-                                      : isCurrent
-                                      ? '#FDE68A'
-                                      : isDarkMode
-                                      ? '#334155'
-                                      : '#E2E8F0',
+                                  styles.timelineIconCircle,
+                                  isStopped && {
+                                    backgroundColor: isDarkMode ? '#3B1D28' : '#FFF5F5',
+                                    borderColor: isDarkMode ? '#EF4444' : '#DC2626',
+                                    borderWidth: 2,
+                                  },
+                                  isCompleted && {
+                                    backgroundColor: '#16A34A',
+                                    borderColor: '#16A34A',
+                                  },
+                                  isCurrent && {
+                                    backgroundColor: isDarkMode ? '#2E1065' : '#FAF5FF',
+                                    borderColor: isDarkMode ? '#C084FC' : '#7E22CE',
+                                    borderWidth: 2,
+                                  },
+                                  isNotReached && {
+                                    backgroundColor: isDarkMode ? '#111827' : '#F8FAFC',
+                                    borderColor: isDarkMode ? '#475569' : '#CBD5E1',
+                                    borderWidth: 1.5,
                                   },
                                 ]}
                               >
-                                <Text
+                                {isStopped ? (
+                                  <View
+                                    style={{
+                                      width: 10,
+                                      height: 10,
+                                      borderRadius: 5,
+                                      backgroundColor: '#DC2626',
+                                    }}
+                                  />
+                                ) : isCompleted ? (
+                                  <IconSymbol
+                                    name="checkmark"
+                                    size={13}
+                                    color="#FFFFFF"
+                                  />
+                                ) : isCurrent ? (
+                                  <View
+                                    style={{
+                                      width: 10,
+                                      height: 10,
+                                      borderRadius: 5,
+                                      backgroundColor: isDarkMode ? '#C084FC' : '#7E22CE',
+                                    }}
+                                  />
+                                ) : isNotReached ? (
+                                  <View
+                                    style={{
+                                      width: 6,
+                                      height: 6,
+                                      borderRadius: 3,
+                                      backgroundColor: isDarkMode ? '#475569' : '#94A3B8',
+                                    }}
+                                  />
+                                ) : null}
+                              </View>
+
+                              {!isLast && (
+                                <View
                                   style={[
-                                    styles.timelineStatusPillText,
+                                    styles.timelineConnectorLine,
                                     {
-                                      color: isCompleted
-                                        ? '#15803D'
-                                        : isCurrent
-                                        ? '#B45309'
+                                      backgroundColor: isCompleted
+                                        ? '#16A34A'
                                         : isDarkMode
-                                        ? '#94A3B8'
-                                        : '#64748B',
+                                        ? '#334155'
+                                        : '#E2E8F0',
                                     },
                                   ]}
-                                >
-                                  {isCompleted ? 'Completed' : isCurrent ? 'In Progress' : 'Pending'}
-                                </Text>
-                              </View>
+                                />
+                              )}
                             </View>
 
-                            <Text
+                            {/* Right Content Card */}
+                            <View
                               style={[
-                                styles.timelineDateText,
-                                {
-                                  color: isCompleted
-                                    ? '#16A34A'
-                                    : isCurrent
-                                    ? '#D97706'
-                                    : isDarkMode
-                                    ? '#94A3B8'
-                                    : '#64748B',
+                                styles.timelineContentCard,
+                                isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+                                isStopped && {
+                                  borderColor: isDarkMode ? '#991B1B' : '#FCA5A5',
+                                  backgroundColor: isDarkMode ? '#1F1418' : '#FFF5F5',
+                                  borderWidth: 1.5,
+                                },
+                                isCurrent && {
+                                  borderColor: isDarkMode ? '#7E22CE' : '#C084FC',
+                                  backgroundColor: isDarkMode ? '#241038' : '#FAF5FF',
+                                  borderWidth: 1.5,
+                                },
+                                isNotReached && {
+                                  borderColor: isDarkMode ? '#293548' : '#E2E8F0',
+                                  backgroundColor: isDarkMode ? '#131C2E' : '#F8FAFC',
+                                  opacity: 0.72,
                                 },
                               ]}
                             >
-                              {item.date
-                                ? new Date(item.date).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                  })
-                                : isCompleted
-                                ? 'Completed'
-                                : 'Pending execution'}
-                            </Text>
+                              {/* Stage category / badge header row */}
+                              <View style={styles.timelineContentHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 8 }}>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: '800',
+                                      color: isStopped
+                                        ? (isDarkMode ? '#F87171' : '#DC2626')
+                                        : isCompleted
+                                        ? (isDarkMode ? '#4ADE80' : '#16A34A')
+                                        : isCurrent
+                                        ? (isDarkMode ? '#C084FC' : '#7E22CE')
+                                        : (isDarkMode ? '#64748B' : '#94A3B8'),
+                                      letterSpacing: 0.5,
+                                    }}
+                                  >
+                                    {stg.stageBadge}
+                                  </Text>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      color: isDarkMode ? '#64748B' : '#94A3B8',
+                                    }}
+                                  >
+                                    • {stg.stageCategory}
+                                  </Text>
+                                </View>
+
+                                {/* Status Pill */}
+                                <View
+                                  style={[
+                                    styles.timelineStatusPill,
+                                    isStopped
+                                      ? {
+                                          backgroundColor: isDarkMode ? '#3B1D28' : '#FEE2E2',
+                                          borderColor: isDarkMode ? '#991B1B' : '#FCA5A5',
+                                        }
+                                      : isCompleted
+                                      ? {
+                                          backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7',
+                                          borderColor: isDarkMode ? '#065F46' : '#BBF7D0',
+                                        }
+                                      : isCurrent
+                                      ? {
+                                          backgroundColor: isDarkMode ? '#3B0764' : '#F3E8FF',
+                                          borderColor: isDarkMode ? '#6B21A8' : '#D8B4FE',
+                                        }
+                                      : {
+                                          backgroundColor: isDarkMode ? '#0F172A' : '#F1F5F9',
+                                          borderColor: isDarkMode ? '#334155' : '#E2E8F0',
+                                        },
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.timelineStatusPillText,
+                                      isStopped
+                                        ? {
+                                            color: isDarkMode ? '#F87171' : '#B91C1C',
+                                            fontWeight: '700',
+                                          }
+                                        : isCompleted
+                                        ? {
+                                            color: isDarkMode ? '#4ADE80' : '#15803D',
+                                          }
+                                        : isCurrent
+                                        ? {
+                                            color: isDarkMode ? '#C084FC' : '#7E22CE',
+                                          }
+                                        : {
+                                            color: isDarkMode ? '#64748B' : '#94A3B8',
+                                          },
+                                    ]}
+                                  >
+                                    {stg.statusLabel}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              {/* Stage Title */}
+                              <Text
+                                style={[
+                                  styles.timelineTitle,
+                                  isDarkMode && { color: '#F8FAFC' },
+                                  isStopped && { color: isDarkMode ? '#F87171' : '#B91C1C', fontWeight: '700' },
+                                  isNotReached && { color: isDarkMode ? '#64748B' : '#94A3B8' },
+                                  { marginTop: 4 },
+                                ]}
+                              >
+                                {stg.title}
+                              </Text>
+
+                              {/* Stage Description */}
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  color: isDarkMode ? '#94A3B8' : '#64748B',
+                                  marginTop: 2,
+                                  lineHeight: 16,
+                                }}
+                              >
+                                {stg.description}
+                              </Text>
+
+                              {/* Dedicated detail box for Stopped Stage */}
+                              {isStopped && (
+                                <View
+                                  style={{
+                                    backgroundColor: isDarkMode ? '#2B141C' : '#FFF0F0',
+                                    borderRadius: 8,
+                                    padding: 10,
+                                    marginTop: 8,
+                                    borderWidth: 1,
+                                    borderColor: isDarkMode ? '#5C1D24' : '#FED7D7',
+                                  }}
+                                >
+                                  {stg.reason ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                      <Text style={{ fontSize: 11.5, fontWeight: '700', color: isDarkMode ? '#FCA5A5' : '#991B1B' }}>
+                                        Reason:
+                                      </Text>
+                                      <Text style={{ fontSize: 11.5, fontWeight: '600', color: isDarkMode ? '#F87171' : '#DC2626' }}>
+                                        {stg.reason}
+                                      </Text>
+                                    </View>
+                                  ) : null}
+
+                                  {stg.remarks ? (
+                                    <Text
+                                      style={{
+                                        fontSize: 11.5,
+                                        color: isDarkMode ? '#E2E8F0' : '#475569',
+                                        fontStyle: 'italic',
+                                        marginBottom: 4,
+                                        lineHeight: 15,
+                                      }}
+                                    >
+                                      {`"${stg.remarks}"`}
+                                    </Text>
+                                  ) : null}
+
+                                  {stg.date ? (
+                                    <Text
+                                      style={{
+                                        fontSize: 11,
+                                        color: isDarkMode ? '#F87171' : '#B91C1C',
+                                        fontWeight: '600',
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      Decided on {stg.date}
+                                    </Text>
+                                  ) : null}
+                                </View>
+                              )}
+
+                              {/* Completed Date Tag */}
+                              {isCompleted && stg.date ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                                  <IconSymbol name="checkmark" size={11} color="#16A34A" />
+                                  <Text
+                                    style={{
+                                      fontSize: 11.5,
+                                      fontWeight: '600',
+                                      color: isDarkMode ? '#4ADE80' : '#16A34A',
+                                    }}
+                                  >
+                                    Completed • {stg.date}
+                                  </Text>
+                                </View>
+                              ) : null}
+
+                              {/* Not Reached Note */}
+                              {isNotReached && stg.subtitle ? (
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    fontStyle: 'italic',
+                                    color: isDarkMode ? '#64748B' : '#94A3B8',
+                                    marginTop: 6,
+                                  }}
+                                >
+                                  {stg.subtitle}
+                                </Text>
+                              ) : null}
+                            </View>
                           </View>
-                        </View>
-                      );
-                    })}
+                        );
+                      })}
+                    </View>
                   </View>
-                ) : (
-                  <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
-                    No application status history available.
-                  </Text>
-                )}
-              </View>
 
 
               </>

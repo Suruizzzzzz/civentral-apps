@@ -51,8 +51,22 @@ function formatDate(dateStr?: string | null): string | null {
 function getStatusColors(status: string, isDarkMode: boolean) {
   const s = status.toLowerCase();
   if (
+    s.includes('disapprov') ||
+    s.includes('reject') ||
+    s.includes('withdraw') ||
+    s.includes('fail') ||
+    s.includes('cancel')
+  ) {
+    return {
+      dotColor: '#DC2626',
+      textColor: isDarkMode ? '#F87171' : '#DC2626',
+      pillBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
+      pillBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
+    };
+  }
+  if (
     s.includes('complet') ||
-    s.includes('approv') ||
+    (s.includes('approv') && !s.includes('disapprov')) ||
     s.includes('disburs') ||
     s.includes('releas') ||
     s.includes('active')
@@ -91,20 +105,6 @@ function getStatusColors(status: string, isDarkMode: boolean) {
       textColor: isDarkMode ? '#FBBF24' : '#D97706',
       pillBg: isDarkMode ? '#451A03' : '#FEF3C7',
       pillBorder: isDarkMode ? '#B45309' : '#FDE68A',
-    };
-  }
-  if (
-    s.includes('reject') ||
-    s.includes('disapprov') ||
-    s.includes('withdraw') ||
-    s.includes('fail') ||
-    s.includes('cancel')
-  ) {
-    return {
-      dotColor: '#DC2626',
-      textColor: isDarkMode ? '#F87171' : '#DC2626',
-      pillBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
-      pillBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
     };
   }
   return {
@@ -313,13 +313,28 @@ export function ScholarshipHistoryScreen() {
         categorySubtitle = 'Continuation & Eligibility Renewal';
       }
 
+      let rawStatus = item.displayStatus || item.status || 'Completed';
+      let recordStatus = rawStatus;
+      // Canonicalize "Rejected" to "Disapproved" for scholarships
+      if (rawStatus.trim().toLowerCase() === 'rejected' || rawStatus.trim().toLowerCase() === 'disapproved') {
+        recordStatus = 'Disapproved';
+      }
+      // If this tracked item matches the current application and that application is Disapproved:
+      if (
+        recordType === 'Application' &&
+        (isCurrent || (code && application?.application_code && code === application.application_code)) &&
+        (application?.application_status === 'Disapproved' || application?.application_status?.toLowerCase() === 'rejected')
+      ) {
+        recordStatus = 'Disapproved';
+      }
+
       list.push({
         id: `tracked-${item.id}`,
         rawId: item.raw_id,
         academicPeriod: itemPeriod,
         isCurrent,
         recordType,
-        status: item.displayStatus || item.status || 'Completed',
+        status: recordStatus,
         date: formatDate(item.updatedAt || item.createdAt),
         referenceCode: code || null,
         programTitle,
@@ -400,7 +415,11 @@ export function ScholarshipHistoryScreen() {
         academicPeriod: currentPeriodString || 'Academic Year',
         isCurrent: true,
         recordType: 'Application',
-        status: scholar ? 'Approved' : application?.application_status || 'Submitted',
+        status: scholar
+          ? 'Approved'
+          : application?.application_status?.toLowerCase() === 'rejected'
+          ? 'Disapproved'
+          : application?.application_status || 'Submitted',
         date: formatDate(dateVal),
         referenceCode: code,
         programTitle: scholarship?.program_name || 'Academic Scholarship Program',

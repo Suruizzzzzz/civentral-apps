@@ -19,6 +19,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import {
   CitizenDashboardData,
   fetchCitizenDashboard,
+  TimelineItem,
   withdrawCitizenApplication,
 } from '../dashboard/api/scholarshipDashboardApi';
 import {
@@ -134,12 +135,68 @@ export function MyApplicationScreen() {
   const application = dashboardData?.application;
   const scholarship = dashboardData?.scholarship;
   const academicPeriod = dashboardData?.academic_period;
-  const processTimeline = dashboardData?.process_timeline || [];
-
-  // Filter application timeline to exclude grant processing keys
-  const applicationLifecycleTimeline = processTimeline.filter(
-    (item) => !item.key.toLowerCase().includes('grant')
+  const processTimeline = React.useMemo(
+    () => dashboardData?.process_timeline || [],
+    [dashboardData?.process_timeline]
   );
+
+  const isDisapproved = Boolean(
+    application?.application_status === 'Disapproved' || application?.application_status === 'Rejected'
+  );
+
+  // Filter application timeline to exclude grant processing keys; terminate if disapproved
+  const applicationLifecycleTimeline: TimelineItem[] = React.useMemo(() => {
+    const baseTimeline = processTimeline.filter(
+      (item) => !item.key.toLowerCase().includes('grant')
+    );
+
+    if (!isDisapproved) {
+      return baseTimeline;
+    }
+
+    const priorCompletedSteps = baseTimeline
+      .filter((step) => {
+        const isFutureOrApprovalStep =
+          step.key.toLowerCase().includes('approv') ||
+          step.key.toLowerCase().includes('ssc') ||
+          step.key.toLowerCase().includes('eval') ||
+          step.title.toLowerCase().includes('approved') ||
+          step.title.toLowerCase().includes('evaluation');
+        return Boolean(step.is_completed) && !isFutureOrApprovalStep;
+      })
+      .map((step) => ({
+        ...step,
+        is_current: false,
+      }));
+
+    if (priorCompletedSteps.length === 0 && application?.submitted_at) {
+      priorCompletedSteps.push({
+        key: 'submitted',
+        title: 'Application Submitted',
+        date: application.submitted_at,
+        is_completed: true,
+        is_current: false,
+      });
+    }
+
+    const decidedDate =
+      application?.decided_at ||
+      dashboardData?.latest_update?.timestamp ||
+      null;
+
+    const terminalStep: TimelineItem = {
+      key: 'disapproved',
+      title: 'Disapproved',
+      date: decidedDate,
+      is_completed: false,
+      is_current: false,
+      is_terminal: true,
+      status_label: 'Final Decision',
+      subtitle: 'Application process ended',
+    };
+
+    return [...priorCompletedSteps, terminalStep];
+  }, [processTimeline, isDisapproved, application, dashboardData?.latest_update?.timestamp]);
 
   const isAppApproved = application?.application_status === 'Approved';
   const hasExistingGrantApp = Boolean(grantOverview?.has_existing_application && grantOverview?.application);
@@ -498,8 +555,8 @@ export function MyApplicationScreen() {
             </View>
           )}
 
-          {/* B. SCHEDULED LIVE INTERVIEW NOTICE CARD (WHEN PRESENT) */}
-          {application.interview ? (
+          {/* B. SCHEDULED LIVE INTERVIEW NOTICE CARD (WHEN PRESENT & NOT DISAPPROVED) */}
+          {application.interview && !isDisapproved ? (
             <View
               style={[
                 styles.sectionCard,
@@ -587,16 +644,23 @@ export function MyApplicationScreen() {
               <View
                 style={[
                   styles.trackerBadge,
-                  isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+                  isDisapproved
+                    ? {
+                        backgroundColor: isDarkMode ? '#3B1D28' : '#FEF2F2',
+                        borderColor: isDarkMode ? '#991B1B' : '#FCA5A5',
+                      }
+                    : isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
                 ]}
               >
                 <Text
                   style={[
                     styles.trackerBadgeText,
-                    isDarkMode && { color: '#38BDF8' },
+                    isDisapproved
+                      ? { color: isDarkMode ? '#F87171' : '#DC2626' }
+                      : isDarkMode && { color: '#38BDF8' },
                   ]}
                 >
-                  APPLICATION PROGRESS
+                  {isDisapproved ? 'PROCESS TERMINATED' : 'APPLICATION PROGRESS'}
                 </Text>
               </View>
             </View>
@@ -607,6 +671,7 @@ export function MyApplicationScreen() {
                   const isLast = idx === applicationLifecycleTimeline.length - 1;
                   const isCompleted = Boolean(item.is_completed);
                   const isCurrent = Boolean(item.is_current);
+                  const isTerminal = Boolean(item.is_terminal || item.key === 'disapproved');
                   const nextItemCompleted =
                     !isLast && Boolean(applicationLifecycleTimeline[idx + 1]?.is_completed);
 
@@ -616,43 +681,59 @@ export function MyApplicationScreen() {
                         <View
                           style={[
                             styles.timelineIconCircle,
-                            {
-                              backgroundColor: isCompleted
-                                ? '#DCFCE7'
-                                : isCurrent
-                                ? '#E0F2FE'
-                                : isDarkMode
-                                ? '#1E293B'
-                                : '#F1F5F9',
-                              borderColor: isCompleted
-                                ? '#16A34A'
-                                : isCurrent
-                                ? '#0284C7'
-                                : isDarkMode
-                                ? '#475569'
-                                : '#CBD5E1',
-                            },
+                            isTerminal
+                              ? {
+                                  backgroundColor: isDarkMode ? '#3B1D28' : '#FEE2E2',
+                                  borderColor: isDarkMode ? '#EF4444' : '#DC2626',
+                                }
+                              : {
+                                  backgroundColor: isCompleted
+                                    ? '#DCFCE7'
+                                    : isCurrent
+                                    ? '#E0F2FE'
+                                    : isDarkMode
+                                    ? '#1E293B'
+                                    : '#F1F5F9',
+                                  borderColor: isCompleted
+                                    ? '#16A34A'
+                                    : isCurrent
+                                    ? '#0284C7'
+                                    : isDarkMode
+                                    ? '#475569'
+                                    : '#CBD5E1',
+                                },
                           ]}
                         >
-                          <IconSymbol
-                            name={
-                              isCompleted
-                                ? 'checkmark.circle.fill'
-                                : isCurrent
-                                ? 'clock.fill'
-                                : 'circle'
-                            }
-                            size={14}
-                            color={
-                              isCompleted
-                                ? '#16A34A'
-                                : isCurrent
-                                ? '#0284C7'
-                                : isDarkMode
-                                ? '#64748B'
-                                : '#94A3B8'
-                            }
-                          />
+                          {isTerminal ? (
+                            <View
+                              style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: 5,
+                                backgroundColor: '#DC2626',
+                              }}
+                            />
+                          ) : (
+                            <IconSymbol
+                              name={
+                                isCompleted
+                                  ? 'checkmark.circle.fill'
+                                  : isCurrent
+                                  ? 'clock.fill'
+                                  : 'circle'
+                              }
+                              size={14}
+                              color={
+                                isCompleted
+                                  ? '#16A34A'
+                                  : isCurrent
+                                  ? '#0284C7'
+                                  : isDarkMode
+                                  ? '#64748B'
+                                  : '#94A3B8'
+                              }
+                            />
+                          )}
                         </View>
                         {!isLast && (
                           <View
@@ -680,8 +761,13 @@ export function MyApplicationScreen() {
                             backgroundColor: '#1E293B',
                             borderColor: '#334155',
                           },
+                          isTerminal && {
+                            borderColor: isDarkMode ? '#991B1B' : '#FCA5A5',
+                            backgroundColor: isDarkMode ? '#1F1418' : '#FFF5F5',
+                            borderWidth: 1.5,
+                          },
                           // Highlight actively in-progress (non-completed) stages cleanly
-                          isCurrent && !isCompleted && { borderColor: '#38BDF8', borderWidth: 1.5 },
+                          isCurrent && !isCompleted && !isTerminal && { borderColor: '#38BDF8', borderWidth: 1.5 },
                         ]}
                       >
                         <View style={styles.timelineContentHeader}>
@@ -689,6 +775,7 @@ export function MyApplicationScreen() {
                             style={[
                               styles.timelineTitle,
                               isDarkMode && { color: '#F8FAFC' },
+                              isTerminal && { color: isDarkMode ? '#F87171' : '#B91C1C', fontWeight: '700' },
                             ]}
                           >
                             {item.title}
@@ -696,39 +783,51 @@ export function MyApplicationScreen() {
                           <View
                             style={[
                               styles.timelineStatusPill,
-                              {
-                                backgroundColor: isCompleted
-                                  ? '#DCFCE7'
-                                  : isCurrent
-                                  ? '#E0F2FE'
-                                  : isDarkMode
-                                  ? '#0F172A'
-                                  : '#F1F5F9',
-                                borderColor: isCompleted
-                                  ? '#BBF7D0'
-                                  : isCurrent
-                                  ? '#BAE6FD'
-                                  : isDarkMode
-                                  ? '#334155'
-                                  : '#E2E8F0',
-                              },
+                              isTerminal
+                                ? {
+                                    backgroundColor: isDarkMode ? '#3B1D28' : '#FEE2E2',
+                                    borderColor: isDarkMode ? '#991B1B' : '#FCA5A5',
+                                  }
+                                : {
+                                    backgroundColor: isCompleted
+                                      ? '#DCFCE7'
+                                      : isCurrent
+                                      ? '#E0F2FE'
+                                      : isDarkMode
+                                      ? '#0F172A'
+                                      : '#F1F5F9',
+                                    borderColor: isCompleted
+                                      ? '#BBF7D0'
+                                      : isCurrent
+                                      ? '#BAE6FD'
+                                      : isDarkMode
+                                      ? '#334155'
+                                      : '#E2E8F0',
+                                  },
                             ]}
                           >
                             <Text
                               style={[
                                 styles.timelineStatusPillText,
-                                {
-                                  color: isCompleted
-                                    ? '#15803D'
-                                    : isCurrent
-                                    ? '#0284C7'
-                                    : isDarkMode
-                                    ? '#94A3B8'
-                                    : '#64748B',
-                                },
+                                isTerminal
+                                  ? {
+                                      color: isDarkMode ? '#F87171' : '#B91C1C',
+                                      fontWeight: '700',
+                                    }
+                                  : {
+                                      color: isCompleted
+                                        ? '#15803D'
+                                        : isCurrent
+                                        ? '#0284C7'
+                                        : isDarkMode
+                                        ? '#94A3B8'
+                                        : '#64748B',
+                                    },
                               ]}
                             >
-                              {isCompleted
+                              {isTerminal
+                                ? (item.status_label || 'Final Decision')
+                                : isCompleted
                                 ? 'Completed'
                                 : isCurrent
                                 ? 'In Progress'
@@ -737,18 +836,36 @@ export function MyApplicationScreen() {
                           </View>
                         </View>
 
+                        {isTerminal && item.subtitle ? (
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: isDarkMode ? '#CBD5E1' : '#64748B',
+                              marginTop: 2,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {item.subtitle}
+                          </Text>
+                        ) : null}
+
                         <Text
                           style={[
                             styles.timelineDateText,
-                            {
-                              color: isCompleted
-                                ? '#16A34A'
-                                : isCurrent
-                                ? '#0284C7'
-                                : isDarkMode
-                                ? '#94A3B8'
-                                : '#64748B',
-                            },
+                            isTerminal
+                              ? {
+                                  color: isDarkMode ? '#F87171' : '#DC2626',
+                                  fontWeight: '600',
+                                }
+                              : {
+                                  color: isCompleted
+                                    ? '#16A34A'
+                                    : isCurrent
+                                    ? '#0284C7'
+                                    : isDarkMode
+                                    ? '#94A3B8'
+                                    : '#64748B',
+                                },
                           ]}
                         >
                           {item.date
@@ -757,6 +874,8 @@ export function MyApplicationScreen() {
                                 day: 'numeric',
                                 year: 'numeric',
                               })
+                            : isTerminal
+                            ? 'Final decision'
                             : isCompleted
                             ? 'Completed'
                             : 'Pending execution'}

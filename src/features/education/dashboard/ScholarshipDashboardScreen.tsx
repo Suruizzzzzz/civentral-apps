@@ -81,8 +81,20 @@ function formatDate(dateStr?: string | null): string | null {
 function getStatusColors(status: string, isDarkMode: boolean) {
   const s = status.toLowerCase();
   if (
+    s.includes('disapprov') ||
+    s.includes('reject') ||
+    s.includes('withdraw') ||
+    s.includes('fail') ||
+    s.includes('cancel')
+  ) {
+    return {
+      dotColor: '#DC2626',
+      textColor: isDarkMode ? '#F87171' : '#DC2626',
+    };
+  }
+  if (
     s.includes('complet') ||
-    s.includes('approv') ||
+    (s.includes('approv') && !s.includes('disapprov')) ||
     s.includes('disburs') ||
     s.includes('releas') ||
     s.includes('active')
@@ -115,18 +127,6 @@ function getStatusColors(status: string, isDarkMode: boolean) {
     return {
       dotColor: '#D97706',
       textColor: isDarkMode ? '#FBBF24' : '#D97706',
-    };
-  }
-  if (
-    s.includes('disapprov') ||
-    s.includes('reject') ||
-    s.includes('withdraw') ||
-    s.includes('fail') ||
-    s.includes('cancel')
-  ) {
-    return {
-      dotColor: '#DC2626',
-      textColor: isDarkMode ? '#F87171' : '#DC2626',
     };
   }
   return {
@@ -641,13 +641,26 @@ export function ScholarshipDashboardScreen() {
 
       const rawTime = new Date(item.updatedAt || item.createdAt).getTime();
 
+      let rawStatus = item.displayStatus || item.status || 'Completed';
+      let recordStatus = rawStatus;
+      if (rawStatus.trim().toLowerCase() === 'rejected' || rawStatus.trim().toLowerCase() === 'disapproved') {
+        recordStatus = 'Disapproved';
+      }
+      if (
+        recordType === 'Application' &&
+        (isCurrent || (code && application?.application_code && code === application.application_code)) &&
+        (application?.application_status === 'Disapproved' || application?.application_status?.toLowerCase() === 'rejected')
+      ) {
+        recordStatus = 'Disapproved';
+      }
+
       list.push({
         id: `tracked-${item.id}`,
         rawId: item.raw_id,
         academicPeriod: itemPeriod,
         isCurrent,
         recordType,
-        status: item.displayStatus || item.status || 'Completed',
+        status: recordStatus,
         date: formatDate(item.updatedAt || item.createdAt),
         referenceCode: code || null,
         timestamp: isNaN(rawTime) ? 0 : rawTime,
@@ -693,7 +706,11 @@ export function ScholarshipDashboardScreen() {
         academicPeriod: currentPeriodString || 'Academic Year',
         isCurrent: true,
         recordType: 'Application',
-        status: scholar ? 'Approved' : application?.application_status || 'Submitted',
+        status: scholar
+          ? 'Approved'
+          : application?.application_status?.toLowerCase() === 'rejected'
+          ? 'Disapproved'
+          : application?.application_status || 'Submitted',
         date: formatDate(dateVal),
         referenceCode: code,
         timestamp: isNaN(rawTime) ? 0 : rawTime,
