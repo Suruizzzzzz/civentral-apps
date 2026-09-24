@@ -1,7 +1,11 @@
 import { formatDate } from '@/utils/dateUtils';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
-import { validateFileSize } from '@/src/utils/fileValidation';
+import {
+  validateFileSize,
+  DEFAULT_MAX_DOC_SIZE_MB,
+  MAX_VIDEO_SIZE_MB,
+} from '@/src/utils/fileValidation';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -30,6 +34,23 @@ import {
   fetchApplicationCompliance,
   submitApplicationComplianceReplacement,
 } from './api/newApplicantComplianceApi';
+
+/**
+ * Detect whether a compliance item targets a video requirement (e.g. Athletic/Arts audition or video declaration).
+ * Uses the same business-code and document-name pattern established in NewApplicantApplicationScreen.
+ */
+const isVideoRequirement = (item: ApplicationComplianceItem): boolean => {
+  const targetDoc = item.target_document;
+  const docCode = targetDoc?.document_code?.toUpperCase() || '';
+  const docName = targetDoc?.document_name?.toUpperCase() || '';
+  const reqTitle = item.requirement_title?.toUpperCase() || '';
+
+  return (
+    docCode.includes('VIDEO') ||
+    docName.includes('VIDEO') ||
+    reqTitle.includes('VIDEO')
+  );
+};
 
 export function NewApplicantComplianceScreen() {
   const router = useRouter();
@@ -127,34 +148,41 @@ export function NewApplicantComplianceScreen() {
     loadComplianceData();
   }, [loadComplianceData]);
 
-  const handlePickDocument = async (compId: number) => {
+  const handlePickDocument = async (item: ApplicationComplianceItem) => {
+    const isVideo = isVideoRequirement(item);
+    const allowedTypes = isVideo
+      ? ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/*']
+      : ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    const maxLimitMb = isVideo ? MAX_VIDEO_SIZE_MB : DEFAULT_MAX_DOC_SIZE_MB;
+    const docLabel = isVideo ? 'video replacement' : 'replacement';
+
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'],
+        type: allowedTypes,
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
 
-        // 10MB file size limit validation (LOW-03)
-        const validation = validateFileSize(file, 10, 'replacement');
+        // 10MB (docs) / 20MB (video) file size limit validation using shared utility
+        const validation = validateFileSize(file, maxLimitMb, docLabel);
         if (!validation.valid) {
           Alert.alert(
             'File Too Large',
             validation.errorMessage ||
-              'The selected replacement file exceeds the maximum limit of 10MB. Please choose a smaller file.'
+              `The selected ${docLabel} file exceeds the maximum limit of ${maxLimitMb}MB. Please choose a smaller file.`
           );
           return;
         }
 
         setSelectedFiles((prev) => ({
           ...prev,
-          [compId]: {
+          [item.compliance_id]: {
             uri: file.uri,
             name: file.name,
             size: file.size,
-            mimeType: file.mimeType || 'application/octet-stream',
+            mimeType: file.mimeType || (isVideo ? 'video/mp4' : 'application/octet-stream'),
           },
         }));
       }
@@ -357,7 +385,7 @@ export function NewApplicantComplianceScreen() {
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.reqTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                    {(item.target_document && item.target_document.document_name) ? item.target_document.document_name : (item.requirement_title && !item.requirement_title.startsWith('Replacement:') && !item.requirement_title.match(/\.(png|jpg|jpeg|pdf)$/i)) ? item.requirement_title : 'Document Replacement Request'}
+                    {(item.target_document && item.target_document.document_name) ? item.target_document.document_name : (item.requirement_title && !item.requirement_title.startsWith('Replacement:') && !item.requirement_title.match(/\.(png|jpg|jpeg|pdf|mp4|mov|webm|avi)$/i)) ? item.requirement_title : (isVideoRequirement(item) ? 'Video Replacement Request' : 'Document Replacement Request')}
                   </Text>
                   <Text style={{ fontSize: 11, fontWeight: '600', color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2 }}>
                     Type: {item.compliance_type === 'Document Replacement' ? 'Replacement Required' : item.compliance_type}
@@ -474,10 +502,14 @@ export function NewApplicantComplianceScreen() {
               ) : isPending ? (
                 <View style={{ marginTop: 14 }}>
                   <Text style={[styles.sectionSubtitle, isDarkMode && { color: '#F8FAFC' }]}>
-                    Upload Document Replacement
+                    {isVideoRequirement(item)
+                      ? 'Upload Video Replacement'
+                      : 'Upload Document Replacement'}
                   </Text>
                   <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginBottom: 8, marginTop: 2 }}>
-                    PDF, PNG, JPG up to 10MB
+                    {isVideoRequirement(item)
+                      ? 'MP4, MOV, WEBM up to 20MB'
+                      : 'PDF, PNG, JPG up to 10MB'}
                   </Text>
 
                   <TouchableOpacity
@@ -487,18 +519,34 @@ export function NewApplicantComplianceScreen() {
                       isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
                       pickedFile && isDarkMode && { backgroundColor: '#0C4A6E', borderColor: '#38BDF8' },
                     ]}
-                    onPress={() => handlePickDocument(item.compliance_id)}
+                    onPress={() => handlePickDocument(item)}
                     activeOpacity={0.8}
                   >
-                    <IconSymbol name="arrow.up.circle.fill" size={18} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+                    <IconSymbol
+                      name={
+                        isVideoRequirement(item)
+                          ? 'video.fill'
+                          : 'arrow.up.circle.fill'
+                      }
+                      size={18}
+                      color={isDarkMode ? '#38BDF8' : '#0284C7'}
+                    />
                     <Text style={[styles.pickerBtnText, isDarkMode && { color: '#38BDF8' }]}>
-                      {pickedFile ? 'Change Selected File' : 'Select Replacement File (PDF, PNG, JPG up to 10MB)'}
+                      {pickedFile
+                        ? 'Change Selected File'
+                        : isVideoRequirement(item)
+                        ? 'Select Replacement Video (MP4, MOV, WEBM up to 20MB)'
+                        : 'Select Replacement File (PDF, PNG, JPG up to 10MB)'}
                     </Text>
                   </TouchableOpacity>
 
                   {pickedFile ? (
                     <View style={[styles.fileMetaBox, isDarkMode && { backgroundColor: '#064E3B' }]}>
-                      <IconSymbol name="doc.text.fill" size={16} color="#16A34A" />
+                      <IconSymbol
+                        name={isVideoRequirement(item) ? 'video.fill' : 'doc.text.fill'}
+                        size={16}
+                        color="#16A34A"
+                      />
                       <Text style={[styles.fileMetaName, isDarkMode && { color: '#A7F3D0' }]} numberOfLines={1}>
                         {pickedFile.name}
                       </Text>
