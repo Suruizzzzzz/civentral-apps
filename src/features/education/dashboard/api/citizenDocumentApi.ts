@@ -1,8 +1,7 @@
-import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
+﻿import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
 import { EDUCATION_API_BASE_URL } from '../../new-applicant/api/ScholarshipProgramApi';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as WebBrowser from 'expo-web-browser';
-import { Alert, Linking, Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 export interface CitizenApplicationDocumentItem {
   document_id: number;
@@ -72,7 +71,14 @@ export interface CitizenOfficialDocumentsResponse {
   data: CitizenOfficialDocumentsData | null;
 }
 
-function getMimeType(filename: string): string {
+export interface CitizenDocumentActionResult {
+  success: boolean;
+  localUri: string;
+  filename: string;
+  mimeType: string;
+}
+
+export function getMimeType(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'pdf':
@@ -82,8 +88,60 @@ function getMimeType(filename: string): string {
     case 'jpg':
     case 'jpeg':
       return 'image/jpeg';
+    case 'webp':
+      return 'image/webp';
     default:
       return 'application/octet-stream';
+  }
+}
+
+export async function validateFileIntegrity(localUri: string, mimeType: string): Promise<boolean> {
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(localUri);
+    if (!fileInfo.exists || !fileInfo.size) {
+      return false;
+    }
+
+    const isPdf = mimeType === 'application/pdf' || localUri.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+      // Real PDF must be at least 1024 bytes (1 KB)
+      if (fileInfo.size < 1024) {
+        console.warn(`[validateFileIntegrity] PDF too small (${fileInfo.size} bytes): ${localUri}`);
+        return false;
+      }
+      // Check magic header %PDF-
+      const header = await FileSystem.readAsStringAsync(localUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+        length: 5,
+        position: 0,
+      });
+      if (!header.startsWith('%PDF-')) {
+        console.warn(`[validateFileIntegrity] Corrupted PDF magic header ("${header}") in: ${localUri}`);
+        return false;
+      }
+    } else {
+      if (fileInfo.size < 100) {
+        return false;
+      }
+    }
+
+    return true;
+  } catch (err) {
+    console.warn(`[validateFileIntegrity] Error checking ${localUri}:`, err);
+    return false;
+  }
+}
+
+export async function invalidateDocumentCache(filename: string): Promise<void> {
+  try {
+    const tempCacheUri = `${FileSystem.cacheDirectory}${filename}`;
+    const info = await FileSystem.getInfoAsync(tempCacheUri);
+    if (info.exists) {
+      await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+      console.log(`[invalidateDocumentCache] Cache deleted for ${filename}`);
+    }
+  } catch (err) {
+    console.warn(`[invalidateDocumentCache] Error deleting cache for ${filename}:`, err);
   }
 }
 
@@ -142,7 +200,7 @@ export async function downloadOrViewCitizenDocument(
   docId: number,
   originalFilename: string,
   mode: 'view' | 'download'
-): Promise<{ success: boolean; localUri: string; filename: string }> {
+): Promise<CitizenDocumentActionResult> {
   const headers = await getEducationAuthHeaders();
 
   const endpointPath = docType === 'application' ? 'application' : 'renewal';
@@ -151,6 +209,26 @@ export async function downloadOrViewCitizenDocument(
 
   const safeFilename = originalFilename ? originalFilename.replace(/[^a-zA-Z0-9_.-]/g, '_') : `document_${docId}.png`;
   const tempCacheUri = `${FileSystem.cacheDirectory}${safeFilename}`;
+  const mimeType = getMimeType(safeFilename);
+
+  // For view mode, check if file is already cached and valid
+  if (mode === 'view') {
+    try {
+      const isValid = await validateFileIntegrity(tempCacheUri, mimeType);
+      if (isValid) {
+        return {
+          success: true,
+          localUri: tempCacheUri,
+          filename: safeFilename,
+          mimeType,
+        };
+      } else {
+        await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+      }
+    } catch {
+      // Fall through to download
+    }
+  }
 
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
@@ -161,19 +239,34 @@ export async function downloadOrViewCitizenDocument(
   }
 
   if (downloadResult.status !== 200) {
+    try { await FileSystem.deleteAsync(tempCacheUri, { idempotent: true }); } catch {}
     throw new Error(`Unable to fetch file (HTTP ${downloadResult.status}).`);
+  }
+
+  const isValidDownloaded = await validateFileIntegrity(tempCacheUri, mimeType);
+  if (!isValidDownloaded) {
+    let errorSample = '';
+    try {
+      errorSample = await FileSystem.readAsStringAsync(tempCacheUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+        length: 256,
+        position: 0,
+      });
+    } catch {}
+    await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+    console.error(`[citizenDocumentApi] File ${safeFilename} failed integrity validation: ${errorSample}`);
+    throw new Error(`Downloaded document is invalid or corrupted. Server may have returned an error.`);
   }
 
   if (mode === 'download') {
     await handlePermanentDownload(tempCacheUri, safeFilename);
-  } else {
-    await handleViewFile(tempCacheUri, safeFilename);
   }
 
   return {
     success: true,
     localUri: downloadResult.uri,
     filename: safeFilename,
+    mimeType,
   };
 }
 
@@ -181,7 +274,7 @@ export async function downloadOrViewCitizenInitialCertificate(
   applicationId: number,
   certNumber: string,
   mode: 'view' | 'download'
-): Promise<{ success: boolean; localUri: string; filename: string }> {
+): Promise<CitizenDocumentActionResult> {
   const headers = await getEducationAuthHeaders();
 
   const queryParam = mode === 'download' ? '?download=1' : '';
@@ -189,6 +282,25 @@ export async function downloadOrViewCitizenInitialCertificate(
 
   const safeFilename = certNumber ? `Certificate_${certNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf` : `Certificate_${applicationId}.pdf`;
   const tempCacheUri = `${FileSystem.cacheDirectory}${safeFilename}`;
+  const mimeType = 'application/pdf';
+
+  if (mode === 'view') {
+    try {
+      const isValid = await validateFileIntegrity(tempCacheUri, mimeType);
+      if (isValid) {
+        return {
+          success: true,
+          localUri: tempCacheUri,
+          filename: safeFilename,
+          mimeType,
+        };
+      } else {
+        await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+      }
+    } catch {
+      // Fall through to download
+    }
+  }
 
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
@@ -199,19 +311,34 @@ export async function downloadOrViewCitizenInitialCertificate(
   }
 
   if (downloadResult.status !== 200) {
+    try { await FileSystem.deleteAsync(tempCacheUri, { idempotent: true }); } catch {}
     throw new Error(`Unable to fetch certificate PDF (HTTP ${downloadResult.status}).`);
+  }
+
+  const isValidDownloaded = await validateFileIntegrity(tempCacheUri, mimeType);
+  if (!isValidDownloaded) {
+    let errorSample = '';
+    try {
+      errorSample = await FileSystem.readAsStringAsync(tempCacheUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+        length: 256,
+        position: 0,
+      });
+    } catch {}
+    await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+    console.error(`[citizenDocumentApi] Certificate ${safeFilename} failed integrity validation: ${errorSample}`);
+    throw new Error(`Downloaded certificate is invalid or corrupted.`);
   }
 
   if (mode === 'download') {
     await handlePermanentDownload(tempCacheUri, safeFilename);
-  } else {
-    await handleViewFile(tempCacheUri, safeFilename);
   }
 
   return {
     success: true,
     localUri: downloadResult.uri,
     filename: safeFilename,
+    mimeType,
   };
 }
 
@@ -219,7 +346,7 @@ export async function downloadOrViewCitizenContract(
   applicationId: number,
   docNumber: string,
   mode: 'view' | 'download'
-): Promise<{ success: boolean; localUri: string; filename: string }> {
+): Promise<CitizenDocumentActionResult> {
   const headers = await getEducationAuthHeaders();
 
   const queryParam = mode === 'download' ? '?download=1' : '';
@@ -227,6 +354,25 @@ export async function downloadOrViewCitizenContract(
 
   const safeFilename = docNumber ? `Scholarship-Agreement-${docNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf` : `Contract_${applicationId}.pdf`;
   const tempCacheUri = `${FileSystem.cacheDirectory}${safeFilename}`;
+  const mimeType = 'application/pdf';
+
+  if (mode === 'view') {
+    try {
+      const isValid = await validateFileIntegrity(tempCacheUri, mimeType);
+      if (isValid) {
+        return {
+          success: true,
+          localUri: tempCacheUri,
+          filename: safeFilename,
+          mimeType,
+        };
+      } else {
+        await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+      }
+    } catch {
+      // Fall through to download
+    }
+  }
 
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
@@ -237,19 +383,34 @@ export async function downloadOrViewCitizenContract(
   }
 
   if (downloadResult.status !== 200) {
+    try { await FileSystem.deleteAsync(tempCacheUri, { idempotent: true }); } catch {}
     throw new Error(`Unable to fetch contract PDF (HTTP ${downloadResult.status}).`);
+  }
+
+  const isValidDownloaded = await validateFileIntegrity(tempCacheUri, mimeType);
+  if (!isValidDownloaded) {
+    let errorSample = '';
+    try {
+      errorSample = await FileSystem.readAsStringAsync(tempCacheUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+        length: 256,
+        position: 0,
+      });
+    } catch {}
+    await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+    console.error(`[citizenDocumentApi] Contract PDF ${safeFilename} failed integrity validation: ${errorSample}`);
+    throw new Error(`Downloaded contract PDF is invalid or corrupted. Server returned non-PDF data.`);
   }
 
   if (mode === 'download') {
     await handlePermanentDownload(tempCacheUri, safeFilename);
-  } else {
-    await handleViewFile(tempCacheUri, safeFilename);
   }
 
   return {
     success: true,
     localUri: downloadResult.uri,
     filename: safeFilename,
+    mimeType,
   };
 }
 
@@ -257,7 +418,7 @@ export async function downloadOrViewCitizenUndertaking(
   applicationId: number,
   docNumber: string,
   mode: 'view' | 'download'
-): Promise<{ success: boolean; localUri: string; filename: string }> {
+): Promise<CitizenDocumentActionResult> {
   const headers = await getEducationAuthHeaders();
 
   const queryParam = mode === 'download' ? '?download=1' : '';
@@ -265,6 +426,25 @@ export async function downloadOrViewCitizenUndertaking(
 
   const safeFilename = docNumber ? `Sworn-Undertaking-${docNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf` : `Undertaking_${applicationId}.pdf`;
   const tempCacheUri = `${FileSystem.cacheDirectory}${safeFilename}`;
+  const mimeType = 'application/pdf';
+
+  if (mode === 'view') {
+    try {
+      const isValid = await validateFileIntegrity(tempCacheUri, mimeType);
+      if (isValid) {
+        return {
+          success: true,
+          localUri: tempCacheUri,
+          filename: safeFilename,
+          mimeType,
+        };
+      } else {
+        await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+      }
+    } catch {
+      // Fall through to download
+    }
+  }
 
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
@@ -275,19 +455,34 @@ export async function downloadOrViewCitizenUndertaking(
   }
 
   if (downloadResult.status !== 200) {
+    try { await FileSystem.deleteAsync(tempCacheUri, { idempotent: true }); } catch {}
     throw new Error(`Unable to fetch undertaking PDF (HTTP ${downloadResult.status}).`);
+  }
+
+  const isValidDownloaded = await validateFileIntegrity(tempCacheUri, mimeType);
+  if (!isValidDownloaded) {
+    let errorSample = '';
+    try {
+      errorSample = await FileSystem.readAsStringAsync(tempCacheUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+        length: 256,
+        position: 0,
+      });
+    } catch {}
+    await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+    console.error(`[citizenDocumentApi] Undertaking PDF ${safeFilename} failed integrity validation: ${errorSample}`);
+    throw new Error(`Downloaded undertaking is invalid or corrupted.`);
   }
 
   if (mode === 'download') {
     await handlePermanentDownload(tempCacheUri, safeFilename);
-  } else {
-    await handleViewFile(tempCacheUri, safeFilename);
   }
 
   return {
     success: true,
     localUri: downloadResult.uri,
     filename: safeFilename,
+    mimeType,
   };
 }
 
@@ -295,7 +490,7 @@ export async function downloadOrViewCitizenRenewalCertificate(
   renewalId: number,
   certNumber: string,
   mode: 'view' | 'download'
-): Promise<{ success: boolean; localUri: string; filename: string }> {
+): Promise<CitizenDocumentActionResult> {
   const headers = await getEducationAuthHeaders();
 
   const queryParam = mode === 'download' ? '?download=1' : '';
@@ -303,6 +498,25 @@ export async function downloadOrViewCitizenRenewalCertificate(
 
   const safeFilename = certNumber ? `Renewal_Certificate_${certNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf` : `Renewal_Certificate_${renewalId}.pdf`;
   const tempCacheUri = `${FileSystem.cacheDirectory}${safeFilename}`;
+  const mimeType = 'application/pdf';
+
+  if (mode === 'view') {
+    try {
+      const isValid = await validateFileIntegrity(tempCacheUri, mimeType);
+      if (isValid) {
+        return {
+          success: true,
+          localUri: tempCacheUri,
+          filename: safeFilename,
+          mimeType,
+        };
+      } else {
+        await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+      }
+    } catch {
+      // Fall through to download
+    }
+  }
 
   const downloadResult = await FileSystem.downloadAsync(fileUrl, tempCacheUri, {
     headers,
@@ -313,61 +527,38 @@ export async function downloadOrViewCitizenRenewalCertificate(
   }
 
   if (downloadResult.status !== 200) {
+    try { await FileSystem.deleteAsync(tempCacheUri, { idempotent: true }); } catch {}
     throw new Error(`Unable to fetch renewal certificate PDF (HTTP ${downloadResult.status}).`);
+  }
+
+  const isValidDownloaded = await validateFileIntegrity(tempCacheUri, mimeType);
+  if (!isValidDownloaded) {
+    let errorSample = '';
+    try {
+      errorSample = await FileSystem.readAsStringAsync(tempCacheUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+        length: 256,
+        position: 0,
+      });
+    } catch {}
+    await FileSystem.deleteAsync(tempCacheUri, { idempotent: true });
+    console.error(`[citizenDocumentApi] Renewal certificate ${safeFilename} failed integrity validation: ${errorSample}`);
+    throw new Error(`Downloaded renewal certificate is invalid or corrupted.`);
   }
 
   if (mode === 'download') {
     await handlePermanentDownload(tempCacheUri, safeFilename);
-  } else {
-    await handleViewFile(tempCacheUri, safeFilename);
   }
 
   return {
     success: true,
     localUri: downloadResult.uri,
     filename: safeFilename,
+    mimeType,
   };
 }
 
-async function handleViewFile(localUri: string, filename: string): Promise<void> {
-  try {
-    if (localUri.startsWith('http://') || localUri.startsWith('https://')) {
-      await WebBrowser.openBrowserAsync(localUri);
-      return;
-    }
-
-    if (Platform.OS === 'android') {
-      try {
-        const contentUri = await FileSystem.getContentUriAsync(localUri);
-        const supported = await Linking.canOpenURL(contentUri);
-        if (supported) {
-          await Linking.openURL(contentUri);
-          return;
-        }
-      } catch (e) {
-        console.warn('[handleViewFile] getContentUriAsync / Linking failed:', e);
-      }
-      try {
-        await Linking.openURL(localUri);
-      } catch (directErr) {
-        await WebBrowser.openBrowserAsync(localUri);
-      }
-    } else if (Platform.OS === 'ios') {
-      try {
-        await WebBrowser.openBrowserAsync(localUri);
-      } catch (iosWebErr) {
-        await Linking.openURL(localUri);
-      }
-    } else {
-      await Linking.openURL(localUri);
-    }
-  } catch (err: any) {
-    console.warn('[handleViewFile] final open error:', err);
-    throw new Error(`Unable to open preview for ${filename}. Default app viewer unavailable.`);
-  }
-}
-
-async function handlePermanentDownload(tempCacheUri: string, filename: string): Promise<void> {
+export async function handlePermanentDownload(tempCacheUri: string, filename: string): Promise<void> {
   if (Platform.OS === 'android') {
     const { StorageAccessFramework } = FileSystem;
     try {

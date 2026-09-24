@@ -22,11 +22,13 @@ import {
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
+import { InAppDocumentViewerModal } from '@/src/components/document-viewer/InAppDocumentViewerModal';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 import { FormDraftService } from '@/src/services/form-draft-service';
 import {
   downloadOrViewCitizenDocument,
+  getMimeType,
 } from '../dashboard/api/citizenDocumentApi';
 import {
   ApplicationComplianceData,
@@ -64,6 +66,15 @@ export function NewApplicantComplianceScreen() {
   const [selectedFiles, setSelectedFiles] = useState<Record<number, { uri: string; name: string; size?: number; mimeType?: string }>>({});
   const [isSubmittingCompId, setIsSubmittingCompId] = useState<number | null>(null);
   const [actionLoadingDocKey, setActionLoadingDocKey] = useState<string | null>(null);
+  // In-App Document Viewer state
+  const [viewerModalVisible, setViewerModalVisible] = useState(false);
+  const [viewerLocalUri, setViewerLocalUri] = useState<string | null>(null);
+  const [viewerFilename, setViewerFilename] = useState('');
+  const [viewerMimeType, setViewerMimeType] = useState('application/pdf');
+  const [viewerTitle, setViewerTitle] = useState('');
+  const [viewerRefNumber, setViewerRefNumber] = useState('');
+  const [viewerStatus, setViewerStatus] = useState('');
+  const [viewerDate, setViewerDate] = useState('');
   const hasHydratedRef = React.useRef<boolean>(false);
 
   const loadComplianceData = React.useCallback(async () => {
@@ -200,7 +211,18 @@ export function NewApplicantComplianceScreen() {
     const docKey = `orig_${docId}_${mode}`;
     setActionLoadingDocKey(docKey);
     try {
-      await downloadOrViewCitizenDocument('application', docId, filename, mode);
+      const result = await downloadOrViewCitizenDocument('application', docId, filename, mode);
+      if (mode === 'view' && result?.localUri) {
+        setViewerLocalUri(result.localUri);
+        setViewerFilename(result.filename);
+        setViewerMimeType(result.mimeType || getMimeType(result.filename));
+        setViewerTitle(filename || 'Original Submitted Document');
+        setViewerRefNumber(`#${docId}`);
+        setViewerStatus('Original Submission');
+        setViewerDate('');
+        setViewerModalVisible(true);
+        return;
+      }
     } catch (err: any) {
       console.error('[handleOriginalDocAction] error:', err);
       Alert.alert('Unable to Process Document', sanitizeErrorMessage(err?.message, 'Please check your connection and try again.'));
@@ -582,6 +604,18 @@ export function NewApplicantComplianceScreen() {
           );
         })
       )}
+      {/* IN-APP DOCUMENT VIEWER MODAL */}
+      <InAppDocumentViewerModal
+        visible={viewerModalVisible}
+        onClose={() => setViewerModalVisible(false)}
+        localUri={viewerLocalUri}
+        filename={viewerFilename}
+        mimeType={viewerMimeType}
+        documentTitle={viewerTitle}
+        referenceNumber={viewerRefNumber}
+        statusBadge={viewerStatus}
+        date={viewerDate}
+      />
     </ScrollView>
   );
 }

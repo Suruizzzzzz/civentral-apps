@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
   RefreshControl,
@@ -16,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
+import { InAppDocumentViewerModal } from '@/src/components/document-viewer/InAppDocumentViewerModal';
 import { useTheme } from '@/src/context/ThemeContext';
 import {
   CitizenDashboardData,
@@ -162,6 +164,15 @@ export function ScholarshipDashboardScreen() {
 
   // Feedback modal state (view/download)
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  // In-App Document Viewer state
+  const [viewerModalVisible, setViewerModalVisible] = useState(false);
+  const [viewerLocalUri, setViewerLocalUri] = useState<string | null>(null);
+  const [viewerFilename, setViewerFilename] = useState('');
+  const [viewerMimeType, setViewerMimeType] = useState('application/pdf');
+  const [viewerTitle, setViewerTitle] = useState('');
+  const [viewerRefNumber, setViewerRefNumber] = useState('');
+  const [viewerStatus, setViewerStatus] = useState('');
+  const [viewerDate, setViewerDate] = useState('');
   const [feedbackTitle, setFeedbackTitle] = useState('');
   const [feedbackBody, setFeedbackBody] = useState('');
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
@@ -822,32 +833,40 @@ export function ScholarshipDashboardScreen() {
     const docNum = doc.documentNumber;
 
     try {
+      let result;
       if (doc.type === 'SCHOLARSHIP_CERTIFICATE') {
-        await downloadOrViewCitizenInitialCertificate(appId, docNum, mode);
+        result = await downloadOrViewCitizenInitialCertificate(appId, docNum, mode);
       } else if (doc.type === 'SCHOLARSHIP_CONTRACT') {
-        await downloadOrViewCitizenContract(appId, docNum, mode);
+        result = await downloadOrViewCitizenContract(appId, docNum, mode);
       } else if (doc.type === 'SWORN_UNDERTAKING') {
-        await downloadOrViewCitizenUndertaking(appId, docNum, mode);
+        result = await downloadOrViewCitizenUndertaking(appId, docNum, mode);
       } else if (doc.type === 'RENEWAL_CERTIFICATE') {
-        await downloadOrViewCitizenRenewalCertificate(renewalId, docNum, mode);
+        result = await downloadOrViewCitizenRenewalCertificate(renewalId, docNum, mode);
       }
 
-      setFeedbackTitle(mode === 'view' ? `View: ${doc.title}` : `Downloaded: ${doc.title}`);
+      if (mode === 'view' && result?.localUri) {
+        setViewerLocalUri(result.localUri);
+        setViewerFilename(result.filename);
+        setViewerMimeType(result.mimeType || 'application/pdf');
+        setViewerTitle(doc.title);
+        setViewerRefNumber(docNum);
+        setViewerStatus(doc.status);
+        setViewerDate(doc.date);
+        setViewerModalVisible(true);
+        return;
+      }
+
+      setFeedbackTitle(`Downloaded: ${doc.title}`);
       setFeedbackBody(
-        `Document Title: ${doc.title}\nReference Number: ${docNum}\nStatus: ${doc.status}\nDate: ${doc.date}\n\n${
-          mode === 'view'
-            ? 'The official document certificate has been processed and previewed.'
-            : `Official document ${docNum} has been saved to your local device storage.`
-        }`
+        `Document Title: ${doc.title}\nReference Number: ${docNum}\nStatus: ${doc.status}\nDate: ${doc.date}\n\nOfficial document ${docNum} has been saved to your local device storage.`
       );
       setFeedbackModalVisible(true);
     } catch (err: any) {
-      console.warn('[handleOfficialDocAction] notice:', err);
-      setFeedbackTitle(doc.title);
-      setFeedbackBody(
-        `Document Title: ${doc.title}\nReference Number: ${docNum}\nStatus: ${doc.status}\nDate: ${doc.date}\n\nOfficial record verified and authenticated in your Civentral scholar repository.`
+      console.error('[handleOfficialDocAction] error:', err);
+      Alert.alert(
+        'Unable to Process Document',
+        err?.message || 'Could not fetch official document. Please check your network connection.'
       );
-      setFeedbackModalVisible(true);
     } finally {
       setActionLoadingKey(null);
     }
@@ -2228,7 +2247,19 @@ export function ScholarshipDashboardScreen() {
                   })
                 )}
               </View>
-            </ScrollView>
+              {/* IN-APP DOCUMENT VIEWER MODAL */}
+      <InAppDocumentViewerModal
+        visible={viewerModalVisible}
+        onClose={() => setViewerModalVisible(false)}
+        localUri={viewerLocalUri}
+        filename={viewerFilename}
+        mimeType={viewerMimeType}
+        documentTitle={viewerTitle}
+        referenceNumber={viewerRefNumber}
+        statusBadge={viewerStatus}
+        date={viewerDate}
+      />
+    </ScrollView>
           </View>
         </View>
       </Modal>

@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   RefreshControl,
   ScrollView,
@@ -16,6 +17,7 @@ import {
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
+import { InAppDocumentViewerModal } from '@/src/components/document-viewer/InAppDocumentViewerModal';
 import { useTheme } from '@/src/context/ThemeContext';
 import { CitizenDashboardData, fetchCitizenDashboard } from './api/scholarshipDashboardApi';
 import {
@@ -29,6 +31,7 @@ import {
   downloadOrViewCitizenUndertaking,
   fetchCitizenOfficialDocuments,
   fetchCitizenScholarshipDocuments,
+  getMimeType,
 } from './api/citizenDocumentApi';
 import { getScholarshipProgramDetails, ScholarshipProgram } from '../new-applicant/api/ScholarshipProgramApi';
 import {
@@ -322,6 +325,15 @@ export function CitizenScholarshipDetailScreen() {
   const [modalTitle, setModalTitle] = useState<string | null>(null);
   const [modalBody, setModalBody] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  // In-App Document Viewer state
+  const [viewerModalVisible, setViewerModalVisible] = useState(false);
+  const [viewerLocalUri, setViewerLocalUri] = useState<string | null>(null);
+  const [viewerFilename, setViewerFilename] = useState('');
+  const [viewerMimeType, setViewerMimeType] = useState('application/pdf');
+  const [viewerTitle, setViewerTitle] = useState('');
+  const [viewerRefNumber, setViewerRefNumber] = useState('');
+  const [viewerStatus, setViewerStatus] = useState('');
+  const [viewerDate, setViewerDate] = useState('');
 
   const loadAllData = useCallback(async () => {
     try {
@@ -386,39 +398,32 @@ export function CitizenScholarshipDetailScreen() {
     const docKey = `${type}_${id}_${mode}`;
     setActionLoadingDocKey(docKey);
     try {
-      if (type === 'grant') {
-        setModalTitle(`${mode === 'view' ? 'Grant Document Preview' : 'Document Download'}: ${filename}`);
-        setModalBody(
-          `File Name: ${filename}\nCategory: Grant Requirement\nReference ID: #${id}\nStatus: Verified Document\n\n${
-            mode === 'view'
-              ? 'Grant requirement record is authenticated in your Civentral scholar repository. The document status is active and verified.'
-              : 'Grant document file registered for download to local application storage.'
-          }`
-        );
-        setModalVisible(true);
+      const docTypeToFetch = type === 'grant' ? 'application' : type;
+      const result = await downloadOrViewCitizenDocument(docTypeToFetch, id, filename, mode);
+
+      if (mode === 'view' && result?.localUri) {
+        setViewerLocalUri(result.localUri);
+        setViewerFilename(result.filename);
+        setViewerMimeType(result.mimeType || getMimeType(result.filename));
+        setViewerTitle(filename || `${type.toUpperCase()} Document`);
+        setViewerRefNumber(`#${id}`);
+        setViewerStatus('Verified Document');
+        setViewerDate('');
+        setViewerModalVisible(true);
         return;
       }
-      await downloadOrViewCitizenDocument(type, id, filename, mode);
-      setModalTitle(mode === 'view' ? 'Document Preview' : 'Document Downloaded');
+
+      setModalTitle('Document Downloaded');
       setModalBody(
-        `File Name: ${filename}\nCategory: ${type.toUpperCase()} Requirement\nReference ID: #${id}\nStatus: Verified Document\n\n${
-          mode === 'view'
-            ? 'The document file has been processed. If your device supports automatic PDF/Image preview, it will display directly.'
-            : 'The document file has been downloaded and saved to your device storage.'
-        }`
+        `File Name: ${filename}\nCategory: ${type.toUpperCase()} Requirement\nReference ID: #${id}\nStatus: Verified Document\n\nThe document file has been downloaded and saved to your device storage.`
       );
       setModalVisible(true);
     } catch (err: any) {
-      console.warn('[handleDocumentAction] fallback:', err);
-      setModalTitle(`${mode === 'view' ? 'Document Viewer' : 'Document Download'}: ${filename}`);
-      setModalBody(
-        `File Name: ${filename}\nCategory: ${type.toUpperCase()} Requirement\nReference ID: #${id}\nStatus: Verified Document Record\n\n${
-          mode === 'view'
-            ? 'Document record authenticated in your Civentral scholar repository. The document status is active and verified.'
-            : 'Document download completed and registered in local application storage.'
-        }`
+      console.error('[handleDocumentAction] error:', err);
+      Alert.alert(
+        'Unable to Process Document',
+        sanitizeErrorMessage(err?.message, 'Please check your connection and try again.')
       );
-      setModalVisible(true);
     } finally {
       setActionLoadingDocKey(null);
     }
@@ -431,39 +436,42 @@ export function CitizenScholarshipDetailScreen() {
     const docKey = `${doc.type}_${doc.id}_${mode}`;
     setActionLoadingDocKey(docKey);
     try {
+      let result;
       if (doc.type === 'SCHOLARSHIP_CERTIFICATE') {
-        await downloadOrViewCitizenInitialCertificate(doc.id, doc.document_number, mode);
+        result = await downloadOrViewCitizenInitialCertificate(doc.id, doc.document_number, mode);
       } else if (doc.type === 'SCHOLARSHIP_CONTRACT') {
-        await downloadOrViewCitizenContract(doc.id, doc.document_number, mode);
+        result = await downloadOrViewCitizenContract(doc.id, doc.document_number, mode);
       } else if (doc.type === 'SWORN_UNDERTAKING') {
-        await downloadOrViewCitizenUndertaking(doc.id, doc.document_number, mode);
+        result = await downloadOrViewCitizenUndertaking(doc.id, doc.document_number, mode);
       } else if (doc.type === 'RENEWAL_CERTIFICATE') {
-        await downloadOrViewCitizenRenewalCertificate(doc.id, doc.document_number, mode);
+        result = await downloadOrViewCitizenRenewalCertificate(doc.id, doc.document_number, mode);
       }
-      setModalTitle(mode === 'view' ? `View: ${doc.title}` : `Downloaded: ${doc.title}`);
+
+      if (mode === 'view' && result?.localUri) {
+        setViewerLocalUri(result.localUri);
+        setViewerFilename(result.filename);
+        setViewerMimeType(result.mimeType || 'application/pdf');
+        setViewerTitle(doc.title);
+        setViewerRefNumber(doc.document_number);
+        setViewerStatus(doc.status);
+        setViewerDate(formatDate(doc.date, '—'));
+        setViewerModalVisible(true);
+        return;
+      }
+
+      setModalTitle(`Downloaded: ${doc.title}`);
       setModalBody(
         `Document Title: ${doc.title}\nDocument Number: ${doc.document_number}\nStatus: ${doc.status}\nDate: ${
           formatDate(doc.date, '—')
-        }\n\n${
-          mode === 'view'
-            ? 'Official document certificate verified. The PDF viewer will display the file if supported.'
-            : `Official certificate ${doc.document_number} downloaded successfully to your device storage.`
-        }`
+        }\n\nOfficial certificate ${doc.document_number} downloaded successfully to your device storage.`
       );
       setModalVisible(true);
     } catch (err: any) {
-      console.warn('[handleOfficialDocAction] fallback:', err);
-      setModalTitle(`${doc.title || 'Official Document'}`);
-      setModalBody(
-        `Document Title: ${doc.title}\nDocument Number: ${doc.document_number}\nStatus: ${doc.status}\nIssued Date: ${
-          formatDate(doc.date, '—')
-        }\n\n${
-          mode === 'view'
-            ? 'Official document record validated. The certificate file preview is active and recorded in your Civentral scholar repository.'
-            : `Document ${doc.document_number} downloaded successfully to local storage.`
-        }`
+      console.error('[handleOfficialDocAction] error:', err);
+      Alert.alert(
+        'Unable to Process Document',
+        sanitizeErrorMessage(err?.message, 'Please check your connection and try again.')
       );
-      setModalVisible(true);
     } finally {
       setActionLoadingDocKey(null);
     }
@@ -1014,7 +1022,19 @@ export function CitizenScholarshipDetailScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+            {/* IN-APP DOCUMENT VIEWER MODAL */}
+      <InAppDocumentViewerModal
+        visible={viewerModalVisible}
+        onClose={() => setViewerModalVisible(false)}
+        localUri={viewerLocalUri}
+        filename={viewerFilename}
+        mimeType={viewerMimeType}
+        documentTitle={viewerTitle}
+        referenceNumber={viewerRefNumber}
+        statusBadge={viewerStatus}
+        date={viewerDate}
+      />
+    </ScrollView>
 
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
