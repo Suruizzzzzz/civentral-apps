@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
@@ -8,22 +9,34 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { fetchScholarshipCategories, fetchScholarshipPrograms, ScholarshipCategory, ScholarshipProgram } from './api/ScholarshipProgramApi';
 import { styles } from './styles/BrowseScholarships.styles';
 
+interface CategoryPill {
+  id: string;
+  label: string;
+}
+
+const BASE_CATEGORY_PILLS: CategoryPill[] = [
+  { id: 'All', label: 'All Categories' },
+  { id: 'Senior High', label: 'Senior High' },
+  { id: 'Tertiary', label: 'Tertiary' },
+  { id: 'Continuing Education / Vocational', label: 'Continuing Education / Vocational' },
+];
+
 export function BrowseScholarshipsScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
 
   const [categories, setCategories] = useState<ScholarshipCategory[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [programs, setPrograms] = useState<ScholarshipProgram[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = async (catId: number | null = null) => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
       const [catList, progList] = await Promise.all([
         fetchScholarshipCategories(),
-        fetchScholarshipPrograms(catId || undefined),
+        fetchScholarshipPrograms(),
       ]);
       setCategories(catList);
       setPrograms(progList);
@@ -36,13 +49,90 @@ export function BrowseScholarshipsScreen() {
   };
 
   useEffect(() => {
-    loadData(selectedCategoryId);
-  }, [selectedCategoryId]);
+    loadData();
+  }, []);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    loadData(selectedCategoryId);
-  }, [selectedCategoryId]);
+    loadData();
+  }, []);
+
+  const handleSelectCategory = (catId: string) => {
+    Haptics.selectionAsync();
+    setSelectedCategory(catId);
+  };
+
+  const filterPills = useMemo<CategoryPill[]>(() => {
+    const pills: CategoryPill[] = [...BASE_CATEGORY_PILLS];
+    const existingIds = new Set(
+      pills.map((p) => p.id.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    );
+
+    categories.forEach((cat) => {
+      const normalized = (cat.category_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normalized && !existingIds.has(normalized)) {
+        existingIds.add(normalized);
+        pills.push({
+          id: cat.category_name,
+          label: cat.category_name,
+        });
+      }
+    });
+
+    return pills;
+  }, [categories]);
+
+  const filteredPrograms = useMemo(() => {
+    if (selectedCategory === 'All') {
+      return programs;
+    }
+    const target = selectedCategory.toLowerCase();
+
+    return programs.filter((program) => {
+      const categoryName = (program.category_name || (program as any).category?.category_name || '').toLowerCase();
+      const categoryCode = ((program as any).category?.category_code || '').toLowerCase();
+      const eduLevel = ((program as any).education_level || (program as any).level || '').toLowerCase();
+      const programName = (program.program_name || '').toLowerCase();
+
+      if (target.includes('senior high')) {
+        return (
+          categoryName.includes('senior high') ||
+          categoryCode.includes('senior_high') ||
+          eduLevel.includes('senior high') ||
+          programName.includes('senior high') ||
+          programName.includes('shs')
+        );
+      }
+
+      if (target.includes('tertiary')) {
+        return (
+          categoryName.includes('tertiary') ||
+          categoryCode.includes('tertiary') ||
+          eduLevel.includes('tertiary') ||
+          programName.includes('tertiary') ||
+          categoryName.includes('college')
+        );
+      }
+
+      if (target.includes('vocational') || target.includes('continuing')) {
+        return (
+          categoryName.includes('vocational') ||
+          categoryName.includes('continuing') ||
+          categoryCode.includes('vocational') ||
+          categoryCode.includes('cont_ed') ||
+          programName.includes('vocational') ||
+          programName.includes('continuing')
+        );
+      }
+
+      return (
+        categoryName.includes(target) ||
+        categoryCode.includes(target) ||
+        eduLevel.includes(target) ||
+        programName.includes(target)
+      );
+    });
+  }, [programs, selectedCategory]);
 
   return (
     <ScrollView
@@ -93,51 +183,33 @@ export function BrowseScholarshipsScreen() {
         </Text>
       </View>
 
-      {/* CATEGORY FILTER CHIPS */}
+      {/* HORIZONTAL CATEGORY PILL FILTER */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, marginBottom: 20 }}
+        contentContainerStyle={styles.filterPillsContainer}
       >
-        <TouchableOpacity
-          style={[
-            styles.categoryBadge,
-            selectedCategoryId === null && { backgroundColor: '#2563EB' },
-            isDarkMode && selectedCategoryId !== null && { backgroundColor: '#334155' },
-          ]}
-          onPress={() => setSelectedCategoryId(null)}
-        >
-          <Text
-            style={[
-              styles.categoryText,
-              selectedCategoryId === null && { color: '#FFFFFF' },
-              isDarkMode && selectedCategoryId !== null && { color: '#94A3B8' },
-            ]}
-          >
-            All Categories
-          </Text>
-        </TouchableOpacity>
-
-        {categories.map((cat) => {
-          const isActive = selectedCategoryId === cat.category_id;
+        {filterPills.map((pill) => {
+          const isActive = selectedCategory === pill.id;
           return (
             <TouchableOpacity
-              key={cat.category_id}
+              key={pill.id}
               style={[
-                styles.categoryBadge,
-                isActive && { backgroundColor: '#2563EB' },
-                isDarkMode && !isActive && { backgroundColor: '#334155' },
+                styles.filterPill,
+                isActive ? styles.filterPillActive : styles.filterPillInactive,
+                isDarkMode && !isActive && styles.filterPillInactiveDark,
               ]}
-              onPress={() => setSelectedCategoryId(cat.category_id)}
+              onPress={() => handleSelectCategory(pill.id)}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
-                  styles.categoryText,
-                  isActive && { color: '#FFFFFF' },
-                  isDarkMode && !isActive && { color: '#94A3B8' },
+                  styles.filterPillText,
+                  isActive ? styles.filterPillTextActive : styles.filterPillTextInactive,
+                  isDarkMode && !isActive && styles.filterPillTextInactiveDark,
                 ]}
               >
-                {cat.category_name}
+                {pill.label}
               </Text>
             </TouchableOpacity>
           );
@@ -150,18 +222,20 @@ export function BrowseScholarshipsScreen() {
           <Skeleton height={140} borderRadius={16} />
           <Skeleton height={140} borderRadius={16} />
         </View>
-      ) : programs.length === 0 ? (
+      ) : filteredPrograms.length === 0 ? (
         <View style={[styles.emptyContainer, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
           <IconSymbol name="magnifyingglass" size={40} color={isDarkMode ? '#64748B' : '#94A3B8'} />
           <Text style={[styles.emptyTitle, isDarkMode && { color: '#F8FAFC' }]}>
             No Scholarships Found
           </Text>
           <Text style={[styles.emptyText, isDarkMode && { color: '#94A3B8' }]}>
-            There are currently no programs matching your filter criteria.
+            {selectedCategory === 'All'
+              ? 'There are currently no programs matching your filter criteria.'
+              : 'No scholarship programs available for this category.'}
           </Text>
         </View>
       ) : (
-        programs.map((program) => {
+        filteredPrograms.map((program) => {
           const period = program.application_period || (program.application_periods && program.application_periods[0]);
           const statusLabel = period?.status || (program.program_status === 'Active' ? 'Open' : 'Upcoming');
           const isOpen = statusLabel === 'Open';

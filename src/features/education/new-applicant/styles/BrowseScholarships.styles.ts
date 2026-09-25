@@ -236,4 +236,55 @@ export const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
   },
+
+  filterPillsContainer: {
+    gap: 8,
+    paddingHorizontal: 2,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  filterPillActive: {
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB",
+  },
+
+  filterPillInactive: {
+    backgroundColor: "#F1F5F9",
+    borderColor: "#E2E8F0",
+  },
+
+  filterPillInactiveDark: {
+    backgroundColor: "#1E293B",
+    borderColor: "#334155",
+  },
+
+  filterPillText: {
+    fontSize: 13,
+  },
+
+  filterPillTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+
+  filterPillTextInactive: {
+    color: "#475569",
+    fontWeight: "600",
+  },
+
+  filterPillTextInactiveDark: {
+    color: "#94A3B8",
+    fontWeight: "600",
+  },
 });
