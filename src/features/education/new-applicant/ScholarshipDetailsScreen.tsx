@@ -99,15 +99,15 @@ function computeApplyCTAState(
     ].includes(appStatus);
 
     if (!isTerminalStatus) {
-      // Check if program_id matches when available
-      const appProgramId = dashboardData?.scholarship?.program_id;
-      if (!appProgramId || appProgramId === program.program_id) {
-        return {
-          canApply: false,
-          buttonText: `Already Applied (${appStatus})`,
-          noticeText: `You already have an active application with status "${appStatus}".`,
-        };
-      }
+      const appliedProgramName = dashboardData?.scholarship?.program_name;
+      const isOtherProgram = dashboardData?.scholarship?.program_id !== program.program_id;
+      return {
+        canApply: false,
+        buttonText: `Already Applied (${appStatus})`,
+        noticeText: isOtherProgram
+          ? `You have an active application (${dashboardData?.application?.application_code}) under "${appliedProgramName}". Citizens may only have one active application.`
+          : `You already have an active application with status "${appStatus}".`,
+      };
     }
   }
 
@@ -115,6 +115,34 @@ function computeApplyCTAState(
   const period =
     program.application_period ||
     (program.application_periods && program.application_periods[0]);
+
+  // Handle Disapproved Period Lockout
+  const isDisapprovedStatus =
+    dashboardData?.application?.application_status === 'Disapproved' ||
+    dashboardData?.state === 'APPLICATION_DISAPPROVED';
+
+  const disapprovedAy =
+    (dashboardData as any)?.period?.academic_year ||
+    dashboardData?.academic_period?.academic_year;
+
+  const targetAy =
+    (program as any)?.current_period?.academic_year ||
+    period?.academic_year;
+
+  const isDisapprovedSamePeriod =
+    isDisapprovedStatus &&
+    Boolean(disapprovedAy) &&
+    Boolean(targetAy) &&
+    disapprovedAy === targetAy;
+
+  if (isDisapprovedSamePeriod) {
+    return {
+      canApply: false,
+      buttonText: 'Re-application Locked',
+      noticeText:
+        'Re-application is not permitted for this academic period following a disapproved application.',
+    };
+  }
 
   if (!period) {
     return {
