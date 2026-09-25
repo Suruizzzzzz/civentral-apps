@@ -283,7 +283,7 @@ export interface SubmitApplicationResult {
 
 export async function submitPreScreen(
   educationLevel: string,
-  answers: Record<string, string>
+  answers: Record<string, string | null>
 ): Promise<PreScreenResponse> {
   const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-matching/pre-screen`, {
     method: 'POST',

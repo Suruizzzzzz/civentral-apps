@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
@@ -7,6 +7,19 @@ import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { fetchMatchingEducationLevels, fetchPublicMatchingQuestions, submitPreScreen, EvaluatedProgram, MatchingQuestion, PreScreenResponse } from './api/ScholarshipProgramApi';
 import { styles } from './styles/ScholarshipMatching.styles';
+
+/**
+ * Parent -> Child Conditional Rules Map
+ * Aligned with CIVENTRAL web portal (scholarship-matching-config.php / scholarship-matching-modals.js)
+ */
+export const PS_CONDITIONAL_RULES: Record<string, string[]> = {
+  specialized_public_shs: ['school_outside_district'],
+  sports_arts_qualification: ['achievement_area', 'major_award_recognition', 'recognized_program_membership'],
+  leadership_qualification: ['leadership_award', 'leadership_position', 'leadership_organization', 'youth_community_involvement'],
+  financial_sector_qualification: ['household_income', 'family_situation'],
+  relevant_office_employment: ['employment_years', 'employment_position', 'salary_grade', 'relevant_work_experience'],
+  eligible_training_enrollment: ['training_program', 'training_institution', 'training_course_type'],
+};
 
 export function ScholarshipMatchingScreen() {
   const router = useRouter();
@@ -19,7 +32,7 @@ export function ScholarshipMatchingScreen() {
   ]);
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [questions, setQuestions] = useState<MatchingQuestion[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string | null>>({});
 
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,17 +65,53 @@ export function ScholarshipMatchingScreen() {
     }
   };
 
+  const isQuestionVisible = (q: MatchingQuestion): boolean => {
+    for (const [parentKey, childKeys] of Object.entries(PS_CONDITIONAL_RULES)) {
+      if (childKeys.includes(q.question_key)) {
+        const parentVal = answers[parentKey];
+        if (String(parentVal || '').trim().toLowerCase() !== 'yes') {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const visibleQuestions = useMemo(() => {
+    return questions.filter(isQuestionVisible);
+  }, [questions, answers]);
+
   const handleOptionSelect = (questionKey: string, optionValue: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionKey]: optionValue,
-    }));
+    setAnswers((prev) => {
+      const next: Record<string, string | null> = {
+        ...prev,
+        [questionKey]: optionValue,
+      };
+
+      // If this question is a parent trigger and value is not 'Yes',
+      // reset/clear all dependent child questions in state so stale values are not submitted
+      const isYes = String(optionValue || '').trim().toLowerCase() === 'yes';
+      if (!isYes) {
+        const resetChildren = (pKey: string) => {
+          const childKeys = PS_CONDITIONAL_RULES[pKey];
+          if (childKeys && Array.isArray(childKeys)) {
+            childKeys.forEach((cKey) => {
+              next[cKey] = null;
+              resetChildren(cKey);
+            });
+          }
+        };
+        resetChildren(questionKey);
+      }
+
+      return next;
+    });
   };
 
   const handleRunMatching = async () => {
     if (!selectedLevel) return;
 
-    const unanswered = questions.some((q) => {
+    const unanswered = visibleQuestions.some((q) => {
       const val = answers[q.question_key];
       return val === undefined || val === null || String(val).trim() === '';
     });
@@ -75,8 +124,18 @@ export function ScholarshipMatchingScreen() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    // Build payload ensuring visible answers are passed and hidden fields pass default/null
+    const payloadAnswers: Record<string, string | null> = {};
+    questions.forEach((q) => {
+      if (isQuestionVisible(q)) {
+        payloadAnswers[q.question_key] = answers[q.question_key] ?? null;
+      } else {
+        payloadAnswers[q.question_key] = null;
+      }
+    });
+
     try {
-      const result = await submitPreScreen(selectedLevel, answers);
+      const result = await submitPreScreen(selectedLevel, payloadAnswers);
       setPreScreenResult(result);
     } catch (err) {
       console.error('[ScholarshipMatchingScreen] pre-screen submit error:', err);
@@ -196,7 +255,7 @@ export function ScholarshipMatchingScreen() {
                   Step 2: Pre-Screening Questions
                 </Text>
 
-                {questions.map((q, idx) => (
+                {visibleQuestions.map((q, idx) => (
                   <View key={q.question_id || q.question_key} style={styles.questionCard}>
                     <Text style={[styles.questionText, isDarkMode && { color: '#F8FAFC' }]}>
                       {idx + 1}. {q.question_text}
