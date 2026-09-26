@@ -537,6 +537,8 @@ export function CitizenScholarshipDetailScreen() {
     const reviewEvaluatorName =
       (reviewItem as any)?.evaluator_name ||
       (reviewItem as any)?.coordinator_name ||
+      (application as any)?.coordinator_name ||
+      (application as any)?.evaluator_name ||
       null;
 
     // 3. SSC Evaluation stage
@@ -563,7 +565,10 @@ export function CitizenScholarshipDetailScreen() {
     const sscEvaluatorName =
       (sscItem as any)?.evaluator_name ||
       (sscItem as any)?.coordinator_name ||
+      (application as any)?.evaluator_name ||
+      (application as any)?.coordinator_name ||
       application?.decided_by?.full_name ||
+      (dashboardData as any)?.evaluator_name ||
       null;
 
     // 4. Scholarship Approved stage

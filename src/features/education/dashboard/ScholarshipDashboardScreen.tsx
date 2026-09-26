@@ -297,6 +297,8 @@ export function ScholarshipDashboardScreen() {
     const reviewEvaluatorName =
       (reviewItem as any)?.evaluator_name ||
       (reviewItem as any)?.coordinator_name ||
+      (application as any)?.coordinator_name ||
+      (application as any)?.evaluator_name ||
       null;
 
     // Stage 3: SSC Evaluation
@@ -322,7 +324,10 @@ export function ScholarshipDashboardScreen() {
     const sscEvaluatorName =
       (sscItem as any)?.evaluator_name ||
       (sscItem as any)?.coordinator_name ||
+      (application as any)?.evaluator_name ||
+      (application as any)?.coordinator_name ||
       application?.decided_by?.full_name ||
+      (dashboardData as any)?.evaluator_name ||
       null;
 
     // Stage 4: Scholarship Approved
@@ -438,6 +443,7 @@ export function ScholarshipDashboardScreen() {
             ? 'current'
             : 'completed'
           : 'upcoming',
+        evaluatorName: sscEvaluatorName || reviewEvaluatorName,
       },
       {
         id: 5,
@@ -1360,6 +1366,8 @@ export function ScholarshipDashboardScreen() {
                         : ' • In Progress'}
                       {stages[currentStageIndex]?.evaluatorName
                         ? ` • Evaluated by: ${stages[currentStageIndex]?.evaluatorName}`
+                        : currentStageIndex >= 1 && (stages[2]?.evaluatorName || stages[1]?.evaluatorName)
+                        ? ` • Evaluated by: ${stages[2]?.evaluatorName || stages[1]?.evaluatorName}`
                         : ''}
                     </Text>
                   </View>
