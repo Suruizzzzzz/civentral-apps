@@ -37,6 +37,7 @@ function computeApplyCTAState(
   dashboardData: CitizenDashboardData | null,
   isLoading: boolean,
   isLoadingDashboard: boolean,
+  dashboardError: boolean = false,
 ): ApplyCTAState {
   if (isLoading || isLoadingDashboard) {
     return {
@@ -44,6 +45,15 @@ function computeApplyCTAState(
       buttonText: "Checking Eligibility...",
       noticeText: null,
       isLoadingState: true,
+    };
+  }
+
+  if (dashboardError) {
+    return {
+      canApply: false,
+      buttonText: "Unable to Check Eligibility",
+      noticeText:
+        "Could not verify existing applications. Please check your connection and pull down to refresh.",
     };
   }
 
@@ -192,6 +202,7 @@ export function ScholarshipDetailsScreen() {
     useState<CitizenDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+  const [dashboardError, setDashboardError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -219,6 +230,7 @@ export function ScholarshipDetailsScreen() {
     }
 
     try {
+      setDashboardError(false);
       const dash = await fetchCitizenDashboard();
       setDashboardData(dash);
     } catch (dashErr) {
@@ -226,6 +238,7 @@ export function ScholarshipDetailsScreen() {
         "[ScholarshipDetailsScreen] dashboard fetch error:",
         dashErr,
       );
+      setDashboardError(true);
     } finally {
       setIsLoadingDashboard(false);
       setRefreshing(false);
@@ -247,6 +260,7 @@ export function ScholarshipDetailsScreen() {
     dashboardData,
     isLoading,
     isLoadingDashboard,
+    dashboardError,
   );
 
   const handleApplyPress = () => {

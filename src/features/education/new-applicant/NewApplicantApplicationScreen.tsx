@@ -23,6 +23,7 @@ import {
   SubmitApplicationResult,
   validateCitizenDocument,
 } from './api/ScholarshipProgramApi';
+import { fetchCitizenDashboard } from '../dashboard/api/scholarshipDashboardApi';
 import { COMMON_COURSE_SUGGESTIONS, CourseSuggestion } from './constants/courseSuggestions';
 import { getAvailableYearLevels } from './constants/yearLevelOptions';
 import { styles } from './styles/NewApplicantApplication.styles';
@@ -181,6 +182,73 @@ export function NewApplicantApplicationScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Proactive Active Application Guard on Screen Entry
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function checkActiveApplication() {
+      try {
+        const dash = await fetchCitizenDashboard();
+        if (isCancelled || !dash) return;
+
+        const isScholarActive =
+          dash.state === 'ACTIVE_SCHOLAR' ||
+          dash.state === 'ACTIVE_GRANT' ||
+          dash.state === 'SCHOLAR_WITHOUT_GRANT' ||
+          (dash.scholar && (dash.scholar.scholar_status === 'Active' || dash.scholar.scholar_status === 'Enrolled'));
+
+        if (isScholarActive) {
+          Alert.alert(
+            'Already an Active Scholar',
+            'Citizens with an active scholarship are not eligible for new applications.',
+            [
+              {
+                text: 'Go to Dashboard',
+                onPress: () => router.replace('/education/dashboard' as any),
+              },
+            ]
+          );
+          return;
+        }
+
+        const existingApp = dash.application;
+        const isAppInProgressState = dash.state === 'APPLICATION_IN_PROGRESS';
+
+        if (existingApp || isAppInProgressState) {
+          const appStatus = existingApp?.application_status || 'In Progress';
+          const isTerminalStatus = [
+            'Rejected',
+            'Disapproved',
+            'Withdrawn',
+            'Cancelled',
+          ].includes(appStatus);
+
+          if (!isTerminalStatus) {
+            const appliedProgramName = dash.scholarship?.program_name;
+            const msg = appliedProgramName
+              ? `You have an active application (${dash.application?.application_code || appStatus}) under "${appliedProgramName}". Citizens may only have one active application.`
+              : `You already have an active application with status "${appStatus}". Citizens may only have one active application.`;
+
+            Alert.alert('Active Application Exists', msg, [
+              {
+                text: 'Go to Dashboard',
+                onPress: () => router.replace('/education/dashboard' as any),
+              },
+            ]);
+          }
+        }
+      } catch (err) {
+        console.warn('[NewApplicantApplicationScreen] Active application check failed:', err);
+      }
+    }
+
+    checkActiveApplication();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [router]);
 
   // Pre-fill Residential Address from Citizen Profile (convenience default)
   useEffect(() => {
@@ -687,7 +755,25 @@ export function NewApplicantApplicationScreen() {
       console.log('[Submit] 8. setSubmitResult executed');
     } catch (err: any) {
       console.error('[Submit] CATCH entered with error:', err);
-      setSubmitError(err?.message || 'Failed to submit scholarship application.');
+      const errMsg = err?.message || 'Failed to submit scholarship application.';
+      if (
+        errMsg.includes('ACTIVE_APPLICATION_EXISTS') ||
+        errMsg.includes('already have an active application') ||
+        errMsg.includes('Citizens may only have one active application')
+      ) {
+        Alert.alert(
+          'Active Application Exists',
+          'You already have an active scholarship application. Citizens may only have one active application at a time.',
+          [
+            {
+              text: 'Go to Dashboard',
+              onPress: () => router.replace('/education/dashboard' as any),
+            },
+          ]
+        );
+      } else {
+        setSubmitError(errMsg);
+      }
     } finally {
       console.log('[Submit] FINALLY entered');
       setIsSubmitting(false);
