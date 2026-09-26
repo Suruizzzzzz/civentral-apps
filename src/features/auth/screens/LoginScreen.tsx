@@ -25,7 +25,6 @@ export function LoginScreen() {
   const [email, setEmail] = useState(params.identifier || params.email || params.phone || '');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -161,18 +160,8 @@ export function LoginScreen() {
             {/* Error Text */}
             {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-            {/* Remember Me & Forgot Password Row */}
+            {/* Forgot Password Row */}
             <View style={styles.optionsRow}>
-              <TouchableOpacity
-                style={styles.rememberMeContainer}
-                onPress={() => setRememberMe((prev) => !prev)}
-                activeOpacity={0.8}>
-                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && <View style={styles.checkboxInner} />}
-                </View>
-                <Text style={styles.rememberMeText}>Remember me</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7}>
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>

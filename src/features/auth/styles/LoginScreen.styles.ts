@@ -94,38 +94,9 @@ export const styles = StyleSheet.create({
   },
   optionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginTop: 18,
-  },
-  rememberMeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#94A3B8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  checkboxChecked: {
-    borderColor: '#165B7E',
-    backgroundColor: '#165B7E',
-  },
-  checkboxInner: {
-    width: 8,
-    height: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-  },
-  rememberMeText: {
-    fontSize: 13,
-    color: '#334155',
-    fontWeight: '500',
   },
   forgotPasswordText: {
     fontSize: 13,

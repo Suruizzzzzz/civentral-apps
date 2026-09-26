@@ -583,7 +583,17 @@ export function NewApplicantApplicationScreen() {
 
     const queryWords = query.split(/\s+/).filter((w) => w.length > 0);
 
+    const isShsYear = yearLevel === 'Grade 11' || yearLevel === 'Grade 12';
+    const isCollegeYear = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'].includes(yearLevel);
+
     const matches = COMMON_COURSE_SUGGESTIONS.filter((course) => {
+      // Cascade filtering by year level
+      if (isShsYear) {
+        if (course.category !== 'Senior High School') return false;
+      } else if (isCollegeYear) {
+        if (course.category === 'Senior High School') return false;
+      }
+
       const nameLower = course.name.toLowerCase();
       const codeLower = course.code ? course.code.toLowerCase() : '';
 
@@ -623,7 +633,7 @@ export function NewApplicantApplicationScreen() {
     });
 
     return matches.slice(0, 8);
-  }, [courseProgram]);
+  }, [courseProgram, yearLevel]);
 
   const availableYearLevels = useMemo(() => getAvailableYearLevels(program), [program]);
 
