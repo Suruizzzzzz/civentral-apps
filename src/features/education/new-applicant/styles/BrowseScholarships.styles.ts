@@ -35,7 +35,7 @@ export const styles = StyleSheet.create({
   },
 
   header: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
 
   headerTitle: {
@@ -240,7 +240,7 @@ export const styles = StyleSheet.create({
   filterPillsContainer: {
     gap: 8,
     paddingHorizontal: 2,
-    marginBottom: 20,
+    marginBottom: 12,
     alignItems: "center",
   },
 

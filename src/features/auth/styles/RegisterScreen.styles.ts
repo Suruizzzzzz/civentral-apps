@@ -140,7 +140,7 @@ export const styles = StyleSheet.create({
   checkbox: {
     width: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: 4,
     borderWidth: 1.5,
     borderColor: '#CBD5E1',
     alignItems: 'center',

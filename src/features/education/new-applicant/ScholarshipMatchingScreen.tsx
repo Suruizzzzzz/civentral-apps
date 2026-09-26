@@ -123,6 +123,59 @@ export function ScholarshipMatchingScreen() {
     }
   };
 
+  const getQuestionSortRank = (q: MatchingQuestion): number => {
+    const key = (q.question_key || '').toLowerCase();
+    const text = (q.question_text || '').toLowerCase();
+
+    // 1. Residency & Identity
+    if (
+      key.includes('residen') ||
+      key.includes('citizen') ||
+      key.includes('voter') ||
+      key.includes('barangay') ||
+      text.includes('resident') ||
+      text.includes('citizen') ||
+      text.includes('reside')
+    ) {
+      return 100;
+    }
+
+    // 2. Academic Level & Standing & GWA
+    if (
+      key.includes('year_level') ||
+      key.includes('level') ||
+      key.includes('school') ||
+      key.includes('academic') ||
+      key.includes('grade') ||
+      key.includes('gwa') ||
+      key.includes('enroll') ||
+      text.includes('school') ||
+      text.includes('year level') ||
+      text.includes('gwa') ||
+      text.includes('grade') ||
+      text.includes('enroll')
+    ) {
+      return 200;
+    }
+
+    // 3. Household Income & Socioeconomic & Sector
+    if (
+      key.includes('income') ||
+      key.includes('financial') ||
+      key.includes('family') ||
+      key.includes('indigent') ||
+      key.includes('4ps') ||
+      text.includes('income') ||
+      text.includes('financial') ||
+      text.includes('salary')
+    ) {
+      return 300;
+    }
+
+    // 4. Other specialized qualifications (Leadership, Sports, Employment, Training)
+    return 400;
+  };
+
   const isQuestionVisible = (q: MatchingQuestion): boolean => {
     for (const [parentKey, childKeys] of Object.entries(PS_CONDITIONAL_RULES)) {
       if (childKeys.includes(q.question_key)) {
@@ -136,7 +189,15 @@ export function ScholarshipMatchingScreen() {
   };
 
   const visibleQuestions = useMemo(() => {
-    return questions.filter(isQuestionVisible);
+    return questions
+      .filter(isQuestionVisible)
+      .slice()
+      .sort((a, b) => {
+        const rankA = getQuestionSortRank(a);
+        const rankB = getQuestionSortRank(b);
+        if (rankA !== rankB) return rankA - rankB;
+        return (a.resolved_display_order || a.display_order || 0) - (b.resolved_display_order || b.display_order || 0);
+      });
   }, [questions, answers]);
 
   const handleOptionSelect = (questionKey: string, optionValue: string) => {

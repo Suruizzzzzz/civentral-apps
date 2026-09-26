@@ -965,6 +965,7 @@ export function NewApplicantApplicationScreen() {
                 }}
                 placeholder="Search your school..."
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                autoCapitalize="words"
                 editable={!isSubmitting}
               />
 
@@ -1075,6 +1076,7 @@ export function NewApplicantApplicationScreen() {
                 }}
                 placeholder="Search course or program..."
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                autoCapitalize="words"
                 editable={!isSubmitting}
               />
 
@@ -1323,6 +1325,7 @@ export function NewApplicantApplicationScreen() {
                 onChangeText={setResidentialAddress}
                 placeholder="Enter your residential address..."
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                autoCapitalize="words"
                 multiline={true}
                 editable={!isSubmitting}
               />
@@ -1336,6 +1339,9 @@ export function NewApplicantApplicationScreen() {
           <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
             <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
               2. Required Documents Upload
+            </Text>
+            <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginBottom: 12 }}>
+              Maximum allowed file size: 5 MB per document (PDF, PNG, JPG accepted).
             </Text>
 
             {requiredDocsList.map((doc) => {
@@ -1422,7 +1428,7 @@ export function NewApplicantApplicationScreen() {
                         ? selectedFile.name
                         : (doc.document_code?.toUpperCase().includes('VIDEO') || doc.document_name?.toUpperCase().includes('VIDEO'))
                           ? `Select ${doc.document_name} (MP4, MOV, WEBM up to 20MB)`
-                          : `Select ${doc.document_name} (PDF, PNG, JPG up to 10MB)`}
+                          : `Select ${doc.document_name} (PDF, PNG, JPG up to 5MB)`}
                     </Text>
                   </TouchableOpacity>
 

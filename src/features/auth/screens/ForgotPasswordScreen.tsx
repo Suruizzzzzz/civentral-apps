@@ -293,12 +293,7 @@ export function ForgotPasswordScreen() {
 
           <Text style={styles.navTitle}>{getStepTitle()}</Text>
 
-          <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={() => router.replace('/(auth)/login' as any)}
-            activeOpacity={0.75}>
-            <Text style={styles.closeBtnText}>Cancel</Text>
-          </TouchableOpacity>
+          <View style={{ width: 42 }} />
         </View>
 
         {/* Step Progress Bar */}

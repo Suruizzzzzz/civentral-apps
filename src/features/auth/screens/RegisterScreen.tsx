@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -44,6 +45,8 @@ export function RegisterScreen() {
   const [phoneDigits, setPhoneDigits] = useState(parseRawPhone(initialPhone));
   const [firstName, setFirstName] = useState('');
   const [suffix, setSuffix] = useState('');
+  const [showSuffixModal, setShowSuffixModal] = useState(false);
+  const SUFFIX_OPTIONS = ['None', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V'];
   const [middleName, setMiddleName] = useState('');
   const [noMiddleName, setNoMiddleName] = useState(false);
   const [lastName, setLastName] = useState('');
@@ -317,22 +320,29 @@ export function RegisterScreen() {
                     setFirstName(text);
                     if (errorMessage) setErrorMessage(null);
                   }}
+                  autoCapitalize="words"
                   maxLength={50}
                 />
               </View>
 
               <View style={styles.suffixContainer}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Suffix (e.g. Jr.)"
-                  placeholderTextColor="#94A3B8"
-                  value={suffix}
-                  onChangeText={(text) => {
-                    setSuffix(text);
-                    if (errorMessage) setErrorMessage(null);
-                  }}
-                  maxLength={10}
-                />
+                <TouchableOpacity
+                  style={[
+                    styles.textInput,
+                    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+                  ]}
+                  onPress={() => setShowSuffixModal(true)}
+                  activeOpacity={0.8}>
+                  <Text style={{ fontSize: 14, color: suffix ? '#0F172A' : '#94A3B8' }}>
+                    {suffix || 'Suffix'}
+                  </Text>
+                  <IconSymbol
+                    name="chevron.right"
+                    size={14}
+                    color="#94A3B8"
+                    style={{ transform: [{ rotate: '90deg' }] }}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -347,6 +357,7 @@ export function RegisterScreen() {
                 if (errorMessage) setErrorMessage(null);
               }}
               editable={!noMiddleName}
+              autoCapitalize="words"
               maxLength={50}
             />
 
@@ -360,7 +371,7 @@ export function RegisterScreen() {
               }}
               activeOpacity={0.8}>
               <View style={[styles.checkbox, noMiddleName && styles.checkboxChecked]}>
-                {noMiddleName && <View style={styles.checkboxInner} />}
+                {noMiddleName && <IconSymbol name="checkmark" size={12} color="#FFFFFF" />}
               </View>
               <Text style={styles.checkboxLabel}>I have no middle name</Text>
             </TouchableOpacity>
@@ -375,6 +386,7 @@ export function RegisterScreen() {
                 setLastName(text);
                 if (errorMessage) setErrorMessage(null);
               }}
+              autoCapitalize="words"
               maxLength={50}
             />
 
@@ -554,6 +566,46 @@ export function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Suffix Selection Modal */}
+      <Modal
+        visible={showSuffixModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSuffixModal(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 }}
+          activeOpacity={1}
+          onPress={() => setShowSuffixModal(false)}
+        >
+          <View
+            style={{ width: '100%', maxWidth: 320, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}
+            onStartShouldSetResponder={() => true}
+          >
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 12 }}>
+              Select Name Suffix
+            </Text>
+            {SUFFIX_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                onPress={() => {
+                  setSuffix(opt === 'None' ? '' : opt);
+                  setShowSuffixModal(false);
+                }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: (suffix === opt || (!suffix && opt === 'None')) ? '700' : '400', color: (suffix === opt || (!suffix && opt === 'None')) ? '#165B7E' : '#334155' }}>
+                  {opt}
+                </Text>
+                {(suffix === opt || (!suffix && opt === 'None')) && (
+                  <IconSymbol name="checkmark" size={16} color="#165B7E" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }

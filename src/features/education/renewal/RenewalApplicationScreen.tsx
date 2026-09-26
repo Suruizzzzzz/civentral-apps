@@ -1196,7 +1196,7 @@ export function RenewalApplicationScreen() {
                   Upload Documents
                 </Text>
                 <Text style={[styles.sectionDescription, isDarkMode && { color: '#94A3B8' }]}>
-                  Attach your official PDF, JPG, or PNG files (up to 10MB each). Files will be automatically checked for document validity.
+                  Maximum allowed file size: 5 MB per document (PDF, PNG, JPG accepted). Files will be automatically checked for document validity.
                 </Text>
 
                 {/* 1. PROOF OF ENROLLMENT (COR) */}
