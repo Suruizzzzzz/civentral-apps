@@ -1,6 +1,4 @@
-import type * as DocumentPicker from "expo-document-picker";
-import { File as ExpoFile } from "expo-file-system";
-import { fetch as expoFetch } from "expo/fetch";
+﻿import type * as DocumentPicker from "expo-document-picker";
 import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
 import { EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
 import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
@@ -215,7 +213,7 @@ export async function uploadGrantDocument(
     type: mimeType || (isPdf ? 'application/pdf' : (isPng ? 'image/png' : 'image/jpeg')),
   } as any);
 
-  const res = await expoFetch(
+  const res = await fetch(
     `${EDUCATION_API_BASE_URL}/grants/applications/${applicationId}/documents`,
     {
       method: "POST",
@@ -317,7 +315,7 @@ export async function validateCitizenGrantDocument(
       type: fileAsset.mimeType || (isPdf ? 'application/pdf' : (isPng ? 'image/png' : 'image/jpeg')),
     } as any);
 
-    const res = await expoFetch(postUrl, {
+    const res = await fetch(postUrl, {
       method: "POST",
       headers,
       body: formData,
