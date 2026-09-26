@@ -21,6 +21,64 @@ export const PS_CONDITIONAL_RULES: Record<string, string[]> = {
   eligible_training_enrollment: ['training_program', 'training_institution', 'training_course_type'],
 };
 
+export const CRITERIA_PREDEFINED_OPTIONS: Record<string, { option_value: string; option_label: string }[]> = {
+  year_level: [
+    { option_value: 'Grade 11', option_label: 'Grade 11 (SHS)' },
+    { option_value: 'Grade 12', option_label: 'Grade 12 (SHS)' },
+    { option_value: '1st Year', option_label: '1st Year College' },
+    { option_value: '2nd Year', option_label: '2nd Year College' },
+    { option_value: '3rd Year', option_label: '3rd Year College' },
+    { option_value: '4th Year', option_label: '4th Year College' },
+    { option_value: '5th Year', option_label: '5th Year College' },
+  ],
+  school_classification: [
+    { option_value: 'Public', option_label: 'Public School / State University' },
+    { option_value: 'Private', option_label: 'Private Institution' },
+    { option_value: 'LGU / LUC', option_label: 'Local College / University' },
+  ],
+  household_income: [
+    { option_value: 'Below 10,000', option_label: 'Below ₱10,000 / month' },
+    { option_value: '10,000 - 20,000', option_label: '₱10,000 - ₱20,000 / month' },
+    { option_value: '20,001 - 40,000', option_label: '₱20,001 - ₱40,000 / month' },
+    { option_value: '40,001 - 60,000', option_label: '₱40,001 - ₱60,000 / month' },
+    { option_value: 'Above 60,000', option_label: 'Above ₱60,000 / month' },
+  ],
+  family_situation: [
+    { option_value: 'Both Parents Living Together', option_label: 'Both Parents Living Together' },
+    { option_value: 'Solo Parent / Single Parent', option_label: 'Solo / Single Parent' },
+    { option_value: 'Orphan / Deceased Parents', option_label: 'Orphan / Deceased Parents' },
+    { option_value: 'OFW Dependent', option_label: 'OFW Dependent' },
+    { option_value: 'Indigent / 4Ps Beneficiary', option_label: 'Indigent / 4Ps Beneficiary' },
+  ],
+  achievement_area: [
+    { option_value: 'Academic Excellence', option_label: 'Academic Excellence' },
+    { option_value: 'Athletics & Sports', option_label: 'Athletics & Sports' },
+    { option_value: 'Arts, Culture & Music', option_label: 'Arts, Culture & Music' },
+    { option_value: 'Leadership & Community', option_label: 'Leadership & Community Service' },
+    { option_value: 'Science, Tech & Innovation', option_label: 'Science, Tech & Innovation' },
+  ],
+  employment_position: [
+    { option_value: 'Permanent / Regular', option_label: 'Permanent / Regular Employee' },
+    { option_value: 'Casual / Contract of Service', option_label: 'Casual / Contract of Service (COS)' },
+    { option_value: 'Job Order', option_label: 'Job Order (JO)' },
+    { option_value: 'Co-terminus / Appointed', option_label: 'Co-terminus / Appointed' },
+    { option_value: 'Barangay Worker', option_label: 'Barangay Worker / Official' },
+  ],
+  salary_grade: [
+    { option_value: 'SG 1 - 5', option_label: 'Salary Grade 1 - 5' },
+    { option_value: 'SG 6 - 10', option_label: 'Salary Grade 6 - 10' },
+    { option_value: 'SG 11 - 15', option_label: 'Salary Grade 11 - 15' },
+    { option_value: 'SG 16 - 20', option_label: 'Salary Grade 16 - 20' },
+    { option_value: 'SG 21 and above', option_label: 'Salary Grade 21 and above' },
+  ],
+  training_course_type: [
+    { option_value: 'National Certificate (NC I / II)', option_label: 'National Certificate (NC I / II)' },
+    { option_value: 'National Certificate (NC III / IV)', option_label: 'National Certificate (NC III / IV)' },
+    { option_value: 'Diploma Course', option_label: 'Diploma Course' },
+    { option_value: 'Short-term Vocational Skill', option_label: 'Short-term Vocational Skill' },
+  ],
+};
+
 export function ScholarshipMatchingScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
@@ -274,12 +332,20 @@ export function ScholarshipMatchingScreen() {
 
                     {(() => {
                       const qType = (q.question_type || '').toLowerCase();
+                      const keyLower = (q.question_key || '').toLowerCase();
+                      const codeLower = ((q as any).criterion_code || '').toLowerCase();
 
-                      // 1. SingleSelect / MultiSelect with options array
-                      if (Array.isArray(q.options) && q.options.length > 0) {
+                      const resolvedOptions =
+                        Array.isArray(q.options) && q.options.length > 0
+                          ? q.options
+                          : CRITERIA_PREDEFINED_OPTIONS[keyLower] ||
+                            CRITERIA_PREDEFINED_OPTIONS[codeLower];
+
+                      // 1. SingleSelect / MultiSelect with options array or predefined criteria options
+                      if (Array.isArray(resolvedOptions) && resolvedOptions.length > 0) {
                         return (
                           <View style={styles.optionsGrid}>
-                            {q.options.map((opt) => {
+                            {resolvedOptions.map((opt: any) => {
                               const isSelected = answers[q.question_key] === opt.option_value;
                               return (
                                 <TouchableOpacity

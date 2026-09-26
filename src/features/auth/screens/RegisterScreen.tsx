@@ -25,8 +25,23 @@ export function RegisterScreen() {
   const initialEmail = params.email || (params.identifier?.includes('@') ? params.identifier : '');
   const initialPhone = params.phone || (!params.identifier?.includes('@') ? params.identifier : '');
 
+  const parseRawPhone = (val?: string): string => {
+    if (!val) return '';
+    let d = val.replace(/[^0-9]/g, '');
+    if (d.startsWith('63')) d = d.slice(2);
+    if (d.startsWith('0')) d = d.replace(/^0+/, '');
+    return d.slice(0, 10);
+  };
+
+  const formatPhoneNumber = (digits: string): string => {
+    if (!digits) return '';
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)}`;
+  };
+
   const [email, setEmail] = useState(initialEmail || '');
-  const [mobileNumber, setMobileNumber] = useState(initialPhone || '');
+  const [phoneDigits, setPhoneDigits] = useState(parseRawPhone(initialPhone));
   const [firstName, setFirstName] = useState('');
   const [suffix, setSuffix] = useState('');
   const [middleName, setMiddleName] = useState('');
@@ -38,6 +53,15 @@ export function RegisterScreen() {
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handlePhoneChange = (text: string) => {
+    let cleaned = text.replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('63')) cleaned = cleaned.slice(2);
+    if (cleaned.startsWith('0')) cleaned = cleaned.replace(/^0+/, '');
+    cleaned = cleaned.slice(0, 10);
+    setPhoneDigits(cleaned);
+    if (errorMessage) setErrorMessage(null);
+  };
 
   // REAL-TIME PASSWORD STRENGTH EVALUATION
   const hasMinLength = password.length >= 8;
@@ -69,7 +93,7 @@ export function RegisterScreen() {
     setErrorMessage(null);
 
     const cleanEmail = email.trim();
-    const cleanPhone = mobileNumber.trim().replace(/[^0-9]/g, '');
+    const cleanPhoneDigits = phoneDigits.trim();
     const cleanFirstName = firstName.trim();
     const cleanLastName = lastName.trim();
     const cleanMiddleName = middleName.trim();
@@ -88,22 +112,20 @@ export function RegisterScreen() {
       }
     }
 
-    // 2. Mobile Phone Validation (Numeric, 11 digits, starts with 09)
+    // 2. Mobile Phone Validation (Numeric, 10 digits after +63, starts with 9)
     const isPhoneRequired = params.mode === 'phone' || (!cleanEmail && !params.email);
-    if (isPhoneRequired && !cleanPhone) {
+    if (isPhoneRequired && !cleanPhoneDigits) {
       setErrorMessage('Mobile phone number is required.');
       return;
     }
-    if (cleanPhone) {
-      if (cleanPhone.length !== 11) {
-        setErrorMessage('Mobile phone number must be exactly 11 digits (e.g. 09171234567).');
-        return;
-      }
-      if (!cleanPhone.startsWith('09')) {
-        setErrorMessage('Mobile phone number must start with 09 (e.g. 09171234567).');
+    if (cleanPhoneDigits) {
+      if (cleanPhoneDigits.length !== 10 || !cleanPhoneDigits.startsWith('9')) {
+        setErrorMessage('Mobile phone number must be 10 digits starting with 9 (e.g. 917 123 4567).');
         return;
       }
     }
+
+    const normalizedPhone = cleanPhoneDigits ? `+63${cleanPhoneDigits}` : '';
 
     // 3. First Name (Required, min 2 chars)
     if (!cleanFirstName) {
@@ -162,8 +184,11 @@ export function RegisterScreen() {
     }
 
     // Duplicate Mobile Number Pre-Check
-    if (mobileNumber.trim()) {
-      const phoneCheck = await AuthService.checkAccount(mobileNumber.trim());
+    if (normalizedPhone) {
+      let phoneCheck = await AuthService.checkAccount(normalizedPhone);
+      if (!phoneCheck.exists && cleanPhoneDigits) {
+        phoneCheck = await AuthService.checkAccount(`0${cleanPhoneDigits}`);
+      }
       if (phoneCheck.exists) {
         setErrorMessage('This mobile number is already associated with another account. Please use a different number or sign in.');
         setIsLoading(false);
@@ -172,12 +197,12 @@ export function RegisterScreen() {
     }
 
     const res = await AuthService.register({
-      email: email.trim(),
-      mobileNumber: mobileNumber.trim(),
-      firstName: firstName.trim(),
-      middleName: middleName.trim(),
+      email: cleanEmail,
+      mobileNumber: normalizedPhone,
+      firstName: cleanFirstName,
+      middleName: cleanMiddleName,
       hasNoMiddleName: noMiddleName,
-      lastName: lastName.trim(),
+      lastName: cleanLastName,
       suffix: suffix.trim(),
       password,
     });
@@ -188,21 +213,21 @@ export function RegisterScreen() {
         ? true
         : params.mode === 'email'
         ? false
-        : (!params.email && !params.identifier?.includes('@') && (!!params.phone || !email.trim()));
+        : (!params.email && !params.identifier?.includes('@') && (!!params.phone || !cleanEmail));
 
       const targetRoute = isPhoneRegistration ? '/(auth)/verify-phone' : '/(auth)/verify';
       const modeParam = isPhoneRegistration ? 'phone' : 'email';
 
       const primaryId = isPhoneRegistration
-        ? (mobileNumber.trim() || params.phone || (res as any).mobile_number || res.email || email.trim())
-        : (email.trim() || res.email || mobileNumber.trim());
+        ? (normalizedPhone || params.phone || (res as any).mobile_number || res.email || cleanEmail)
+        : (cleanEmail || res.email || normalizedPhone);
 
       router.push({
         pathname: targetRoute as any,
         params: {
           mode: modeParam,
-          email: email.trim() || res.email,
-          phone: mobileNumber.trim() || params.phone,
+          email: cleanEmail || res.email,
+          phone: normalizedPhone || params.phone,
           identifier: primaryId,
           citizen_user_id: res.citizen_user_id ? String(res.citizen_user_id) : '',
         },
@@ -261,22 +286,24 @@ export function RegisterScreen() {
 
             {/* Field 1.5: Phone Number */}
             <Text style={[styles.inputLabel, { marginTop: 14 }]}>
-              Mobile Phone Number (11 Digits, Local Format)
+              Mobile Phone Number
             </Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="09XXXXXXXXX (11 digits)"
-              placeholderTextColor="#94A3B8"
-              value={mobileNumber}
-              onChangeText={(text) => {
-                const cleaned = text.replace(/[^0-9]/g, '').slice(0, 11);
-                setMobileNumber(cleaned);
-                if (errorMessage) setErrorMessage(null);
-              }}
-              keyboardType="numeric"
-              maxLength={11}
-              autoCapitalize="none"
-            />
+            <View style={styles.phoneInputContainer}>
+              <View style={styles.phonePrefixBox}>
+                <Text style={{ fontSize: 16 }}>🇵🇭</Text>
+                <Text style={styles.phonePrefixText}>+63</Text>
+              </View>
+              <TextInput
+                style={styles.phoneTextInput}
+                placeholder="9XX XXX XXXX"
+                placeholderTextColor="#94A3B8"
+                value={formatPhoneNumber(phoneDigits)}
+                onChangeText={handlePhoneChange}
+                keyboardType="phone-pad"
+                maxLength={12}
+                autoCapitalize="none"
+              />
+            </View>
 
             {/* Field 1 & 2: First Name + Suffix (Input) */}
             <View style={styles.rowFields}>

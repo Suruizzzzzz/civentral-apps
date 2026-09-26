@@ -50,6 +50,7 @@ interface ProgressStage {
   date?: string | null;
   state: 'completed' | 'current' | 'upcoming';
   isActionable?: boolean;
+  evaluatorName?: string | null;
 }
 
 interface HistoryItem {
@@ -293,6 +294,10 @@ export function ScholarshipDashboardScreen() {
       !stage2Completed &&
       (Boolean(reviewItem?.is_current) || application?.application_status === 'Under Review');
     const stage2Date = formatDate(reviewItem?.date);
+    const reviewEvaluatorName =
+      (reviewItem as any)?.evaluator_name ||
+      (reviewItem as any)?.coordinator_name ||
+      null;
 
     // Stage 3: SSC Evaluation
     const sscItem = processTimeline.find(
@@ -314,6 +319,11 @@ export function ScholarshipDashboardScreen() {
           application?.application_status || ''
         ));
     const stage3Date = formatDate(sscItem?.date);
+    const sscEvaluatorName =
+      (sscItem as any)?.evaluator_name ||
+      (sscItem as any)?.coordinator_name ||
+      application?.decided_by?.full_name ||
+      null;
 
     // Stage 4: Scholarship Approved
     const approvedItem = processTimeline.find(
@@ -406,6 +416,7 @@ export function ScholarshipDashboardScreen() {
         description: 'Secretariat verification of applicant credentials and eligibility.',
         date: stage2Date,
         state: stage2Completed ? 'completed' : stage2Current ? 'current' : 'upcoming',
+        evaluatorName: reviewEvaluatorName,
       },
       {
         id: 3,
@@ -414,6 +425,7 @@ export function ScholarshipDashboardScreen() {
         description: 'Scholarship Selection Committee review and continuation evaluation.',
         date: stage3Date,
         state: stage3Completed ? 'completed' : stage3Current ? 'current' : 'upcoming',
+        evaluatorName: sscEvaluatorName,
       },
       {
         id: 4,
@@ -1346,6 +1358,9 @@ export function ScholarshipDashboardScreen() {
                       {stages[currentStageIndex]?.state === 'completed'
                         ? ' • Completed'
                         : ' • In Progress'}
+                      {stages[currentStageIndex]?.evaluatorName
+                        ? ` • Evaluated by: ${stages[currentStageIndex]?.evaluatorName}`
+                        : ''}
                     </Text>
                   </View>
                 </>
@@ -2231,6 +2246,21 @@ export function ScholarshipDashboardScreen() {
                             >
                               {stg.date}
                             </Text>
+                          ) : null}
+
+                          {stg.evaluatorName ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
+                              <IconSymbol name="person.crop.circle" size={13} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: '600',
+                                  color: isDarkMode ? '#C084FC' : '#7E22CE',
+                                }}
+                              >
+                                Evaluated by: {stg.evaluatorName}
+                              </Text>
+                            </View>
                           ) : null}
 
                           <Text

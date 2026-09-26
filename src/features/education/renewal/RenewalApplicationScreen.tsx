@@ -834,6 +834,33 @@ export function RenewalApplicationScreen() {
             <Text style={styles.submitBtnText}>Return to Scholarship Renewal</Text>
           </TouchableOpacity>
         </View>
+      ) : overview?.state === 'NOT_A_SCHOLAR' ? (
+        /* NON-SCHOLAR EMPTY STATE GUARD */
+        <View style={[styles.card, { alignItems: 'center', paddingVertical: 36, paddingHorizontal: 20 }, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+          <IconSymbol name="info.circle.fill" size={52} color="#64748B" />
+          <Text style={[styles.programTitle, { fontSize: 20, marginTop: 16, textAlign: 'center' }, isDarkMode && { color: '#F8FAFC' }]}>
+            Scholarship Renewal Restricted
+          </Text>
+          <Text style={[styles.sectionDescription, { textAlign: 'center', marginTop: 8, paddingHorizontal: 8, lineHeight: 20 }, isDarkMode && { color: '#94A3B8' }]}>
+            Renewal is exclusively available to verified scholars enrolled in active municipal education programs. If you believe this is an error, please coordinate with your scholarship administrator or explore new scholarship opportunities.
+          </Text>
+          <View style={{ width: '100%', gap: 10, marginTop: 24 }}>
+            <TouchableOpacity
+              style={[styles.submitBtn, { backgroundColor: '#15803D' }]}
+              onPress={() => router.replace('/(tabs)/education' as any)}
+            >
+              <Text style={styles.submitBtnText}>Return to Education Hub</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.submitBtn, { backgroundColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
+              onPress={() => router.replace('/education/renewal' as any)}
+            >
+              <Text style={[styles.submitBtnText, { color: isDarkMode ? '#F8FAFC' : '#1E293B' }]}>
+                Back to Renewal Overview
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       ) : (
         <>
           {/* 1. COMPACT RENEWAL IDENTITY CARD */}

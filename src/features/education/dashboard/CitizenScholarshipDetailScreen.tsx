@@ -269,6 +269,7 @@ export interface ScholarshipStatusStage {
   remarks: string | null;
   subtitle: string | null;
   isTerminal: boolean;
+  evaluatorName?: string | null;
 }
 
 export function CitizenScholarshipDetailScreen() {
@@ -533,6 +534,10 @@ export function CitizenScholarshipDetailScreen() {
     const stage2Date = formatDate(
       reviewItem?.date || (stage2Completed ? application?.submitted_at : null)
     );
+    const reviewEvaluatorName =
+      (reviewItem as any)?.evaluator_name ||
+      (reviewItem as any)?.coordinator_name ||
+      null;
 
     // 3. SSC Evaluation stage
     const sscItem = processTimeline.find(
@@ -555,6 +560,11 @@ export function CitizenScholarshipDetailScreen() {
           application?.application_status || ''
         ));
     const stage3Date = formatDate(sscItem?.date);
+    const sscEvaluatorName =
+      (sscItem as any)?.evaluator_name ||
+      (sscItem as any)?.coordinator_name ||
+      application?.decided_by?.full_name ||
+      null;
 
     // 4. Scholarship Approved stage
     const approvedItem = processTimeline.find(
@@ -667,6 +677,7 @@ export function CitizenScholarshipDetailScreen() {
           remarks: isStage2Terminal ? disapprovalRemarks : null,
           subtitle: isStage2Terminal ? 'Application process ended at this stage' : null,
           isTerminal: isStage2Terminal,
+          evaluatorName: reviewEvaluatorName,
         },
         {
           id: 3,
@@ -684,6 +695,7 @@ export function CitizenScholarshipDetailScreen() {
             ? 'Process ended prior to committee evaluation'
             : 'Application evaluated and disapproved. Process ended.',
           isTerminal: !isStage2Terminal,
+          evaluatorName: isStage2Terminal ? null : sscEvaluatorName,
         },
         {
           id: 4,
@@ -753,6 +765,7 @@ export function CitizenScholarshipDetailScreen() {
         remarks: null,
         subtitle: null,
         isTerminal: false,
+        evaluatorName: reviewEvaluatorName,
       },
       {
         id: 3,
@@ -768,6 +781,7 @@ export function CitizenScholarshipDetailScreen() {
         remarks: null,
         subtitle: null,
         isTerminal: false,
+        evaluatorName: sscEvaluatorName,
       },
       {
         id: 4,
@@ -1853,6 +1867,22 @@ export function CitizenScholarshipDetailScreen() {
                                     }}
                                   >
                                     Completed • {stg.date}
+                                  </Text>
+                                </View>
+                              ) : null}
+
+                              {/* Evaluated by metadata tag */}
+                              {stg.evaluatorName ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                                  <IconSymbol name="person.crop.circle" size={12} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
+                                  <Text
+                                    style={{
+                                      fontSize: 11.5,
+                                      fontWeight: '600',
+                                      color: isDarkMode ? '#C084FC' : '#7E22CE',
+                                    }}
+                                  >
+                                    Evaluated by: {stg.evaluatorName}
                                   </Text>
                                 </View>
                               ) : null}

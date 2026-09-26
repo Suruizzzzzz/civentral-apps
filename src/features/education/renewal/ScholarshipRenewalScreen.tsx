@@ -349,7 +349,9 @@ export function ScholarshipRenewalScreen() {
                 <Text
                   style={[styles.cardSub, isDarkMode && { color: "#CBD5E1" }]}
                 >
-                  Review your scholarship renewal status and submit the required documents for the next academic period.
+                  {data.state === 'NOT_A_SCHOLAR'
+                    ? "Scholarship renewal is exclusively available to verified scholars. New applicants can explore available scholarships in the Education Hub."
+                    : "Review your scholarship renewal status and submit the required documents for the next academic period."}
                 </Text>
               </View>
             </View>
@@ -406,17 +408,36 @@ export function ScholarshipRenewalScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.primaryActionBtn,
-                  isDarkMode && { backgroundColor: "#15803D" },
-                ]}
-                onPress={() => router.push("/education/renewal/application" as any)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.primaryActionBtnText}>View Renewal Application</Text>
-                <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
-              </TouchableOpacity>
+              {data.state === 'NOT_A_SCHOLAR' ? (
+                <View
+                  style={[
+                    styles.primaryActionBtn,
+                    {
+                      backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9",
+                      borderColor: isDarkMode ? "#334155" : "#CBD5E1",
+                      borderWidth: 1,
+                      opacity: 0.85,
+                    },
+                  ]}
+                >
+                  <IconSymbol name="lock.fill" size={13} color={isDarkMode ? "#94A3B8" : "#64748B"} />
+                  <Text style={[styles.primaryActionBtnText, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
+                    Renewal Restricted (Scholars Only)
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.primaryActionBtn,
+                    isDarkMode && { backgroundColor: "#15803D" },
+                  ]}
+                  onPress={() => router.push("/education/renewal/application" as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.primaryActionBtnText}>View Renewal Application</Text>
+                  <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
