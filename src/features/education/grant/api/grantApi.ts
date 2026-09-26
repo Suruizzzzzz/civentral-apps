@@ -202,17 +202,18 @@ export async function uploadGrantDocument(
   const formData = new FormData();
   formData.append("document_type", documentType);
   
-  let expoFile: any;
-  if (fileUri) {
-    expoFile = new ExpoFile(fileUri);
-  } else {
-    expoFile = {
-      uri: fileUri,
-      name: fileName || `${documentType.toLowerCase()}.pdf`,
-      type: mimeType || "application/pdf",
-    };
-  }
-  formData.append("file", expoFile as any);
+  const isPng = (mimeType || '').toLowerCase().includes('png');
+  const isPdf = (mimeType || '').toLowerCase().includes('pdf');
+  const fallbackExt = isPdf ? 'pdf' : (isPng ? 'png' : 'jpg');
+  const cleanName = (fileName && fileName.includes('.'))
+    ? fileName
+    : `${documentType.toLowerCase()}_${Date.now()}.${fallbackExt}`;
+
+  formData.append("file", {
+    uri: fileUri,
+    name: cleanName,
+    type: mimeType || (isPdf ? 'application/pdf' : (isPng ? 'image/png' : 'image/jpeg')),
+  } as any);
 
   const res = await expoFetch(
     `${EDUCATION_API_BASE_URL}/grants/applications/${applicationId}/documents`,
@@ -302,17 +303,19 @@ export async function validateCitizenGrantDocument(
     const formData = new FormData();
     formData.append("document_type", documentType);
 
-    let expoFile: any;
-    if (fileAsset.uri) {
-      expoFile = new ExpoFile(fileAsset.uri);
-    } else {
-      expoFile = {
-        uri: fileAsset.uri,
-        name: fileAsset.name || `${documentType.toLowerCase()}.pdf`,
-        type: fileAsset.mimeType || "application/pdf",
-      };
-    }
-    formData.append("file", expoFile as any);
+    const assetMime = fileAsset.mimeType || '';
+    const isPng = assetMime.toLowerCase().includes('png');
+    const isPdf = assetMime.toLowerCase().includes('pdf');
+    const fallbackExt = isPdf ? 'pdf' : (isPng ? 'png' : 'jpg');
+    const cleanName = (fileAsset.name && fileAsset.name.includes('.'))
+      ? fileAsset.name
+      : `${documentType.toLowerCase()}_${Date.now()}.${fallbackExt}`;
+
+    formData.append("file", {
+      uri: fileAsset.uri,
+      name: cleanName,
+      type: fileAsset.mimeType || (isPdf ? 'application/pdf' : (isPng ? 'image/png' : 'image/jpeg')),
+    } as any);
 
     const res = await expoFetch(postUrl, {
       method: "POST",

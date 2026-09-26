@@ -98,7 +98,7 @@ export default function GrantComplianceScreen() {
 
     try {
       const res = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/jpeg', 'image/png'],
+        type: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'],
         copyToCacheDirectory: true,
       });
 
