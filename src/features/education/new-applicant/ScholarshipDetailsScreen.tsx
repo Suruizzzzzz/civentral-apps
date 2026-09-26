@@ -116,33 +116,6 @@ function computeApplyCTAState(
     program.application_period ||
     (program.application_periods && program.application_periods[0]);
 
-  // Handle Disapproved Period Lockout
-  const isDisapprovedStatus =
-    dashboardData?.application?.application_status === 'Disapproved' ||
-    dashboardData?.state === 'APPLICATION_DISAPPROVED';
-
-  const disapprovedAy =
-    (dashboardData as any)?.period?.academic_year ||
-    dashboardData?.academic_period?.academic_year;
-
-  const targetAy =
-    (program as any)?.current_period?.academic_year ||
-    period?.academic_year;
-
-  const isDisapprovedSamePeriod =
-    isDisapprovedStatus &&
-    Boolean(disapprovedAy) &&
-    Boolean(targetAy) &&
-    disapprovedAy === targetAy;
-
-  if (isDisapprovedSamePeriod) {
-    return {
-      canApply: false,
-      buttonText: 'Re-application Locked',
-      noticeText:
-        'Re-application is not permitted for this academic period following a disapproved application.',
-    };
-  }
 
   if (!period) {
     return {
