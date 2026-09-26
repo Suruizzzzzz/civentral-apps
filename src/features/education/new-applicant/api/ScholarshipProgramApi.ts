@@ -1,5 +1,4 @@
 import type * as DocumentPicker from 'expo-document-picker';
-import { File as ExpoFile } from 'expo-file-system';
 import { fetch as expoFetch } from 'expo/fetch';
 import { Platform } from 'react-native';
 
@@ -408,17 +407,19 @@ export async function validateCitizenDocument(
     formData.append('program_document_id', String(programDocumentId));
     formData.append('program_id', String(programId));
 
-    let expoFile: any;
-    if (fileAsset.uri) {
-      expoFile = new ExpoFile(fileAsset.uri);
-    } else {
-      expoFile = {
-        uri: fileAsset.uri,
-        name: fileAsset.name || 'document',
-        type: fileAsset.mimeType || 'application/pdf',
-      };
-    }
-    formData.append('file', expoFile as any);
+    const mimeType = fileAsset.mimeType || 'application/pdf';
+    const isPng = mimeType.toLowerCase().includes('png');
+    const isPdf = mimeType.toLowerCase().includes('pdf');
+    const fallbackExt = isPdf ? 'pdf' : (isPng ? 'png' : 'jpg');
+    const safeName = fileAsset.name && fileAsset.name.includes('.')
+      ? fileAsset.name
+      : `doc_${Date.now()}.${fallbackExt}`;
+
+    formData.append('file', {
+      uri: fileAsset.uri,
+      name: safeName,
+      type: mimeType,
+    } as any);
 
     const res = await expoFetch(postUrl, {
       method: 'POST',

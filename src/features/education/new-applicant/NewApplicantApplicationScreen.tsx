@@ -1,7 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { validateFileSize } from '@/src/utils/fileValidation';
 import { formatDateTime } from '@/src/utils/dateUtils';
-import { File as ExpoFile } from 'expo-file-system';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -651,15 +650,22 @@ export function NewApplicantApplicationScreen() {
             uriScheme: fileState.uri ? fileState.uri.split(':')[0] : null,
           });
 
-          let expoFile: any;
-          if (fileState.uri) {
-            expoFile = new ExpoFile(fileState.uri);
-          } else if (fileState.asset?.uri) {
-            expoFile = new ExpoFile(fileState.asset.uri);
-          }
+          const fileUri = fileState.uri || fileState.asset?.uri;
+          const mimeType = fileState.mimeType || fileState.asset?.mimeType || 'application/pdf';
+          const isPng = mimeType.toLowerCase().includes('png');
+          const isPdf = mimeType.toLowerCase().includes('pdf');
+          const fallbackExt = isPdf ? 'pdf' : (isPng ? 'png' : 'jpg');
+          const rawName = fileState.name || fileState.asset?.name;
+          const safeName = rawName && rawName.includes('.')
+            ? rawName
+            : `doc_${Date.now()}.${fallbackExt}`;
 
-          formData.append(key, expoFile as any);
-          console.log(`[Submit] 5. appended ${key} successfully using Expo File`);
+          formData.append(key, {
+            uri: fileUri,
+            name: safeName,
+            type: mimeType,
+          } as any);
+          console.log(`[Submit] 5. appended ${key} successfully using canonical multipart object`);
         } else {
           console.log(`[Submit] 5. NO FILE selected for key ${key} (${doc.document_name})`);
         }

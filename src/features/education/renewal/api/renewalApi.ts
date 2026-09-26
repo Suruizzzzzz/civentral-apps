@@ -1,5 +1,4 @@
 import type * as DocumentPicker from "expo-document-picker";
-import { File as ExpoFile } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
 import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
 import { DocumentValidationResult, EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
@@ -305,17 +304,19 @@ export async function validateCitizenRenewalDocument(
     const formData = new FormData();
     formData.append("document_type", documentType);
 
-    let expoFile: any;
-    if (fileAsset.uri) {
-      expoFile = new ExpoFile(fileAsset.uri);
-    } else {
-      expoFile = {
-        uri: fileAsset.uri,
-        name: fileAsset.name || `${documentType.toLowerCase()}.pdf`,
-        type: fileAsset.mimeType || "application/pdf",
-      };
-    }
-    formData.append("file", expoFile as any);
+    const mimeType = fileAsset.mimeType || "application/pdf";
+    const isPng = mimeType.toLowerCase().includes("png");
+    const isPdf = mimeType.toLowerCase().includes("pdf");
+    const fallbackExt = isPdf ? "pdf" : (isPng ? "png" : "jpg");
+    const safeName = fileAsset.name && fileAsset.name.includes(".")
+      ? fileAsset.name
+      : `doc_${Date.now()}.${fallbackExt}`;
+
+    formData.append("file", {
+      uri: fileAsset.uri,
+      name: safeName,
+      type: mimeType,
+    } as any);
 
     const res = await expoFetch(postUrl, {
       method: "POST",
