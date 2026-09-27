@@ -278,6 +278,86 @@ export const styles = StyleSheet.create({
     color: "#94A3B8",
   },
 
+  /* Multi-line Progress Stage Metadata */
+  stageMetaContainer: {
+    marginTop: 8,
+    gap: 5,
+  },
+
+  stageHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+
+  stageTitleText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+    flex: 1,
+  },
+
+  stageNameHighlight: {
+    fontWeight: "700",
+    color: "#7E22CE",
+  },
+
+  completedMiniPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DCFCE7",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 9999,
+  },
+
+  completedMiniPillText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#15803D",
+  },
+
+  inProgressMiniPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F3E8FF",
+    borderWidth: 1,
+    borderColor: "#D8B4FE",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 9999,
+  },
+
+  inProgressMiniPillText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#7E22CE",
+  },
+
+  evaluatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 1,
+  },
+
+  evaluatorText: {
+    fontSize: 11.5,
+    fontWeight: "500",
+    color: "#64748B",
+    flex: 1,
+  },
+
+  evaluatorNameBold: {
+    fontWeight: "700",
+    color: "#334155",
+  },
+
   /* Terminal Withdrawn bar for compact indicator */
   compactTerminatedBar: {
     flexDirection: "row",

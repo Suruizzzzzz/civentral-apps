@@ -1,4 +1,5 @@
 import { formatDate } from '@/utils/dateUtils';
+import { Ionicons } from '@expo/vector-icons';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -1863,7 +1864,7 @@ export function CitizenScholarshipDetailScreen() {
                               {/* Completed Date Tag */}
                               {isCompleted && stg.date ? (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                                  <IconSymbol name="checkmark" size={11} color="#16A34A" />
+                                  <Ionicons name="checkmark-circle" size={12} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
                                   <Text
                                     style={{
                                       fontSize: 11.5,
@@ -1879,7 +1880,7 @@ export function CitizenScholarshipDetailScreen() {
                               {/* Evaluated by metadata tag */}
                               {stg.evaluatorName ? (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                                  <IconSymbol name="person.crop.circle" size={12} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
+                                  <Ionicons name="person-circle-outline" size={13} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
                                   <Text
                                     style={{
                                       fontSize: 11.5,

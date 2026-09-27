@@ -1,4 +1,5 @@
 import { formatDate as formatAppDate } from '@/utils/dateUtils';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -1344,32 +1345,110 @@ export function ScholarshipDashboardScreen() {
                       );
                     })}
                   </View>
-                  <View style={styles.compactStepLabelsRow}>
-                    <Text
-                      style={[
-                        styles.compactStepStageName,
-                        isDarkMode && { color: '#C084FC' },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {stages[currentStageIndex]?.title || stages[currentStageIndex]?.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.compactStepCountText,
-                        isDarkMode && { color: '#94A3B8' },
-                      ]}
-                    >
-                      Stage {currentStageIndex + 1} of {stages.length}
-                      {stages[currentStageIndex]?.state === 'completed'
-                        ? ' • Completed'
-                        : ' • In Progress'}
-                      {stages[currentStageIndex]?.evaluatorName
-                        ? ` • Evaluated by: ${stages[currentStageIndex]?.evaluatorName}`
-                        : currentStageIndex >= 1 && (stages[2]?.evaluatorName || stages[1]?.evaluatorName)
-                        ? ` • Evaluated by: ${stages[2]?.evaluatorName || stages[1]?.evaluatorName}`
-                        : ''}
-                    </Text>
+                  <View style={styles.stageMetaContainer}>
+                    {/* Row 1: Stage Counter & Status Pill */}
+                    <View style={styles.stageHeaderRow}>
+                      <Text
+                        style={[
+                          styles.stageTitleText,
+                          isDarkMode && { color: '#94A3B8' },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        Stage {currentStageIndex + 1} of {stages.length}:{' '}
+                        <Text
+                          style={[
+                            styles.stageNameHighlight,
+                            isDarkMode && { color: '#C084FC' },
+                          ]}
+                        >
+                          {stages[currentStageIndex]?.title || stages[currentStageIndex]?.label || 'Scholarship Grant'}
+                        </Text>
+                      </Text>
+                      {stages[currentStageIndex]?.state === 'completed' ? (
+                        <View
+                          style={[
+                            styles.completedMiniPill,
+                            isDarkMode && {
+                              backgroundColor: '#064E3B',
+                              borderColor: '#065F46',
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={12}
+                            color={isDarkMode ? '#4ADE80' : '#15803d'}
+                          />
+                          <Text
+                            style={[
+                              styles.completedMiniPillText,
+                              isDarkMode && { color: '#4ADE80' },
+                            ]}
+                          >
+                            Completed
+                          </Text>
+                        </View>
+                      ) : (
+                        <View
+                          style={[
+                            styles.inProgressMiniPill,
+                            isDarkMode && {
+                              backgroundColor: '#3B0764',
+                              borderColor: '#6B21A8',
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="time"
+                            size={12}
+                            color={isDarkMode ? '#C084FC' : '#7E22CE'}
+                          />
+                          <Text
+                            style={[
+                              styles.inProgressMiniPillText,
+                              isDarkMode && { color: '#C084FC' },
+                            ]}
+                          >
+                            In Progress
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Row 2: Evaluator Information */}
+                    {!!(
+                      stages[currentStageIndex]?.evaluatorName ||
+                      (currentStageIndex >= 1 && (stages[2]?.evaluatorName || stages[1]?.evaluatorName))
+                    ) && (
+                      <View style={styles.evaluatorRow}>
+                        <Ionicons
+                          name="person-circle-outline"
+                          size={13}
+                          color={isDarkMode ? '#A855F7' : '#64748b'}
+                        />
+                        <Text
+                          style={[
+                            styles.evaluatorText,
+                            isDarkMode && { color: '#94A3B8' },
+                          ]}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          Evaluated by:{' '}
+                          <Text
+                            style={[
+                              styles.evaluatorNameBold,
+                              isDarkMode && { color: '#E2E8F0' },
+                            ]}
+                          >
+                            {stages[currentStageIndex]?.evaluatorName ||
+                              stages[2]?.evaluatorName ||
+                              stages[1]?.evaluatorName}
+                          </Text>
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </>
               )}
@@ -2258,7 +2337,7 @@ export function ScholarshipDashboardScreen() {
 
                           {stg.evaluatorName ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
-                              <IconSymbol name="person.crop.circle" size={13} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
+                              <Ionicons name="person-circle-outline" size={13} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
                               <Text
                                 style={{
                                   fontSize: 12,

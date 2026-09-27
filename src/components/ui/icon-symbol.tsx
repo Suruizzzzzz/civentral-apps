@@ -29,6 +29,7 @@ const MAPPING: IconMapping = {
   'square.grid.2x2.fill': 'grid-view',
   'bell.fill': 'notifications',
   'person.crop.circle.fill': 'account-circle',
+  'person.crop.circle': 'account-circle',
   'person.fill': 'person',
   'magnifyingglass': 'search',
   'exclamationmark.triangle.fill': 'warning',
