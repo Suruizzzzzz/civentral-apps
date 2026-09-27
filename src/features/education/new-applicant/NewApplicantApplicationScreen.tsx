@@ -454,6 +454,22 @@ export function NewApplicantApplicationScreen() {
         const programDocId = doc.program_document_id || doc.document_requirement_id || 0;
         const currentProgramId = programId || program?.program_id || 0;
 
+        if (!programDocId || !currentProgramId) {
+          console.warn('[NewApplicantApplicationScreen] Skipping OCR validation: Missing programDocId or currentProgramId', {
+            programDocId,
+            currentProgramId,
+          });
+          setDocValidations((prev) => ({
+            ...prev,
+            [docKey]: {
+              status: 'validated',
+              result: 'INCONCLUSIVE',
+              message: 'Automatic verification is unavailable. Your document can still be reviewed manually.',
+            },
+          }));
+          return;
+        }
+
         try {
           const validationResult = await validateCitizenDocument(
             asset,

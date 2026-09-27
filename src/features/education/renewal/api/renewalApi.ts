@@ -1,5 +1,6 @@
 import type * as DocumentPicker from "expo-document-picker";
 import { fetch as expoFetch } from "expo/fetch";
+import { Platform } from "react-native";
 import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
 import { DocumentValidationResult, EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
 import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
@@ -301,25 +302,34 @@ export async function validateCitizenRenewalDocument(
       Accept: "application/json",
     });
 
-    const formData = new FormData();
-    formData.append("document_type", documentType);
+    const file = fileAsset as any;
+    const rawUri: string = file.uri || '';
+    const cleanUri =
+      Platform.OS === 'android' && rawUri && !rawUri.startsWith('file://') && !rawUri.startsWith('content://')
+        ? `file://${rawUri}`
+        : rawUri;
 
-    const mimeType = fileAsset.mimeType || "application/pdf";
-    const isPng = mimeType.toLowerCase().includes("png");
-    const isPdf = mimeType.toLowerCase().includes("pdf");
-    const fallbackExt = isPdf ? "pdf" : (isPng ? "png" : "jpg");
-    const safeName = fileAsset.name && fileAsset.name.includes(".")
-      ? fileAsset.name
-      : `doc_${Date.now()}.${fallbackExt}`;
+    const mimeType: string = file.type || file.mime || file.mimeType || 'application/pdf';
+    const isPng = mimeType.toLowerCase().includes('png');
+    const isPdf = mimeType.toLowerCase().includes('pdf');
+    const fallbackExt = isPdf ? 'pdf' : isPng ? 'png' : 'jpg';
 
-    formData.append("file", {
-      uri: fileAsset.uri,
-      name: safeName,
+    const rawName: string = file.name || file.filename || `doc_${Date.now()}.${fallbackExt}`;
+    const cleanName = rawName.includes('.') ? rawName : `${rawName}.${fallbackExt}`;
+
+    const cleanFile = {
+      uri: cleanUri,
+      name: cleanName,
       type: mimeType,
-    } as any);
+    };
 
-    const res = await expoFetch(postUrl, {
-      method: "POST",
+    const formData = new FormData();
+    formData.append('document_type', documentType);
+    formData.append('file', cleanFile as any);
+
+    const fetchFn = typeof fetch !== 'undefined' ? fetch : expoFetch;
+    const res = await fetchFn(postUrl, {
+      method: 'POST',
       headers,
       body: formData,
     });

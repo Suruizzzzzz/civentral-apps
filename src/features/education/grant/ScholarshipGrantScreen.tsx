@@ -174,15 +174,16 @@ export default function ScholarshipGrantScreen() {
 
   // Compliance state calculation
   const docs = application?.documents || [];
-  const complianceDocs = docs.filter(
-    (d) => d.review_status === 'Needs Replacement' || d.review_status === 'Invalid'
-  );
+  const isComplianceStatus = application?.grant_status === 'For Compliance';
+  const complianceDocs = isComplianceStatus
+    ? docs.filter(
+        (d) => d.review_status === 'Needs Replacement' || d.review_status === 'Invalid'
+      )
+    : [];
   const hasActionableCompliance = Boolean(
     application &&
-    (
-      application.grant_status === 'For Compliance' ||
-      complianceDocs.length > 0
-    )
+    isComplianceStatus &&
+    complianceDocs.length > 0
   );
   const complianceCount = complianceDocs.length;
 

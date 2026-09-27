@@ -1075,4 +1075,42 @@ export const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
   },
+  /* Replacement Upload Action Container & Hints */
+  actionContainer: {
+    marginTop: 14,
+    alignItems: 'center',
+    width: '100%',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EA580C',
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    minHeight: 46,
+  },
+  uploadButtonDisabled: {
+    opacity: 0.6,
+  },
+  uploadButtonText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  fileHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: 8,
+  },
+  fileHintText: {
+    fontSize: 11.5,
+    color: '#64748B',
+    fontWeight: '500',
+  },
 });

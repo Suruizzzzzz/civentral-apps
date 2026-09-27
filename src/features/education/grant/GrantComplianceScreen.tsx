@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '@/utils/dateUtils';
 import React, { useCallback, useState } from 'react';
 import {
@@ -147,11 +148,13 @@ export default function GrantComplianceScreen() {
   }
 
   const docs = application?.documents || [];
-  const complianceDocs = docs.filter(
-    (d) => d.review_status === 'Needs Replacement' || d.review_status === 'Invalid'
-  );
-  const isComplianceRequired =
-    application?.grant_status === 'For Compliance' || complianceDocs.length > 0;
+  const isComplianceStatus = application?.grant_status === 'For Compliance';
+  const complianceDocs = isComplianceStatus
+    ? docs.filter(
+        (d) => d.review_status === 'Needs Replacement' || d.review_status === 'Invalid'
+      )
+    : [];
+  const isComplianceRequired = isComplianceStatus && complianceDocs.length > 0;
   const complianceCount = complianceDocs.length;
 
   return (
@@ -297,27 +300,31 @@ export default function GrantComplianceScreen() {
                     </View>
                   )}
 
-                  <TouchableOpacity
-                    style={[
-                      styles.primaryBtn,
-                      { marginTop: 12, backgroundColor: '#EA580C' },
-                      uploadingDoc === doc.document_type && styles.primaryBtnDisabled,
-                    ]}
-                    onPress={() => handlePickAndUploadDocument(doc.document_type)}
-                    disabled={uploadingDoc === doc.document_type}
-                    activeOpacity={0.8}
-                  >
-                    {uploadingDoc === doc.document_type ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <IconSymbol name="arrow.triangle.2.circlepath" size={16} color="#FFFFFF" />
-                        <Text style={styles.primaryBtnText}>
-                          Upload Replacement {doc.document_type} (PDF, PNG, JPG up to 10MB)
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                  <View style={styles.actionContainer}>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      style={[
+                        styles.uploadButton,
+                        uploadingDoc === doc.document_type && styles.uploadButtonDisabled,
+                      ]}
+                      onPress={() => handlePickAndUploadDocument(doc.document_type)}
+                      disabled={uploadingDoc === doc.document_type}
+                    >
+                      {uploadingDoc === doc.document_type ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Ionicons name="cloud-upload-outline" size={18} color="#ffffff" style={{ marginRight: 8 }} />
+                          <Text style={styles.uploadButtonText}>Upload Replacement Document</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+
+                    <View style={styles.fileHintRow}>
+                      <Ionicons name="information-circle-outline" size={13} color={isDarkMode ? '#94A3B8' : '#64748b'} />
+                      <Text style={[styles.fileHintText, isDarkMode && { color: '#94A3B8' }]}>PDF, PNG, or JPG up to 10MB</Text>
+                    </View>
+                  </View>
                 </View>
               );
             })}

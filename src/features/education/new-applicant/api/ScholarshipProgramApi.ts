@@ -303,7 +303,8 @@ export async function submitNewScholarshipApplication(
   });
 
   try {
-    const res = await expoFetch(postUrl, {
+    const fetchFn = typeof fetch !== 'undefined' ? fetch : expoFetch;
+    const res = await fetchFn(postUrl, {
       method: 'POST',
       headers,
       body: formData,
@@ -403,25 +404,34 @@ export async function validateCitizenDocument(
       Accept: 'application/json',
     });
 
-    const formData = new FormData();
-    formData.append('program_document_id', String(programDocumentId));
-    formData.append('program_id', String(programId));
+    const file = fileAsset as any;
+    const rawUri: string = file.uri || '';
+    const cleanUri =
+      Platform.OS === 'android' && rawUri && !rawUri.startsWith('file://') && !rawUri.startsWith('content://')
+        ? `file://${rawUri}`
+        : rawUri;
 
-    const mimeType = fileAsset.mimeType || 'application/pdf';
+    const mimeType: string = file.type || file.mime || file.mimeType || 'application/pdf';
     const isPng = mimeType.toLowerCase().includes('png');
     const isPdf = mimeType.toLowerCase().includes('pdf');
     const fallbackExt = isPdf ? 'pdf' : (isPng ? 'png' : 'jpg');
-    const safeName = fileAsset.name && fileAsset.name.includes('.')
-      ? fileAsset.name
-      : `doc_${Date.now()}.${fallbackExt}`;
 
-    formData.append('file', {
-      uri: fileAsset.uri,
-      name: safeName,
+    const rawName: string = file.name || file.filename || `document_${Date.now()}.${fallbackExt}`;
+    const cleanName = rawName.includes('.') ? rawName : `${rawName}.${fallbackExt}`;
+
+    const cleanFile = {
+      uri: cleanUri,
+      name: cleanName,
       type: mimeType,
-    } as any);
+    };
 
-    const res = await expoFetch(postUrl, {
+    const formData = new FormData();
+    formData.append('file', cleanFile as any);
+    formData.append('program_id', String(programId));
+    formData.append('program_document_id', String(programDocumentId));
+
+    const fetchFn = typeof fetch !== 'undefined' ? fetch : expoFetch;
+    const res = await fetchFn(postUrl, {
       method: 'POST',
       headers,
       body: formData,
@@ -447,7 +457,15 @@ export async function validateCitizenDocument(
       }
     }
 
-    if (!res.ok || !json || !json.success || !json.validation) {
+    if (!res.ok) {
+      const err = json?.message || rawText;
+      console.log('[Document Validation HTTP Error]:', res.status, err);
+      console.warn(`[OCR Validation Failed] HTTP ${res.status}:`, err);
+      return null;
+    }
+
+    if (!json || !json.success || !json.validation) {
+      console.warn('[OCR Validation Failed] Missing or invalid validation payload:', rawText);
       return null;
     }
 
