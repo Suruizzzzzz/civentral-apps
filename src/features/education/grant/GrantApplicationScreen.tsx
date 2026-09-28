@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   Modal,
   RefreshControl,
@@ -33,9 +34,11 @@ import {
   CitizenGrantReleaseItem,
   fetchCitizenGrantReleases,
 } from './api/grantReleaseApi';
+import QRCode from 'react-native-qrcode-svg';
 import { styles } from './styles/ScholarshipGrant.styles';
 
 const scholarshipBg = require('@/assets/images/scholarship-bg.png');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 function formatCurrency(amount?: number | null): string {
   if (amount === undefined || amount === null) return '—';
@@ -133,6 +136,12 @@ export function GrantApplicationScreen() {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [submittedResult, setSubmittedResult] = useState<GrantApplicationDetail | null>(null);
+  const [previewQrData, setPreviewQrData] = useState<{
+    qrValue: string;
+    claimRef: string;
+    venueName?: string | null;
+    amount?: number | null;
+  } | null>(null);
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -1203,32 +1212,95 @@ export function GrantApplicationScreen() {
                           </View>
 
                           {/* F2F Schedule info */}
-                          {isF2F && f2f && (
-                            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: isDarkMode ? '#334155' : '#F1F5F9', gap: 3 }}>
-                              {f2f.venue_name ? (
-                                <Text style={{ fontSize: 11.5, color: isDarkMode ? '#CBD5E1' : '#334155' }}>
-                                  <Text style={{ fontWeight: '700' }}>Venue: </Text>{f2f.venue_name}
-                                </Text>
-                              ) : null}
-                              {f2f.release_date ? (
-                                <Text style={{ fontSize: 11.5, color: isDarkMode ? '#CBD5E1' : '#334155' }}>
-                                  <Text style={{ fontWeight: '700' }}>Schedule: </Text>{f2f.release_date} {f2f.start_time ? `(${f2f.start_time} - ${f2f.end_time || ''})` : ''}
-                                </Text>
-                              ) : null}
-                              {f2f.claim_reference ? (
-                                <Text style={{ fontSize: 12, color: '#EA580C', fontWeight: '700', marginTop: 2 }}>
-                                  Claim Ref: {f2f.claim_reference}
-                                </Text>
-                              ) : null}
-                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                                <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Claim Status</Text>
-                                <Badge
-                                  label={f2f.claim_status || 'Scheduled'}
-                                  variant={getF2FClaimBadgeVariant(f2f.claim_status)}
-                                />
+                          {isF2F && f2f && (() => {
+                            const claimRef = f2f.claim_reference;
+                            const isReady = f2f.claim_status?.toLowerCase() === 'ready for claim';
+                            const qrValue = f2f.qr_claim_payload || claimRef;
+
+                            return (
+                              <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: isDarkMode ? '#334155' : '#F1F5F9', gap: 3 }}>
+                                {f2f.venue_name ? (
+                                  <Text style={{ fontSize: 11.5, color: isDarkMode ? '#CBD5E1' : '#334155' }}>
+                                    <Text style={{ fontWeight: '700' }}>Venue: </Text>{f2f.venue_name}
+                                  </Text>
+                                ) : null}
+                                {f2f.release_date ? (
+                                  <Text style={{ fontSize: 11.5, color: isDarkMode ? '#CBD5E1' : '#334155' }}>
+                                    <Text style={{ fontWeight: '700' }}>Schedule: </Text>{f2f.release_date} {f2f.start_time ? `(${f2f.start_time} - ${f2f.end_time || ''})` : ''}
+                                  </Text>
+                                ) : null}
+                                {claimRef ? (
+                                  <Text style={{ fontSize: 12, color: '#EA580C', fontWeight: '700', marginTop: 2 }}>
+                                    Claim Ref: {claimRef}
+                                  </Text>
+                                ) : null}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                                  <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Claim Status</Text>
+                                  <Badge
+                                    label={f2f.claim_status || 'Scheduled'}
+                                    variant={getF2FClaimBadgeVariant(f2f.claim_status)}
+                                  />
+                                </View>
+
+                                {/* Scannable QR Code for Ready-for-Claim F2F Grant */}
+                                {isReady && qrValue ? (
+                                  <TouchableOpacity
+                                    activeOpacity={0.8}
+                                    onPress={() =>
+                                      setPreviewQrData({
+                                        qrValue,
+                                        claimRef: claimRef || qrValue,
+                                        venueName: f2f.venue_name,
+                                        amount: comp.amount,
+                                      })
+                                    }
+                                    style={{
+                                      backgroundColor: '#FFFFFF',
+                                      padding: 12,
+                                      borderRadius: 12,
+                                      alignItems: 'center',
+                                      marginVertical: 12,
+                                      alignSelf: 'center',
+                                      borderWidth: 1,
+                                      borderColor: isDarkMode ? '#334155' : '#E2E8F0',
+                                    }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Tap to enlarge QR Code"
+                                  >
+                                    <QRCode value={qrValue} size={160} />
+                                    <Text
+                                      style={{
+                                        marginTop: 6,
+                                        fontSize: 12,
+                                        color: '#6B7280',
+                                        fontFamily: 'monospace',
+                                        fontWeight: '700',
+                                      }}
+                                    >
+                                      {claimRef || qrValue}
+                                    </Text>
+                                    <View
+                                      style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        marginTop: 6,
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 3,
+                                        backgroundColor: '#F1F5F9',
+                                        borderRadius: 6,
+                                      }}
+                                    >
+                                      <IconSymbol name="arrow.up.left.and.arrow.down.right" size={10} color="#64748B" />
+                                      <Text style={{ fontSize: 10, fontWeight: '600', color: '#64748B' }}>
+                                        Tap to enlarge
+                                      </Text>
+                                    </View>
+                                  </TouchableOpacity>
+                                ) : null}
                               </View>
-                            </View>
-                          )}
+                            );
+                          })()}
 
                           {/* Institutional Payment Info */}
                           {!isF2F && inst && (
@@ -1447,6 +1519,244 @@ export function GrantApplicationScreen() {
               activeOpacity={0.8}
             >
               <Text style={styles.primaryBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* LARGE QR CODE PREVIEW MODAL */}
+      <Modal
+        visible={previewQrData !== null}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setPreviewQrData(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+              borderRadius: 20,
+              padding: 20,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: isDarkMode ? '#334155' : '#E2E8F0',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.25,
+              shadowRadius: 15,
+              elevation: 10,
+            }}
+          >
+            {/* Modal Header */}
+            <View
+              style={{
+                width: '100%',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: isDarkMode ? '#0F3057' : '#EFF6FF',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <IconSymbol
+                    name="qrcode"
+                    size={18}
+                    color={isDarkMode ? '#38BDF8' : '#0284C7'}
+                  />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: '700',
+                    color: isDarkMode ? '#F8FAFC' : '#0F172A',
+                  }}
+                >
+                  Disbursement Claim QR
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setPreviewQrData(null)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: isDarkMode ? '#334155' : '#F1F5F9',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Close QR preview"
+              >
+                <IconSymbol
+                  name="xmark"
+                  size={14}
+                  color={isDarkMode ? '#94A3B8' : '#64748B'}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Text
+              style={{
+                fontSize: 12,
+                color: isDarkMode ? '#94A3B8' : '#64748B',
+                textAlign: 'center',
+                marginBottom: 16,
+              }}
+            >
+              Present this enlarged QR code at the disbursement counter for instant scanning.
+            </Text>
+
+            {/* BIG QR CODE CONTAINER */}
+            {previewQrData ? (
+              <View
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  padding: 16,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: '#E2E8F0',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
+                <QRCode
+                  value={previewQrData.qrValue}
+                  size={Math.min(SCREEN_WIDTH - 100, 240)}
+                  quietZone={8}
+                />
+              </View>
+            ) : null}
+
+            {/* Monospace Claim Reference Chip */}
+            {previewQrData?.claimRef ? (
+              <View
+                style={{
+                  marginTop: 14,
+                  backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: isDarkMode ? '#334155' : '#E2E8F0',
+                  alignItems: 'center',
+                  width: '100%',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '700',
+                    color: isDarkMode ? '#94A3B8' : '#64748B',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  CLAIM REFERENCE CODE
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: '800',
+                    color: isDarkMode ? '#FB923C' : '#EA580C',
+                    fontFamily: 'monospace',
+                    letterSpacing: 1.5,
+                    marginTop: 2,
+                  }}
+                  selectable
+                >
+                  {previewQrData.claimRef}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Venue & Payout Details */}
+            {(previewQrData?.venueName || previewQrData?.amount) && (
+              <View
+                style={{
+                  marginTop: 10,
+                  width: '100%',
+                  padding: 10,
+                  backgroundColor: isDarkMode ? '#0F172A' : '#F1F5F9',
+                  borderRadius: 8,
+                  gap: 4,
+                }}
+              >
+                {previewQrData?.amount ? (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Entitlement</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: isDarkMode ? '#34D399' : '#16A34A' }}>
+                      {formatCurrency(previewQrData.amount)}
+                    </Text>
+                  </View>
+                ) : null}
+                {previewQrData?.venueName ? (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Disbursement Venue</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: isDarkMode ? '#CBD5E1' : '#334155' }}>
+                      {previewQrData.venueName}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
+
+            {/* Brightness hint */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: 12,
+                marginBottom: 16,
+              }}
+            >
+              <IconSymbol name="sun.max.fill" size={13} color="#F59E0B" />
+              <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                Increase screen brightness for optimal counter scanning
+              </Text>
+            </View>
+
+            {/* Close Button */}
+            <TouchableOpacity
+              style={{
+                width: '100%',
+                paddingVertical: 12,
+                borderRadius: 10,
+                backgroundColor: isDarkMode ? '#334155' : '#0F172A',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onPress={() => setPreviewQrData(null)}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
+                Done
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
