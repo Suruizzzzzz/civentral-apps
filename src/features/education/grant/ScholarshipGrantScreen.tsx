@@ -11,6 +11,7 @@ import {
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
@@ -20,6 +21,10 @@ import {
   fetchCitizenGrantOverview,
   GrantApplicationDetail,
 } from './api/grantApi';
+import {
+  CitizenGrantReleaseItem,
+  fetchCitizenGrantReleases,
+} from './api/grantReleaseApi';
 import { styles } from './styles/ScholarshipGrant.styles';
 
 const grantHeaderLight = require('@/assets/images/grant-header-light.png');
@@ -66,6 +71,7 @@ export default function ScholarshipGrantScreen() {
 
   const [overview, setOverview] = useState<CitizenGrantOverviewData | null>(null);
   const [application, setApplication] = useState<GrantApplicationDetail | null>(null);
+  const [releases, setReleases] = useState<CitizenGrantReleaseItem[]>([]);
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
@@ -117,13 +123,27 @@ export default function ScholarshipGrantScreen() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await fetchCitizenGrantOverview();
-      setOverview(data);
+      const [overviewRes, releasesRes] = await Promise.allSettled([
+        fetchCitizenGrantOverview(),
+        fetchCitizenGrantReleases(),
+      ]);
 
-      if (data.has_existing_application && data.application) {
-        setApplication(data.application);
+      if (overviewRes.status === 'fulfilled') {
+        const data = overviewRes.value;
+        setOverview(data);
+        if (data.has_existing_application && data.application) {
+          setApplication(data.application);
+        } else {
+          setApplication(null);
+        }
       } else {
-        setApplication(null);
+        console.error('[ScholarshipGrantScreen] Overview fetch rejected:', overviewRes.reason);
+      }
+
+      if (releasesRes.status === 'fulfilled') {
+        setReleases(releasesRes.value || []);
+      } else {
+        console.error('[ScholarshipGrantScreen] Releases fetch rejected:', releasesRes.reason);
       }
     } catch (err: any) {
       console.error('[ScholarshipGrantScreen] Load overview error:', err);
@@ -210,6 +230,22 @@ export default function ScholarshipGrantScreen() {
         return 'Educational grant entitlement has been disbursed/released for this academic period.';
       default:
         return `Grant application is currently in ${application.grant_status} status.`;
+    }
+  };
+
+  const f2fItem = releases
+    .flatMap((r) => r.components.map((c) => ({ release: r, component: c })))
+    .find((x) => x.component.release_method === 'Face-to-Face');
+
+  const hasF2FVoucher = Boolean(f2fItem);
+  const f2fSchedule = f2fItem?.component.f2f_schedule;
+  const isVoucherClaimed = f2fSchedule?.claim_status === 'Released' || f2fItem?.component.component_status === 'Released';
+
+  const handleOpenVoucher = () => {
+    try {
+      router.push('/education/grant/voucher' as any);
+    } catch {
+      router.navigate('/education/grant/voucher' as any);
     }
   };
 
@@ -511,6 +547,131 @@ export default function ScholarshipGrantScreen() {
             )}
           </View>
         </View>
+
+        {/* 4. PRIMARY CARD 3: DISBURSEMENT CLAIM VOUCHER */}
+        <TouchableOpacity
+          style={[
+            styles.card,
+            isDarkMode && {
+              backgroundColor: '#041E34',
+              borderColor: '#0C3B5E',
+            },
+          ]}
+          onPress={handleOpenVoucher}
+          activeOpacity={0.85}
+        >
+          <View style={styles.cardMainRow}>
+            <View
+              style={{
+                width: 58,
+                height: 58,
+                borderRadius: 14,
+                backgroundColor: isDarkMode ? '#0F3057' : '#EFF6FF',
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: isDarkMode ? '#1E4976' : '#DBEAFE',
+              }}
+            >
+              <Ionicons
+                name="qr-code-outline"
+                size={30}
+                color={isDarkMode ? '#38BDF8' : '#0284C7'}
+              />
+            </View>
+
+            <View style={styles.cardContent}>
+              <View style={styles.badgeRow}>
+                {isVoucherClaimed ? (
+                  <Badge label="CLAIMED / DISBURSED" variant="neutral" />
+                ) : f2fSchedule?.claim_status === 'Ready for Claim' ? (
+                  <Badge label="READY FOR CLAIM" variant="success" />
+                ) : hasF2FVoucher ? (
+                  <Badge label="SCHEDULED" variant="warning" />
+                ) : (
+                  <Badge label="AVAILABLE UPON APPROVAL" variant="neutral" />
+                )}
+              </View>
+
+              <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                Disbursement Claim Voucher
+              </Text>
+              <Text style={[styles.cardSub, isDarkMode && { color: '#CBD5E1' }]}>
+                {hasF2FVoucher
+                  ? isVoucherClaimed
+                    ? 'Your scholarship grant has been disbursed. View your official digital voucher and disbursement receipt record.'
+                    : 'Your in-person grant claiming voucher is ready. Present the dynamic QR code and your student ID at the disbursement window.'
+                  : 'Digital QR voucher will generate automatically once grant payroll release is authorized by the Secretariat.'}
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.cardBottomRow,
+              isDarkMode && { borderTopColor: '#0E2C52' },
+            ]}
+          >
+            <View style={styles.pillGroup}>
+              {f2fItem?.component?.amount ? (
+                <View
+                  style={[
+                    styles.infoPill,
+                    isDarkMode && { backgroundColor: '#072040' },
+                  ]}
+                >
+                  <IconSymbol
+                    name="banknote.fill"
+                    size={13}
+                    color={isDarkMode ? '#34D399' : '#059669'}
+                  />
+                  <Text
+                    style={[
+                      styles.infoPillText,
+                      { color: isDarkMode ? '#34D399' : '#059669', fontWeight: '800' },
+                    ]}
+                  >
+                    ₱{f2fItem.component.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+              ) : null}
+
+              {f2fSchedule?.claim_reference ? (
+                <View
+                  style={[
+                    styles.infoPill,
+                    isDarkMode && { backgroundColor: '#072040' },
+                  ]}
+                >
+                  <Ionicons
+                    name="barcode-outline"
+                    size={13}
+                    color={isDarkMode ? '#94A3B8' : '#64748B'}
+                  />
+                  <Text
+                    style={[
+                      styles.infoPillText,
+                      isDarkMode && { color: '#CBD5E1' },
+                      { fontFamily: 'Courier', fontWeight: '700' },
+                    ]}
+                  >
+                    {f2fSchedule.claim_reference}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View
+              style={[
+                styles.primaryActionBtn,
+                isDarkMode && { backgroundColor: '#EA580C' },
+              ]}
+            >
+              <Text style={styles.primaryActionBtnText}>View QR Voucher</Text>
+              <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+            </View>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

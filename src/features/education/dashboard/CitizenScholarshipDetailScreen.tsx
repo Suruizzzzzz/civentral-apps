@@ -2775,6 +2775,33 @@ export function CitizenScholarshipDetailScreen() {
                       <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#334155', lineHeight: 18 }}>
                         Official scholarship grant disbursements and tuition assistance vouchers are authorized by the City Government Education and Scholarship Office upon review completion.
                       </Text>
+
+                      <TouchableOpacity
+                        style={{
+                          marginTop: 12,
+                          backgroundColor: '#EA580C',
+                          paddingVertical: 10,
+                          paddingHorizontal: 14,
+                          borderRadius: 10,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                        }}
+                        onPress={() => {
+                          try {
+                            router.push('/education/grant/voucher' as any);
+                          } catch {
+                            router.navigate('/education/grant/voucher' as any);
+                          }
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="qr-code-outline" size={16} color="#FFFFFF" />
+                        <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                          Open QR Claim Voucher
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </>

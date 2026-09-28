@@ -15,6 +15,7 @@ export interface CitizenF2FScheduleInfo {
   complete_address?: string | null;
   claim_status: F2FClaimStatus;
   claim_reference?: string | null;
+  qr_claim_payload?: string | null;
   claimed_at?: string | null;
 }
 
