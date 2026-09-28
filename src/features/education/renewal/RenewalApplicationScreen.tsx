@@ -703,6 +703,19 @@ export function RenewalApplicationScreen() {
       }
     }
 
+    if (overview?.state === 'GRANT_IN_PROGRESS') {
+      return {
+        icon: 'clock.badge.checkmark.fill',
+        color: '#0284C7',
+        bgLight: '#F0F9FF',
+        bgDark: '#082F49',
+        borderLight: '#BAE6FD',
+        borderDark: '#0369A1',
+        title: 'Grant Disbursement In Progress',
+        description: overview?.ineligibility_reason || 'Your scholarship grant for the current academic period is currently being processed for disbursement. Scholarship renewal for the next cycle will open once disbursement is completed.',
+      };
+    }
+
     if (overview?.state === 'RENEWAL_AVAILABLE') {
       return {
         icon: 'pencil.circle.fill',
@@ -757,6 +770,9 @@ export function RenewalApplicationScreen() {
   const getHeaderBadgeText = () => {
     if (overview?.renewal?.renewal_status) {
       return overview.renewal.renewal_status;
+    }
+    if (overview?.state === 'GRANT_IN_PROGRESS') {
+      return 'Grant In Progress';
     }
     if (overview?.state === 'RENEWAL_AVAILABLE') {
       return 'Open for Application';
@@ -1044,11 +1060,13 @@ export function RenewalApplicationScreen() {
                 <Text style={[styles.detailValue, isDarkMode && { color: '#F8FAFC' }]}>
                   {canApply
                     ? 'Open for Application'
-                    : overview?.state === 'RENEWAL_NOT_OPEN'
-                      ? 'Window Closed'
-                      : overview?.state === 'SCHOLAR_INACTIVE'
-                        ? 'Scholar Inactive'
-                        : 'Not a Scholar'}
+                    : overview?.state === 'GRANT_IN_PROGRESS'
+                      ? 'Grant In Progress'
+                      : overview?.state === 'RENEWAL_NOT_OPEN'
+                        ? 'Window Closed'
+                        : overview?.state === 'SCHOLAR_INACTIVE'
+                          ? 'Scholar Inactive'
+                          : 'Not a Scholar'}
                 </Text>
               </View>
             )}

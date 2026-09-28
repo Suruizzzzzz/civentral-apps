@@ -1990,16 +1990,37 @@ export function CitizenScholarshipDetailScreen() {
                         <Text style={{ fontSize: 13, color: isDarkMode ? '#94A3B8' : '#64748B', lineHeight: 18 }}>
                           You have not submitted a scholarship renewal application for the current period.
                         </Text>
-                        <TouchableOpacity
-                          style={[styles.primaryActionBtn, { marginTop: 12 }]}
-                          onPress={() => router.push('/education/renewal' as any)}
-                          activeOpacity={0.8}
-                          accessibilityRole="button"
-                          accessibilityLabel="Start Renewal Application"
-                        >
-                          <Text style={styles.primaryActionBtnText}>START RENEWAL APPLICATION</Text>
-                          <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
-                        </TouchableOpacity>
+                        {renewalOverview?.state === 'GRANT_IN_PROGRESS' ? (
+                          <View
+                            style={{
+                              marginTop: 8,
+                              padding: 12,
+                              borderRadius: 10,
+                              backgroundColor: isDarkMode ? 'rgba(14, 165, 233, 0.12)' : '#F0F9FF',
+                              borderLeftWidth: 3,
+                              borderLeftColor: '#0284C7',
+                              gap: 4,
+                            }}
+                          >
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#38BDF8' : '#0369A1' }}>
+                              Grant Disbursement In Progress
+                            </Text>
+                            <Text style={{ fontSize: 12, color: isDarkMode ? '#CBD5E1' : '#475569', lineHeight: 17 }}>
+                              Your grant payout for the current period is currently being processed. Renewal will open once disbursement is completed.
+                            </Text>
+                          </View>
+                        ) : renewalOverview?.state === 'RENEWAL_AVAILABLE' ? (
+                          <TouchableOpacity
+                            style={[styles.primaryActionBtn, { marginTop: 12 }]}
+                            onPress={() => router.push('/education/renewal' as any)}
+                            activeOpacity={0.8}
+                            accessibilityRole="button"
+                            accessibilityLabel="Start Renewal Application"
+                          >
+                            <Text style={styles.primaryActionBtnText}>START RENEWAL APPLICATION</Text>
+                            <IconSymbol name="chevron.right" size={16} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
                     ) : (
                       <View style={{ gap: 14 }}>

@@ -10,7 +10,8 @@ export type RenewalState =
   | "SCHOLAR_INACTIVE"
   | "RENEWAL_NOT_OPEN"
   | "RENEWAL_AVAILABLE"
-  | "RENEWAL_EXISTS";
+  | "RENEWAL_EXISTS"
+  | "GRANT_IN_PROGRESS";
 
 export interface ScholarInfo {
   scholar_id: number;
@@ -86,6 +87,7 @@ export interface RequiredDocumentItem {
 export interface CitizenRenewalOverviewData {
   state: RenewalState;
   renewal_available: boolean;
+  ineligibility_reason?: string | null;
   scholar: ScholarInfo | null;
   program: ProgramInfo | null;
   current_academic_period: AcademicPeriodInfo | null;
