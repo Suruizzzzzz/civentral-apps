@@ -48,6 +48,7 @@ export interface RenewalPeriodInfo {
   status: string;
   academic_year: string;
   term: string;
+  allow_renewal_while_grant_pending?: boolean;
 }
 
 export interface UpcomingRenewalPeriodInfo {
