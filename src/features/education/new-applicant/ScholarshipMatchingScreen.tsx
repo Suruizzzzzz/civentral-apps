@@ -742,6 +742,34 @@ export function ScholarshipMatchingScreen() {
                       ? isDarkMode ? "#FBBF24" : "#B45309"
                       : isDarkMode ? "#F87171" : "#B91C1C";
 
+                  const badgeBorderColor = isEligible
+                    ? isDarkMode ? "#065F46" : "#86EFAC"
+                    : isIncomplete
+                      ? isDarkMode ? "#78350F" : "#FDE68A"
+                      : isDarkMode ? "#7F1D1D" : "#FECACA";
+
+                  const matchScoreVal = program.match_percentage ?? program.match_score;
+                  const isHighMatch = matchScoreVal != null && matchScoreVal >= 80;
+                  const isMedMatch = matchScoreVal != null && matchScoreVal >= 50 && matchScoreVal < 80;
+
+                  const matchBadgeBg = isHighMatch
+                    ? isDarkMode ? "#063726" : "#DCFCE7"
+                    : isMedMatch
+                      ? isDarkMode ? "#2D1E06" : "#FEF3C7"
+                      : isDarkMode ? "#2D1212" : "#FEE2E2";
+
+                  const matchBadgeTextColor = isHighMatch
+                    ? isDarkMode ? "#6EE7B7" : "#15803D"
+                    : isMedMatch
+                      ? isDarkMode ? "#FBBF24" : "#B45309"
+                      : isDarkMode ? "#F87171" : "#B91C1C";
+
+                  const matchBadgeBorder = isHighMatch
+                    ? isDarkMode ? "#065F46" : "#86EFAC"
+                    : isMedMatch
+                      ? isDarkMode ? "#78350F" : "#FDE68A"
+                      : isDarkMode ? "#7F1D1D" : "#FECACA";
+
                   return (
                     <View
                       key={program.program_id}
@@ -750,9 +778,9 @@ export function ScholarshipMatchingScreen() {
                         isDarkMode && { backgroundColor: "#1E293B", borderColor: "#334155" },
                       ]}
                     >
-                      {/* TOP ROW: CATEGORY, TITLE, STATUS BADGE */}
+                      {/* TOP ROW: CATEGORY, TITLE, MATCH % PILL & STATUS BADGE */}
                       <View style={styles.resultTop}>
-                        <View style={{ flex: 1 }}>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
                           {program.category_name ? (
                             <View
                               style={{
@@ -780,15 +808,41 @@ export function ScholarshipMatchingScreen() {
                           </Text>
                         </View>
 
-                        <View
-                          style={[
-                            styles.statusBadge,
-                            { backgroundColor: badgeBg },
-                          ]}
-                        >
-                          <Text style={[styles.statusText, { color: badgeTextColor }]}>
-                            {program.eligibility_status.toUpperCase()}
-                          </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          {matchScoreVal != null && (
+                            <View
+                              style={{
+                                backgroundColor: matchBadgeBg,
+                                borderWidth: 1,
+                                borderColor: matchBadgeBorder,
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 8,
+                              }}
+                            >
+                              <Text style={{ fontSize: 11, fontWeight: "800", color: matchBadgeTextColor }}>
+                                {`${Math.round(matchScoreVal)}% MATCH`}
+                              </Text>
+                            </View>
+                          )}
+
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              {
+                                backgroundColor: badgeBg,
+                                borderWidth: 1,
+                                borderColor: badgeBorderColor,
+                                borderRadius: 8,
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.statusText, { color: badgeTextColor, fontWeight: "800" }]}>
+                              {program.eligibility_status.toUpperCase()}
+                            </Text>
+                          </View>
                         </View>
                       </View>
 
@@ -796,13 +850,121 @@ export function ScholarshipMatchingScreen() {
                         <Text
                           style={[
                             styles.headerSubtitle,
-                            { fontSize: 13, marginBottom: 12 },
+                            { fontSize: 13, marginBottom: 10 },
                             isDarkMode && { color: "#94A3B8" },
                           ]}
                         >
                           {program.description}
                         </Text>
                       ) : null}
+
+                      {/* INELIGIBILITY / INCOMPLETE SUMMARY BANNER */}
+                      {(() => {
+                        const unmetCriteria = (program.criteria || []).filter(
+                          (c) => c.status === "Not Met" || (c as any).result === "Not Met"
+                        );
+
+                        if (!isEligible && !isIncomplete) {
+                          let disqualificationReason = "";
+                          if (unmetCriteria.length === 1) {
+                            const u = unmetCriteria[0];
+                            const req = u.requirement_display;
+                            const hasReq = req && req !== "Provided" && req !== "N/A" && req !== "Required";
+                            disqualificationReason = hasReq
+                              ? `Disqualified: Requires ${u.label} (${req}).`
+                              : `Disqualified: Requires verified ${u.label}.`;
+                          } else if (unmetCriteria.length > 1) {
+                            const reqParts = unmetCriteria.map((c) => {
+                              const req = c.requirement_display;
+                              const hasReq = req && req !== "Provided" && req !== "N/A" && req !== "Required";
+                              return hasReq ? `${c.label} (${req})` : c.label;
+                            });
+                            disqualificationReason = `Disqualified: Unmet requirements — ${reqParts.join(", ")}.`;
+                          } else {
+                            disqualificationReason = "Disqualified: Mandatory criteria not satisfied.";
+                          }
+
+                          return (
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "flex-start",
+                                gap: 8,
+                                backgroundColor: isDarkMode ? "#2D1212" : "#FEF2F2",
+                                borderWidth: 1,
+                                borderColor: isDarkMode ? "#7F1D1D" : "#FECACA",
+                                borderRadius: 8,
+                                paddingVertical: 9,
+                                paddingHorizontal: 12,
+                                marginBottom: 12,
+                              }}
+                            >
+                              <IconSymbol
+                                name="xmark.circle.fill"
+                                size={16}
+                                color={isDarkMode ? "#F87171" : "#DC2626"}
+                                style={{ marginTop: 1 }}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: "700",
+                                    color: isDarkMode ? "#FCA5A5" : "#991B1B",
+                                    lineHeight: 17,
+                                  }}
+                                >
+                                  {disqualificationReason}
+                                </Text>
+                              </View>
+                            </View>
+                          );
+                        }
+
+                        if (isIncomplete) {
+                          const incompleteCriteria = (program.criteria || []).filter(
+                            (c) => c.status === "Incomplete" || (c as any).result === "Incomplete"
+                          );
+                          const missingLabels = incompleteCriteria.map((c) => c.label).join(", ");
+                          return (
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "flex-start",
+                                gap: 8,
+                                backgroundColor: isDarkMode ? "#2D1E06" : "#FFFBEB",
+                                borderWidth: 1,
+                                borderColor: isDarkMode ? "#78350F" : "#FDE68A",
+                                borderRadius: 8,
+                                paddingVertical: 9,
+                                paddingHorizontal: 12,
+                                marginBottom: 12,
+                              }}
+                            >
+                              <IconSymbol
+                                name="exclamationmark.triangle.fill"
+                                size={16}
+                                color={isDarkMode ? "#FBBF24" : "#D97706"}
+                                style={{ marginTop: 1 }}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: "700",
+                                    color: isDarkMode ? "#FDE68A" : "#92400E",
+                                    lineHeight: 17,
+                                  }}
+                                >
+                                  {`Incomplete: Verification pending for ${missingLabels || "program criteria"}.`}
+                                </Text>
+                              </View>
+                            </View>
+                          );
+                        }
+
+                        return null;
+                      })()}
 
                       {/* ELIGIBILITY CHECK CRITERIA LIST */}
                       {program.criteria && program.criteria.length > 0 && (
@@ -919,39 +1081,89 @@ export function ScholarshipMatchingScreen() {
                         </View>
                       )}
 
-                      {/* OFFICIAL MATCH ASSESSMENT PRESENTATION */}
-                      {program.rag_explanation ? (
-                        <View
-                          style={{
-                            backgroundColor: isDarkMode ? "#072040" : "#F8FAFC",
-                            borderRadius: 10,
-                            padding: 10,
-                            marginTop: 6,
-                            borderLeftWidth: 3,
-                            borderLeftColor: isDarkMode ? "#38BDF8" : "#2563EB",
-                          }}
-                        >
-                          <Text
+                      {/* PROGRAM EVALUATION SUMMARY CARD */}
+                      {(() => {
+                        const unmetCriteria = (program.criteria || []).filter(
+                          (c) => c.status === "Not Met" || (c as any).result === "Not Met"
+                        );
+                        const scoreText = matchScoreVal != null ? `${Math.round(matchScoreVal)}%` : null;
+
+                        let summaryText = "";
+                        if (isEligible) {
+                          summaryText = scoreText
+                            ? `Applicant achieved a ${scoreText} match and satisfies all mandatory eligibility criteria for this scholarship.`
+                            : "Applicant satisfies all verified eligibility criteria for this scholarship program.";
+                        } else if (isIncomplete) {
+                          const missingItems = (program.criteria || [])
+                            .filter((c) => c.status === "Incomplete" || (c as any).result === "Incomplete")
+                            .map((c) => c.label)
+                            .join(", ");
+                          summaryText = `Evaluation is provisional (${scoreText ? `${scoreText} match` : "incomplete"}). Verification pending for: ${missingItems || "required criteria"}.`;
+                        } else {
+                          const unmetLabels = unmetCriteria.map((c) => c.label).join(", ");
+                          summaryText = scoreText
+                            ? `Applicant achieved an evaluated score of ${scoreText}, but does not meet mandatory criteria (${unmetLabels || "unmet requirements"}). Application cannot proceed under current qualifications.`
+                            : `Applicant does not meet mandatory criteria (${unmetLabels || "unmet requirements"}).`;
+                        }
+
+                        const hasRag = !!program.rag_explanation && program.rag_explanation.trim().length > 0;
+
+                        return (
+                          <View
                             style={{
-                              fontSize: 12,
-                              fontWeight: "700",
-                              color: isDarkMode ? "#38BDF8" : "#2563EB",
-                              marginBottom: 3,
+                              backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
+                              borderRadius: 8,
+                              borderWidth: 1,
+                              borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+                              padding: 12,
+                              marginTop: 8,
                             }}
                           >
-                            Match Assessment
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: 12.5,
-                              lineHeight: 18,
-                              color: isDarkMode ? "#CBD5E1" : "#475569",
-                            }}
-                          >
-                            {program.rag_explanation}
-                          </Text>
-                        </View>
-                      ) : null}
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                              <IconSymbol
+                                name="doc.text.fill"
+                                size={14}
+                                color={isDarkMode ? "#94A3B8" : "#475569"}
+                              />
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: "700",
+                                  color: isDarkMode ? "#E2E8F0" : "#334155",
+                                }}
+                              >
+                                Program Evaluation Summary
+                              </Text>
+                            </View>
+
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                lineHeight: 18,
+                                color: isDarkMode ? "#CBD5E1" : "#475569",
+                              }}
+                            >
+                              {summaryText}
+                            </Text>
+
+                            {hasRag && (
+                              <Text
+                                style={{
+                                  fontSize: 11.5,
+                                  lineHeight: 17,
+                                  color: isDarkMode ? "#94A3B8" : "#64748B",
+                                  marginTop: 6,
+                                  paddingTop: 6,
+                                  borderTopWidth: 1,
+                                  borderTopColor: isDarkMode ? "#1E293B" : "#F1F5F9",
+                                }}
+                              >
+                                {program.rag_explanation}
+                              </Text>
+                            )}
+                          </View>
+                        );
+                      })()}
 
                       {/* ACTION FOOTER — Apply Now (eligible) or View Program Details (not eligible) */}
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 8 }}>
@@ -962,9 +1174,9 @@ export function ScholarshipMatchingScreen() {
                             flexDirection: "row",
                             alignItems: "center",
                             justifyContent: "center",
-                            paddingVertical: 9,
+                            paddingVertical: 10,
                             paddingHorizontal: 12,
-                            borderRadius: 10,
+                            borderRadius: 8,
                             borderWidth: 1,
                             borderColor: isDarkMode ? "#334155" : "#CBD5E1",
                             backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
@@ -992,8 +1204,8 @@ export function ScholarshipMatchingScreen() {
                               justifyContent: "center",
                               paddingVertical: 10,
                               paddingHorizontal: 14,
-                              borderRadius: 10,
-                              backgroundColor: isDarkMode ? "#EA580C" : "#F97316",
+                              borderRadius: 8,
+                              backgroundColor: isDarkMode ? "#1D4ED8" : "#2563EB",
                               gap: 6,
                             }}
                             onPress={() =>
