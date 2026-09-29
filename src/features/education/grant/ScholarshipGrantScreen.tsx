@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { Badge } from "@/src/components/ui/Badge";
+import { IconSymbol } from "@/src/components/ui/icon-symbol";
+import { Skeleton } from "@/src/components/ui/Skeleton";
+import { useTheme } from "@/src/context/ThemeContext";
+import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -7,58 +15,52 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
-import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Badge } from '@/src/components/ui/Badge';
-import { IconSymbol } from '@/src/components/ui/icon-symbol';
-import { Skeleton } from '@/src/components/ui/Skeleton';
-import { useTheme } from '@/src/context/ThemeContext';
+} from "react-native";
 import {
   CitizenGrantOverviewData,
   fetchCitizenGrantOverview,
   GrantApplicationDetail,
-} from './api/grantApi';
+} from "./api/grantApi";
 import {
   CitizenGrantReleaseItem,
   fetchCitizenGrantReleases,
-} from './api/grantReleaseApi';
-import { styles } from './styles/ScholarshipGrant.styles';
+} from "./api/grantReleaseApi";
+import { styles } from "./styles/ScholarshipGrant.styles";
 
-const grantHeaderLight = require('@/assets/images/grant-header-light.png');
-const grantHeaderDark = require('@/assets/images/grant-header-dark.png');
-const grantWhite = require('@/assets/images/grant-white.png');
-const grantDark = require('@/assets/images/grant-dark.png');
-const complianceLight = require('@/assets/images/compliance-light.png');
-const complianceDark = require('@/assets/images/compliance-dark.png');
+const grantHeaderLight = require("@/assets/images/grant-header-light.png");
+const grantHeaderDark = require("@/assets/images/grant-header-dark.png");
+const grantWhite = require("@/assets/images/grant-white.png");
+const grantDark = require("@/assets/images/grant-dark.png");
+const complianceLight = require("@/assets/images/compliance-light.png");
+const complianceDark = require("@/assets/images/compliance-dark.png");
 
-function getStatusBadgeVariant(status?: string): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {
-  if (!status || status === '--') return 'neutral';
+function getStatusBadgeVariant(
+  status?: string,
+): "info" | "success" | "warning" | "danger" | "neutral" {
+  if (!status || status === "--") return "neutral";
   switch (status) {
-    case 'Draft':
-      return 'warning';
-    case 'Submitted':
-    case 'Approved for Payroll':
-    case 'Approved':
-    case 'Paid':
-    case 'Released':
-      return 'success';
-    case 'For Review':
-    case 'Under Review':
-    case 'Processing':
-    case 'Ready for Processing':
-      return 'info';
-    case 'For Compliance':
-    case 'On Hold — Institution Verification Required':
-    case 'Institution Verification Required':
-      return 'warning';
-    case 'Withdrawn':
-    case 'Invalid':
-      return 'danger';
+    case "Draft":
+      return "warning";
+    case "Submitted":
+    case "Approved for Payroll":
+    case "Approved":
+    case "Paid":
+    case "Released":
+      return "success";
+    case "For Review":
+    case "Under Review":
+    case "Processing":
+    case "Ready for Processing":
+      return "info";
+    case "For Compliance":
+    case "On Hold — Institution Verification Required":
+    case "Institution Verification Required":
+      return "warning";
+    case "Withdrawn":
+    case "Invalid":
+      return "danger";
     default:
-      return 'neutral';
+      return "neutral";
   }
 }
 
@@ -69,15 +71,19 @@ export default function ScholarshipGrantScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [overview, setOverview] = useState<CitizenGrantOverviewData | null>(null);
-  const [application, setApplication] = useState<GrantApplicationDetail | null>(null);
+  const [overview, setOverview] = useState<CitizenGrantOverviewData | null>(
+    null,
+  );
+  const [application, setApplication] = useState<GrantApplicationDetail | null>(
+    null,
+  );
   const [releases, setReleases] = useState<CitizenGrantReleaseItem[]>([]);
 
   const handleGoBack = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/education' as any);
+      router.replace("/education" as any);
     }
   };
 
@@ -92,9 +98,11 @@ export default function ScholarshipGrantScreen() {
       <IconSymbol
         name="chevron.left"
         size={16}
-        color={isDarkMode ? '#FB923C' : '#EA580C'}
+        color={isDarkMode ? "#FB923C" : "#EA580C"}
       />
-      <Text style={[styles.backText, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
+      <Text
+        style={[styles.backText, { color: isDarkMode ? "#FB923C" : "#EA580C" }]}
+      >
         Back to Education Hub
       </Text>
     </TouchableOpacity>
@@ -114,7 +122,7 @@ export default function ScholarshipGrantScreen() {
         width="100%"
         borderRadius={16}
         style={{
-          height: '100%',
+          height: "100%",
         }}
       />
     </View>
@@ -128,7 +136,7 @@ export default function ScholarshipGrantScreen() {
         fetchCitizenGrantReleases(),
       ]);
 
-      if (overviewRes.status === 'fulfilled') {
+      if (overviewRes.status === "fulfilled") {
         const data = overviewRes.value;
         setOverview(data);
         if (data.has_existing_application && data.application) {
@@ -137,17 +145,29 @@ export default function ScholarshipGrantScreen() {
           setApplication(null);
         }
       } else {
-        console.error('[ScholarshipGrantScreen] Overview fetch rejected:', overviewRes.reason);
+        console.error(
+          "[ScholarshipGrantScreen] Overview fetch rejected:",
+          overviewRes.reason,
+        );
       }
 
-      if (releasesRes.status === 'fulfilled') {
+      if (releasesRes.status === "fulfilled") {
         setReleases(releasesRes.value || []);
       } else {
-        console.error('[ScholarshipGrantScreen] Releases fetch rejected:', releasesRes.reason);
+        console.error(
+          "[ScholarshipGrantScreen] Releases fetch rejected:",
+          releasesRes.reason,
+        );
       }
     } catch (err: any) {
-      console.error('[ScholarshipGrantScreen] Load overview error:', err);
-      Alert.alert('Error', sanitizeErrorMessage(err?.message, 'Failed to load grant application context.'));
+      console.error("[ScholarshipGrantScreen] Load overview error:", err);
+      Alert.alert(
+        "Error",
+        sanitizeErrorMessage(
+          err?.message,
+          "Failed to load grant application context.",
+        ),
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -161,7 +181,7 @@ export default function ScholarshipGrantScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData])
+    }, [loadData]),
   );
 
   const onRefresh = useCallback(() => {
@@ -171,7 +191,9 @@ export default function ScholarshipGrantScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, isDarkMode && { backgroundColor: '#0F172A' }]}>
+      <View
+        style={[styles.container, isDarkMode && { backgroundColor: "#0F172A" }]}
+      >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {renderBackButton()}
           {renderHeaderSkeleton()}
@@ -190,86 +212,152 @@ export default function ScholarshipGrantScreen() {
     application?.grant_status ||
     (application as any)?.status ||
     (application as any)?.application_status ||
-    'Not Started';
+    "Not Started";
 
   // Compliance state calculation
   const docs = application?.documents || [];
-  const isComplianceStatus = application?.grant_status === 'For Compliance';
+  const isComplianceStatus = application?.grant_status === "For Compliance";
   const complianceDocs = isComplianceStatus
     ? docs.filter(
-        (d) => d.review_status === 'Needs Replacement' || d.review_status === 'Invalid'
+        (d) =>
+          d.review_status === "Needs Replacement" ||
+          d.review_status === "Invalid",
       )
     : [];
   const hasActionableCompliance = Boolean(
-    application &&
-    isComplianceStatus &&
-    complianceDocs.length > 0
+    application && isComplianceStatus && complianceDocs.length > 0,
   );
   const complianceCount = complianceDocs.length;
 
   // Contextual description for Grant Application card
   const getApplicationCardDescription = () => {
     if (!application) {
-      return 'You have not submitted an educational grant application for the current academic period. Begin your application to confirm school enrollment and submit verification documents.';
+      return "You have not submitted an educational grant application for the current academic period. Begin your application to confirm school enrollment and submit verification documents.";
     }
     switch (application.grant_status) {
-      case 'Draft':
-        return 'Application draft initiated. Complete your required enrollment documents and submit for Secretariat review.';
-      case 'Submitted':
-      case 'Under Review':
-      case 'For Review':
-        return 'Your grant application and documents have been submitted and are currently undergoing evaluation by the Secretariat.';
-      case 'For Compliance':
-        return 'Document corrections or replacements have been requested for your grant application. Please resolve this through Grant Compliance.';
-      case 'Approved for Payroll':
-      case 'Approved':
-        return 'Your grant application has been approved and queued for payroll authorization.';
-      case 'Paid':
-      case 'Released':
-      case 'Disbursed':
-        return 'Educational grant entitlement has been disbursed/released for this academic period.';
+      case "Draft":
+        return "Application draft initiated. Complete your required enrollment documents and submit for Secretariat review.";
+      case "Submitted":
+      case "Under Review":
+      case "For Review":
+        return "Your grant application and documents have been submitted and are currently undergoing evaluation by the Secretariat.";
+      case "For Compliance":
+        return "Document corrections or replacements have been requested for your grant application. Please resolve this through Grant Compliance.";
+      case "Approved for Payroll":
+      case "Approved":
+        return "Your grant application has been approved and queued for payroll authorization.";
+      case "Paid":
+      case "Released":
+      case "Disbursed":
+        return "Educational grant entitlement has been disbursed/released for this academic period.";
       default:
         return `Grant application is currently in ${application.grant_status} status.`;
     }
   };
 
-  const f2fItem = releases
-    .flatMap((r) => r.components.map((c) => ({ release: r, component: c })))
-    .find((x) => x.component.release_method === 'Face-to-Face');
+  const activePeriodId =
+    application?.academic_period_id ?? currentPeriod?.academic_period_id;
+  const activeYear = (
+    application?.academic_year ??
+    currentPeriod?.academic_year ??
+    ""
+  ).trim();
+  const activeTerm = (
+    application?.academic_term ??
+    currentPeriod?.term ??
+    ""
+  ).trim();
+
+  const normalizeAY = (s: string) =>
+    s.replace(/^AY\s*/i, "").trim().toLowerCase();
+  const normalizeTerm = (s: string) => s.trim().toLowerCase();
+
+  const isIntakeOrReviewStage =
+    !application ||
+    [
+      "Draft",
+      "Submitted",
+      "For Review",
+      "Under Review",
+      "For Compliance",
+    ].includes(application.grant_status);
+
+  const isDisbursementStage =
+    Boolean(application) &&
+    [
+      "Approved for Payroll",
+      "Approved",
+      "Processing",
+      "Ready for Processing",
+      "Disbursed",
+      "Released",
+      "Paid",
+    ].includes(application?.grant_status || "");
+
+  const currentPeriodReleases = releases.filter((r) => {
+    if (r.academic_period_id && activePeriodId) {
+      return Number(r.academic_period_id) === Number(activePeriodId);
+    }
+    if (activeYear && activeTerm && r.academic_year && r.academic_term) {
+      return (
+        normalizeAY(r.academic_year) === normalizeAY(activeYear) &&
+        normalizeTerm(r.academic_term) === normalizeTerm(activeTerm)
+      );
+    }
+    if (r.is_current_period !== undefined) {
+      return Boolean(r.is_current_period);
+    }
+    return false;
+  });
+
+  const f2fItem =
+    !isIntakeOrReviewStage && isDisbursementStage
+      ? currentPeriodReleases
+          .flatMap((r) =>
+            r.components.map((c) => ({ release: r, component: c })),
+          )
+          .find((x) => x.component.release_method === "Face-to-Face")
+      : undefined;
 
   const hasF2FVoucher = Boolean(f2fItem);
   const f2fSchedule = f2fItem?.component.f2f_schedule;
-  const isVoucherClaimed = f2fSchedule?.claim_status === 'Released' || f2fItem?.component.component_status === 'Released';
+  const isVoucherClaimed =
+    f2fSchedule?.claim_status === "Released" ||
+    f2fItem?.component.component_status === "Released";
 
   const handleOpenVoucher = () => {
     try {
-      router.push('/education/grant/voucher' as any);
+      router.push("/education/grant/voucher" as any);
     } catch {
-      router.navigate('/education/grant/voucher' as any);
+      router.navigate("/education/grant/voucher" as any);
     }
   };
 
   const handleOpenApplication = () => {
     try {
-      router.push('/education/grant/application' as any);
+      router.push("/education/grant/application" as any);
     } catch {
-      router.navigate('/education/grant/application' as any);
+      router.navigate("/education/grant/application" as any);
     }
   };
 
   const handleOpenCompliance = () => {
     try {
-      router.push('/education/grant/compliance' as any);
+      router.push("/education/grant/compliance" as any);
     } catch {
-      router.navigate('/education/grant/compliance' as any);
+      router.navigate("/education/grant/compliance" as any);
     }
   };
 
   return (
-    <View style={[styles.container, isDarkMode && { backgroundColor: '#0F172A' }]}>
+    <View
+      style={[styles.container, isDarkMode && { backgroundColor: "#0F172A" }]}
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {renderBackButton()}
 
@@ -297,8 +385,8 @@ export default function ScholarshipGrantScreen() {
           style={[
             styles.card,
             isDarkMode && {
-              backgroundColor: '#031731',
-              borderColor: '#0E2D56',
+              backgroundColor: "#031731",
+              borderColor: "#0E2D56",
             },
           ]}
           onPress={handleOpenApplication}
@@ -319,10 +407,14 @@ export default function ScholarshipGrantScreen() {
                 />
               </View>
 
-              <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>
+              <Text
+                style={[styles.cardTitle, isDarkMode && { color: "#F8FAFC" }]}
+              >
                 Grant Application
               </Text>
-              <Text style={[styles.cardSub, isDarkMode && { color: '#CBD5E1' }]}>
+              <Text
+                style={[styles.cardSub, isDarkMode && { color: "#CBD5E1" }]}
+              >
                 {getApplicationCardDescription()}
               </Text>
             </View>
@@ -331,30 +423,30 @@ export default function ScholarshipGrantScreen() {
           <View
             style={[
               styles.cardBottomRow,
-              isDarkMode && { borderTopColor: '#0D274A' },
+              isDarkMode && { borderTopColor: "#0D274A" },
             ]}
           >
             <View style={styles.pillGroup}>
               <View
                 style={[
                   styles.infoPill,
-                  isDarkMode && { backgroundColor: '#072040' },
+                  isDarkMode && { backgroundColor: "#072040" },
                 ]}
               >
                 <IconSymbol
                   name="clock.fill"
                   size={13}
-                  color={isDarkMode ? '#94A3B8' : '#64748B'}
+                  color={isDarkMode ? "#94A3B8" : "#64748B"}
                 />
                 <Text
                   style={[
                     styles.infoPillText,
-                    isDarkMode && { color: '#CBD5E1' },
+                    isDarkMode && { color: "#CBD5E1" },
                   ]}
                 >
                   {currentPeriod
                     ? `${currentPeriod.academic_year} • ${currentPeriod.term}`
-                    : 'Current Period'}
+                    : "Current Period"}
                 </Text>
               </View>
 
@@ -362,21 +454,23 @@ export default function ScholarshipGrantScreen() {
                 <View
                   style={[
                     styles.infoPill,
-                    isDarkMode && { backgroundColor: '#072040' },
+                    isDarkMode && { backgroundColor: "#072040" },
                   ]}
                 >
                   <IconSymbol
                     name="doc.text.fill"
                     size={13}
-                    color={isDarkMode ? '#94A3B8' : '#64748B'}
+                    color={isDarkMode ? "#94A3B8" : "#64748B"}
                   />
                   <Text
                     style={[
                       styles.infoPillText,
-                      isDarkMode && { color: '#CBD5E1' },
+                      isDarkMode && { color: "#CBD5E1" },
                     ]}
                   >
-                    {application.institution_type === 'Private' ? 'COR + SOA Required' : 'COR Required'}
+                    {application.institution_type === "Private"
+                      ? "COR + SOA Required"
+                      : "COR Required"}
                   </Text>
                 </View>
               )}
@@ -385,10 +479,12 @@ export default function ScholarshipGrantScreen() {
             <View
               style={[
                 styles.primaryActionBtn,
-                isDarkMode && { backgroundColor: '#EA580C' },
+                isDarkMode && { backgroundColor: "#EA580C" },
               ]}
             >
-              <Text style={styles.primaryActionBtnText}>View Grant Application</Text>
+              <Text style={styles.primaryActionBtnText}>
+                View Grant Application
+              </Text>
               <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
             </View>
           </View>
@@ -399,8 +495,8 @@ export default function ScholarshipGrantScreen() {
           style={[
             styles.card,
             isDarkMode && {
-              backgroundColor: '#071D37',
-              borderColor: '#0F3866',
+              backgroundColor: "#071D37",
+              borderColor: "#0F3866",
             },
           ]}
         >
@@ -417,39 +513,41 @@ export default function ScholarshipGrantScreen() {
                   <View
                     style={[
                       styles.warningBadge,
-                      isDarkMode && { backgroundColor: '#78350F' },
+                      isDarkMode && { backgroundColor: "#78350F" },
                     ]}
                   >
                     <IconSymbol
                       name="exclamationmark.triangle.fill"
                       size={11}
-                      color={isDarkMode ? '#FDE68A' : '#B45309'}
+                      color={isDarkMode ? "#FDE68A" : "#B45309"}
                     />
                     <Text
                       style={[
                         styles.warningBadgeText,
-                        isDarkMode && { color: '#FDE68A' },
+                        isDarkMode && { color: "#FDE68A" },
                       ]}
                     >
-                      {complianceCount > 0 ? `${complianceCount} Action Required` : 'Action Required'}
+                      {complianceCount > 0
+                        ? `${complianceCount} Action Required`
+                        : "Action Required"}
                     </Text>
                   </View>
                 ) : (
                   <View
                     style={[
                       styles.neutralBadge,
-                      isDarkMode && { backgroundColor: '#064E3B' },
+                      isDarkMode && { backgroundColor: "#064E3B" },
                     ]}
                   >
                     <IconSymbol
                       name="checkmark.circle.fill"
                       size={11}
-                      color={isDarkMode ? '#34D399' : '#16A34A'}
+                      color={isDarkMode ? "#34D399" : "#16A34A"}
                     />
                     <Text
                       style={[
                         styles.neutralBadgeText,
-                        isDarkMode && { color: '#34D399' },
+                        isDarkMode && { color: "#34D399" },
                       ]}
                     >
                       No Action Needed
@@ -458,13 +556,17 @@ export default function ScholarshipGrantScreen() {
                 )}
               </View>
 
-              <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>
+              <Text
+                style={[styles.cardTitle, isDarkMode && { color: "#F8FAFC" }]}
+              >
                 Compliance
               </Text>
-              <Text style={[styles.cardSub, isDarkMode && { color: '#CBD5E1' }]}>
+              <Text
+                style={[styles.cardSub, isDarkMode && { color: "#CBD5E1" }]}
+              >
                 {hasActionableCompliance
-                  ? `Action required: You have ${complianceCount > 0 ? complianceCount : 1} document correction request${complianceCount > 1 ? 's' : ''} to complete.`
-                  : 'Your grant application has no outstanding compliance requirements.'}
+                  ? `Action required: You have ${complianceCount > 0 ? complianceCount : 1} document correction request${complianceCount > 1 ? "s" : ""} to complete.`
+                  : "Your grant application has no outstanding compliance requirements."}
               </Text>
             </View>
           </View>
@@ -472,25 +574,25 @@ export default function ScholarshipGrantScreen() {
           <View
             style={[
               styles.cardBottomRow,
-              isDarkMode && { borderTopColor: '#0E2C52' },
+              isDarkMode && { borderTopColor: "#0E2C52" },
             ]}
           >
             <View style={styles.pillGroup}>
               <View
                 style={[
                   styles.infoPill,
-                  isDarkMode && { backgroundColor: '#0B2749' },
+                  isDarkMode && { backgroundColor: "#0B2749" },
                 ]}
               >
                 <IconSymbol
                   name="doc.text.fill"
                   size={13}
-                  color={isDarkMode ? '#94A3B8' : '#64748B'}
+                  color={isDarkMode ? "#94A3B8" : "#64748B"}
                 />
                 <Text
                   style={[
                     styles.infoPillText,
-                    isDarkMode && { color: '#CBD5E1' },
+                    isDarkMode && { color: "#CBD5E1" },
                   ]}
                 >
                   Document corrections
@@ -500,23 +602,35 @@ export default function ScholarshipGrantScreen() {
               <View
                 style={[
                   styles.infoPill,
-                  isDarkMode && { backgroundColor: '#0B2749' },
+                  isDarkMode && { backgroundColor: "#0B2749" },
                 ]}
               >
                 <IconSymbol
-                  name={hasActionableCompliance ? 'clock.fill' : 'checkmark.circle.fill'}
+                  name={
+                    hasActionableCompliance
+                      ? "clock.fill"
+                      : "checkmark.circle.fill"
+                  }
                   size={13}
-                  color={hasActionableCompliance ? (isDarkMode ? '#FDE68A' : '#B45309') : (isDarkMode ? '#34D399' : '#16A34A')}
+                  color={
+                    hasActionableCompliance
+                      ? isDarkMode
+                        ? "#FDE68A"
+                        : "#B45309"
+                      : isDarkMode
+                        ? "#34D399"
+                        : "#16A34A"
+                  }
                 />
                 <Text
                   style={[
                     styles.infoPillText,
-                    isDarkMode && { color: '#CBD5E1' },
+                    isDarkMode && { color: "#CBD5E1" },
                   ]}
                 >
                   {hasActionableCompliance
                     ? `${complianceCount > 0 ? complianceCount : 1} Action required`
-                    : 'No pending action'}
+                    : "No pending action"}
                 </Text>
               </View>
             </View>
@@ -525,7 +639,7 @@ export default function ScholarshipGrantScreen() {
               <TouchableOpacity
                 style={[
                   styles.secondaryActionBtn,
-                  isDarkMode && { borderColor: '#FB923C' },
+                  isDarkMode && { borderColor: "#FB923C" },
                 ]}
                 onPress={handleOpenCompliance}
                 activeOpacity={0.8}
@@ -533,7 +647,7 @@ export default function ScholarshipGrantScreen() {
                 <Text
                   style={[
                     styles.secondaryActionBtnText,
-                    isDarkMode && { color: '#FB923C' },
+                    isDarkMode && { color: "#FB923C" },
                   ]}
                 >
                   View Compliance
@@ -541,7 +655,7 @@ export default function ScholarshipGrantScreen() {
                 <IconSymbol
                   name="chevron.right"
                   size={14}
-                  color={isDarkMode ? '#FB923C' : '#EA580C'}
+                  color={isDarkMode ? "#FB923C" : "#EA580C"}
                 />
               </TouchableOpacity>
             )}
@@ -553,8 +667,8 @@ export default function ScholarshipGrantScreen() {
           style={[
             styles.card,
             isDarkMode && {
-              backgroundColor: '#041E34',
-              borderColor: '#0C3B5E',
+              backgroundColor: "#041E34",
+              borderColor: "#0C3B5E",
             },
           ]}
           onPress={handleOpenVoucher}
@@ -566,17 +680,17 @@ export default function ScholarshipGrantScreen() {
                 width: 58,
                 height: 58,
                 borderRadius: 14,
-                backgroundColor: isDarkMode ? '#0F3057' : '#EFF6FF',
-                justifyContent: 'center',
-                alignItems: 'center',
+                backgroundColor: isDarkMode ? "#0F3057" : "#EFF6FF",
+                justifyContent: "center",
+                alignItems: "center",
                 borderWidth: 1,
-                borderColor: isDarkMode ? '#1E4976' : '#DBEAFE',
+                borderColor: isDarkMode ? "#1E4976" : "#DBEAFE",
               }}
             >
               <Ionicons
                 name="qr-code-outline"
                 size={30}
-                color={isDarkMode ? '#38BDF8' : '#0284C7'}
+                color={isDarkMode ? "#38BDF8" : "#0284C7"}
               />
             </View>
 
@@ -584,7 +698,7 @@ export default function ScholarshipGrantScreen() {
               <View style={styles.badgeRow}>
                 {isVoucherClaimed ? (
                   <Badge label="CLAIMED / DISBURSED" variant="neutral" />
-                ) : f2fSchedule?.claim_status === 'Ready for Claim' ? (
+                ) : f2fSchedule?.claim_status === "Ready for Claim" ? (
                   <Badge label="READY FOR CLAIM" variant="success" />
                 ) : hasF2FVoucher ? (
                   <Badge label="SCHEDULED" variant="warning" />
@@ -593,15 +707,19 @@ export default function ScholarshipGrantScreen() {
                 )}
               </View>
 
-              <Text style={[styles.cardTitle, isDarkMode && { color: '#F8FAFC' }]}>
+              <Text
+                style={[styles.cardTitle, isDarkMode && { color: "#F8FAFC" }]}
+              >
                 Disbursement Claim Voucher
               </Text>
-              <Text style={[styles.cardSub, isDarkMode && { color: '#CBD5E1' }]}>
+              <Text
+                style={[styles.cardSub, isDarkMode && { color: "#CBD5E1" }]}
+              >
                 {hasF2FVoucher
                   ? isVoucherClaimed
-                    ? 'Your scholarship grant has been disbursed. View your official digital voucher and disbursement receipt record.'
-                    : 'Your in-person grant claiming voucher is ready. Present the dynamic QR code and your student ID at the disbursement window.'
-                  : 'Digital QR voucher will generate automatically once grant payroll release is authorized by the Secretariat.'}
+                    ? "Your scholarship grant has been disbursed. View your official digital voucher and disbursement receipt record."
+                    : "Your in-person grant claiming voucher is ready. Present the dynamic QR code and your student ID at the disbursement window."
+                  : "Digital QR voucher will generate automatically once grant payroll release is authorized by the Secretariat."}
               </Text>
             </View>
           </View>
@@ -609,7 +727,7 @@ export default function ScholarshipGrantScreen() {
           <View
             style={[
               styles.cardBottomRow,
-              isDarkMode && { borderTopColor: '#0E2C52' },
+              isDarkMode && { borderTopColor: "#0E2C52" },
             ]}
           >
             <View style={styles.pillGroup}>
@@ -617,21 +735,27 @@ export default function ScholarshipGrantScreen() {
                 <View
                   style={[
                     styles.infoPill,
-                    isDarkMode && { backgroundColor: '#072040' },
+                    isDarkMode && { backgroundColor: "#072040" },
                   ]}
                 >
                   <IconSymbol
                     name="banknote.fill"
                     size={13}
-                    color={isDarkMode ? '#34D399' : '#059669'}
+                    color={isDarkMode ? "#34D399" : "#059669"}
                   />
                   <Text
                     style={[
                       styles.infoPillText,
-                      { color: isDarkMode ? '#34D399' : '#059669', fontWeight: '800' },
+                      {
+                        color: isDarkMode ? "#34D399" : "#059669",
+                        fontWeight: "800",
+                      },
                     ]}
                   >
-                    ₱{f2fItem.component.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    ₱
+                    {f2fItem.component.amount.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}
                   </Text>
                 </View>
               ) : null}
@@ -640,19 +764,19 @@ export default function ScholarshipGrantScreen() {
                 <View
                   style={[
                     styles.infoPill,
-                    isDarkMode && { backgroundColor: '#072040' },
+                    isDarkMode && { backgroundColor: "#072040" },
                   ]}
                 >
                   <Ionicons
                     name="barcode-outline"
                     size={13}
-                    color={isDarkMode ? '#94A3B8' : '#64748B'}
+                    color={isDarkMode ? "#94A3B8" : "#64748B"}
                   />
                   <Text
                     style={[
                       styles.infoPillText,
-                      isDarkMode && { color: '#CBD5E1' },
-                      { fontFamily: 'Courier', fontWeight: '700' },
+                      isDarkMode && { color: "#CBD5E1" },
+                      { fontFamily: "Courier", fontWeight: "700" },
                     ]}
                   >
                     {f2fSchedule.claim_reference}
@@ -664,7 +788,7 @@ export default function ScholarshipGrantScreen() {
             <View
               style={[
                 styles.primaryActionBtn,
-                isDarkMode && { backgroundColor: '#EA580C' },
+                isDarkMode && { backgroundColor: "#EA580C" },
               ]}
             >
               <Text style={styles.primaryActionBtnText}>View QR Voucher</Text>
@@ -678,3 +802,4 @@ export default function ScholarshipGrantScreen() {
 }
 
 export { ScholarshipGrantScreen };
+

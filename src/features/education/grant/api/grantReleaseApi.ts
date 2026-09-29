@@ -39,6 +39,8 @@ export interface CitizenGrantReleaseComponent {
 
 export interface CitizenGrantReleaseItem {
   release_code: string;
+  academic_period_id?: number | null;
+  is_current_period?: boolean;
   program_name: string;
   academic_year: string;
   academic_term: string;

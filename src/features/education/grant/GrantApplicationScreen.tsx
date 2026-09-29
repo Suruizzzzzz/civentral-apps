@@ -507,32 +507,75 @@ export function GrantApplicationScreen() {
   const actualEntitlement = application?.actual_tuition_grant_entitlement ?? overview?.actual_tuition_grant_entitlement;
   const hasTuitionFigures = assessedTuition !== undefined || programTuitionMax !== undefined || actualEntitlement !== undefined;
 
-  // Aggregate releases financial totals
-  const totalAuthorized = grantReleases.reduce((acc, r) => acc + (r.authorized_amount || 0), 0);
-  const totalReleased = grantReleases.reduce((acc, r) => acc + (r.total_released_amount || 0), 0);
-  const totalRemaining = grantReleases.reduce((acc, r) => acc + (r.remaining_amount || 0), 0);
+  // Active academic cycle resolution for strict period isolation
+  const activePeriodId = application?.academic_period_id ?? overview?.current_academic_period?.academic_period_id;
+  const activeYear = (application?.academic_year ?? overview?.current_academic_period?.academic_year ?? '').trim();
+  const activeTerm = (application?.academic_term ?? overview?.current_academic_period?.term ?? '').trim();
 
-  const showGrantReleaseSection =
+  const normalizeAY = (s: string) => s.replace(/^AY\s*/i, '').trim().toLowerCase();
+  const normalizeTerm = (s: string) => s.trim().toLowerCase();
+
+  // Strictly isolate releases to the CURRENT active grant application's academic cycle
+  const currentPeriodReleases = grantReleases.filter((r) => {
+    // 1. Exact numeric match by academic_period_id
+    if (r.academic_period_id && activePeriodId) {
+      return Number(r.academic_period_id) === Number(activePeriodId);
+    }
+    // 2. Strict matching on BOTH academic year AND academic term
+    // (Ignores previous periods, e.g. ignoring 'Whole Academic Year' when working on '1st Semester')
+    if (activeYear && activeTerm && r.academic_year && r.academic_term) {
+      return (
+        normalizeAY(r.academic_year) === normalizeAY(activeYear) &&
+        normalizeTerm(r.academic_term) === normalizeTerm(activeTerm)
+      );
+    }
+    // 3. Fallback to is_current_period flag if active period is not resolved
+    if (r.is_current_period !== undefined) {
+      return Boolean(r.is_current_period);
+    }
+    return false;
+  });
+
+  // Intake / Draft / Evaluation states — when true, the scholar is actively preparing or awaiting review of their intake
+  const isIntakeOrReviewStage =
+    isDraft ||
+    !application ||
+    ['Draft', 'Submitted', 'For Review', 'Under Review', 'For Compliance'].includes(
+      application.grant_status,
+    );
+
+  const isDisbursementStage =
     Boolean(application) &&
-    (grantReleases.length > 0 ||
-      hasTuitionFigures ||
-      application?.grant_status === 'Approved for Payroll' ||
-      application?.grant_status === 'Approved' ||
-      application?.grant_status === 'Processing' ||
-      application?.grant_status === 'Disbursed' ||
-      application?.grant_status === 'Released' ||
-      application?.grant_status === 'Paid');
+    ['Approved for Payroll', 'Approved', 'Processing', 'Ready for Processing', 'Disbursed', 'Released', 'Paid'].includes(
+      application?.grant_status || '',
+    );
 
-  // Progressive Disclosure check for Claiming Guidelines
-  const isReadyForClaim = grantReleases.some((r) =>
-    (r.components || []).some(
-      (c) =>
-        c.release_method === 'Face-to-Face' &&
-        (c.f2f_schedule?.claim_status === 'Ready for Claim' ||
-          c.f2f_schedule?.claim_status === 'Scheduled' ||
-          Boolean(c.f2f_schedule?.claim_reference))
-    )
-  );
+  // Aggregate releases financial totals (strictly for CURRENT active cycle)
+  const totalAuthorized = currentPeriodReleases.reduce((acc, r) => acc + (r.authorized_amount || 0), 0);
+  const totalReleased = currentPeriodReleases.reduce((acc, r) => acc + (r.total_released_amount || 0), 0);
+  const totalRemaining = currentPeriodReleases.reduce((acc, r) => acc + (r.remaining_amount || 0), 0);
+
+  // Strict Active Release Rendering Condition:
+  // ONLY render the GRANT RELEASE card if there is an active release specifically tied
+  // to the CURRENT active grant application cycle that has reached the disbursement stage.
+  // When an intake/draft is active, historical/prior cycle releases must NEVER be rendered below the form.
+  const showGrantReleaseSection =
+    !isIntakeOrReviewStage &&
+    isDisbursementStage &&
+    currentPeriodReleases.length > 0;
+
+  // Progressive Disclosure check for Claiming Guidelines (strictly scoped to current period releases)
+  const isReadyForClaim =
+    showGrantReleaseSection &&
+    currentPeriodReleases.some((r) =>
+      (r.components || []).some(
+        (c) =>
+          c.release_method === 'Face-to-Face' &&
+          (c.f2f_schedule?.claim_status === 'Ready for Claim' ||
+            c.f2f_schedule?.claim_status === 'Scheduled' ||
+            Boolean(c.f2f_schedule?.claim_reference))
+      )
+    );
 
   // Status Presentation Configuration
   const getStatusConfig = () => {
@@ -1146,9 +1189,9 @@ export function GrantApplicationScreen() {
             </View>
 
             {/* Scheduled Releases List */}
-            {grantReleases.length > 0 && (
+            {currentPeriodReleases.length > 0 && (
               <View style={{ gap: 10 }}>
-                {grantReleases.map((rel) => (
+                {currentPeriodReleases.map((rel) => (
                   <View
                     key={rel.release_code || rel.academic_year}
                     style={{
@@ -1330,63 +1373,65 @@ export function GrantApplicationScreen() {
         {/* ============================================================== */}
         {/* 6. CLAIMING GUIDELINES (PROGRESSIVE DISCLOSURE)                */}
         {/* ============================================================== */}
-        {isReadyForClaim ? (
-          <View
-            style={[
-              styles.card,
-              { padding: 16, marginBottom: 14 },
-              isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <View style={[styles.reqIconCircle, isDarkMode && { backgroundColor: '#064E3B' }]}>
-                <IconSymbol name="info.circle.fill" size={16} color="#16A34A" />
+        {showGrantReleaseSection && (
+          isReadyForClaim ? (
+            <View
+              style={[
+                styles.card,
+                { padding: 16, marginBottom: 14 },
+                isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' },
+              ]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <View style={[styles.reqIconCircle, isDarkMode && { backgroundColor: '#064E3B' }]}>
+                  <IconSymbol name="info.circle.fill" size={16} color="#16A34A" />
+                </View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
+                  Claiming Guidelines
+                </Text>
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: isDarkMode ? '#F8FAFC' : '#0F172A' }}>
-                Claiming Guidelines
+
+              <View style={{ gap: 8 }}>
+                <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                  <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
+                    Present your valid Student ID and one (1) Government-issued ID.
+                  </Text>
+                </View>
+                <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                  <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
+                    Bring your Claim Reference code or printout of this schedule.
+                  </Text>
+                </View>
+                <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
+                  <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                  <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
+                    Only the registered scholar may claim unless authorized with an SPA.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                padding: 12,
+                backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: isDarkMode ? '#334155' : '#E2E8F0',
+                marginBottom: 14,
+              }}
+            >
+              <IconSymbol name="info.circle" size={15} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+              <Text style={{ fontSize: 11.5, color: isDarkMode ? '#94A3B8' : '#64748B', flex: 1, lineHeight: 16 }}>
+                Claiming guidelines and payout venue details will appear here once your grant is released for claiming.
               </Text>
             </View>
-
-            <View style={{ gap: 8 }}>
-              <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-                <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
-                <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
-                  Present your valid Student ID and one (1) Government-issued ID.
-                </Text>
-              </View>
-              <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-                <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
-                <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
-                  Bring your Claim Reference code or printout of this schedule.
-                </Text>
-              </View>
-              <View style={[styles.reqItem, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
-                <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
-                <Text style={[styles.reqText, isDarkMode && { color: '#CBD5E1' }]}>
-                  Only the registered scholar may claim unless authorized with an SPA.
-                </Text>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              padding: 12,
-              backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: isDarkMode ? '#334155' : '#E2E8F0',
-              marginBottom: 14,
-            }}
-          >
-            <IconSymbol name="info.circle" size={15} color={isDarkMode ? '#94A3B8' : '#64748B'} />
-            <Text style={{ fontSize: 11.5, color: isDarkMode ? '#94A3B8' : '#64748B', flex: 1, lineHeight: 16 }}>
-              Claiming guidelines and payout venue details will appear here once your grant is released for claiming.
-            </Text>
-          </View>
+          )
         )}
       </ScrollView>
 
