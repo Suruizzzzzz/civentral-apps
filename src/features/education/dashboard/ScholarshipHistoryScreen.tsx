@@ -256,6 +256,7 @@ export function ScholarshipHistoryScreen() {
   const allHistoryRecords: HistoryRecord[] = useMemo(() => {
     const list: HistoryRecord[] = [];
     const seenCodes = new Set<string>();
+    const seenGrantPeriods = new Set<string>();
 
     const authoritativeFallback = currentPeriodString || 'Academic Period';
 
@@ -283,14 +284,20 @@ export function ScholarshipHistoryScreen() {
         item.details?.application_code ||
         item.details?.renewal_code ||
         item.id;
-      if (code && seenCodes.has(code)) continue;
-      if (code) seenCodes.add(code);
-
       let recordType: 'Application' | 'Renewal' | 'Grant' = 'Application';
       if (item.type === 'Scholarship Renewal') recordType = 'Renewal';
       else if (item.type === 'Scholarship Grant') recordType = 'Grant';
 
       const itemPeriod = cleanAcademicPeriod(item.details?.academic_period);
+
+      // Deduplicate grant records by academic period
+      if (recordType === 'Grant') {
+        if (seenGrantPeriods.has(itemPeriod)) continue;
+        seenGrantPeriods.add(itemPeriod);
+      }
+
+      if (code && seenCodes.has(code)) continue;
+      if (code) seenCodes.add(code);
       const isCurrent: boolean =
         Boolean(currentPeriodString) &&
         Boolean(
@@ -346,12 +353,17 @@ export function ScholarshipHistoryScreen() {
     // 2. Map grant releases
     for (const rel of grantReleases) {
       if (rel.release_code && seenCodes.has(rel.release_code)) continue;
-      if (rel.release_code) seenCodes.add(rel.release_code);
 
       const rawRelPeriod = rel.academic_term
         ? `AY ${rel.academic_year} • ${rel.academic_term}`
         : `AY ${rel.academic_year}`;
       const relPeriod = cleanAcademicPeriod(rawRelPeriod);
+
+      // If a grant item for this period was already recorded, consolidate and skip
+      if (seenGrantPeriods.has(relPeriod)) continue;
+      seenGrantPeriods.add(relPeriod);
+
+      if (rel.release_code) seenCodes.add(rel.release_code);
 
       const isCurrent =
         Boolean(currentPeriodString) &&
@@ -381,14 +393,17 @@ export function ScholarshipHistoryScreen() {
     if (grantOverview?.has_existing_application && grantOverview.application) {
       const gApp = grantOverview.application;
       const gCode = gApp.grant_application_code || `GRA-${gApp.grant_application_id || 'ACTIVE'}`;
-      if (!seenCodes.has(gCode)) {
+      const rawGPeriod = gApp.academic_year && gApp.academic_term
+        ? `AY ${gApp.academic_year} • ${gApp.academic_term}`
+        : gApp.academic_year
+        ? `AY ${gApp.academic_year}`
+        : currentPeriodString;
+      const gPeriod = cleanAcademicPeriod(rawGPeriod);
+
+      // Consolidate: only add standalone grant application if NO release/grant exists for this cycle
+      if (!seenCodes.has(gCode) && !seenGrantPeriods.has(gPeriod)) {
         seenCodes.add(gCode);
-        const rawGPeriod = gApp.academic_year && gApp.academic_term
-          ? `AY ${gApp.academic_year} • ${gApp.academic_term}`
-          : gApp.academic_year
-          ? `AY ${gApp.academic_year}`
-          : currentPeriodString;
-        const gPeriod = cleanAcademicPeriod(rawGPeriod);
+        seenGrantPeriods.add(gPeriod);
         list.push({
           id: `grant-app-${gCode}`,
           academicPeriod: gPeriod,

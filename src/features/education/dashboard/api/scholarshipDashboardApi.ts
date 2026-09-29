@@ -74,17 +74,37 @@ export interface DashboardGrant {
   expected_release_date?: string | null;
 }
 
+export interface DashboardRenewal {
+  renewal_id: number;
+  renewal_code: string;
+  renewal_status: string;
+  submitted_at: string;
+  academic_year?: string;
+  term?: string;
+  academic_period?: string;
+  evaluator_name?: string | null;
+  coordinator_name?: string | null;
+}
+
 export interface DashboardLatestUpdate {
   title: string;
   timestamp: string | null;
 }
 
 export interface CitizenDashboardData {
-  state: 'NO_SCHOLARSHIP' | 'APPLICATION_IN_PROGRESS' | 'APPLICATION_DISAPPROVED' | 'SCHOLAR_WITHOUT_GRANT' | 'ACTIVE_SCHOLAR' | 'ACTIVE_GRANT';
+  state:
+    | 'NO_SCHOLARSHIP'
+    | 'APPLICATION_IN_PROGRESS'
+    | 'APPLICATION_DISAPPROVED'
+    | 'SCHOLAR_WITHOUT_GRANT'
+    | 'ACTIVE_SCHOLAR'
+    | 'ACTIVE_GRANT'
+    | 'RENEWAL_IN_PROGRESS';
   scholar: DashboardScholar | null;
   scholarship: DashboardScholarship | null;
   academic_period: DashboardAcademicPeriod | null;
   application: DashboardApplication | null;
+  renewal?: DashboardRenewal | null;
   process_timeline: TimelineItem[];
   grant: DashboardGrant | null;
   latest_update: DashboardLatestUpdate;

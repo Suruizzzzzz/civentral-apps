@@ -28,6 +28,7 @@ import {
 } from './api/scholarshipDashboardApi';
 import { CitizenGrantOverviewData, fetchCitizenGrantOverview } from '../grant/api/grantApi';
 import { CitizenGrantReleaseItem, fetchCitizenGrantReleases } from '../grant/api/grantReleaseApi';
+import { CitizenRenewalOverviewData, fetchCitizenRenewalOverview } from '../renewal/api/renewalApi';
 import {
   CitizenOfficialDocumentItem,
   CitizenOfficialDocumentsData,
@@ -156,6 +157,7 @@ export function ScholarshipDashboardScreen() {
   const [grantReleases, setGrantReleases] = useState<CitizenGrantReleaseItem[]>([]);
   const [trackedItems, setTrackedItems] = useState<TrackedItem[]>([]);
   const [officialDocsData, setOfficialDocsData] = useState<CitizenOfficialDocumentsData | null>(null);
+  const [renewalOverview, setRenewalOverview] = useState<CitizenRenewalOverviewData | null>(null);
 
   // Per-record official documents modal state
   const [selectedRecordForDocs] = useState<HistoryItem | null>(null);
@@ -182,7 +184,7 @@ export function ScholarshipDashboardScreen() {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [dashRes, grantOverRes, grantRelRes, trackedRes, officialDocsRes] =
+      const [dashRes, grantOverRes, grantRelRes, trackedRes, officialDocsRes, renewalOverRes] =
         await Promise.all([
           fetchCitizenDashboard().catch((err) => {
             console.warn('[ScholarshipDashboard] dashboard fetch failed:', err);
@@ -204,6 +206,10 @@ export function ScholarshipDashboardScreen() {
             console.warn('[ScholarshipDashboard] official docs fetch failed:', err);
             return null;
           }),
+          fetchCitizenRenewalOverview().catch((err) => {
+            console.warn('[ScholarshipDashboard] renewal overview fetch failed:', err);
+            return null;
+          }),
         ]);
 
       if (!dashRes && !grantOverRes) {
@@ -214,6 +220,7 @@ export function ScholarshipDashboardScreen() {
         setGrantReleases(grantRelRes);
         setTrackedItems(trackedRes);
         setOfficialDocsData(officialDocsRes);
+        setRenewalOverview(renewalOverRes);
       }
     } catch (err: any) {
       console.error('[ScholarshipDashboard] loadData error:', err);
@@ -240,12 +247,51 @@ export function ScholarshipDashboardScreen() {
   const currentAcademicPeriod = dashboardData?.academic_period;
   const application = dashboardData?.application;
 
+  // Active renewal resolution (from dashboard API or renewal overview)
+  const activeRenewal = useMemo(() => {
+    if (dashboardData?.renewal) {
+      return dashboardData.renewal;
+    }
+    if (renewalOverview?.renewal && renewalOverview.state === 'RENEWAL_EXISTS') {
+      const r = renewalOverview.renewal;
+      const p = renewalOverview.renewal_period;
+      return {
+        renewal_id: r.renewal_id,
+        renewal_code: r.renewal_code,
+        renewal_status: r.renewal_status,
+        submitted_at: r.submitted_at,
+        academic_year: p?.academic_year || '',
+        term: p?.term || '',
+        academic_period: p ? `AY ${p.academic_year} • ${p.term}` : '',
+      };
+    }
+    return null;
+  }, [dashboardData?.renewal, renewalOverview]);
+
+  const isRenewalActive = useMemo(() => {
+    if (!activeRenewal) return false;
+    const s = activeRenewal.renewal_status;
+    return [
+      'For Review',
+      'Under Review',
+      'For Compliance',
+      'For Evaluation',
+      'Returned',
+      'Recommended for Continuation',
+      'Recommended for Non-Continuation',
+      'For Certificate',
+    ].includes(s);
+  }, [activeRenewal]);
+
   const processTimeline = useMemo(
     () => dashboardData?.process_timeline || [],
     [dashboardData?.process_timeline]
   );
 
   const currentPeriodString = useMemo(() => {
+    if (isRenewalActive && activeRenewal?.academic_period) {
+      return activeRenewal.academic_period;
+    }
     if (!currentAcademicPeriod) return '';
     const ay = currentAcademicPeriod.academic_year?.trim();
     const term = currentAcademicPeriod.term?.trim();
@@ -256,12 +302,94 @@ export function ScholarshipDashboardScreen() {
       return `AY ${ay}`;
     }
     return '';
-  }, [currentAcademicPeriod]);
+  }, [isRenewalActive, activeRenewal, currentAcademicPeriod]);
 
   // -------------------------------------------------------------
   // FIVE-STAGE STATUS LOGIC (EXACTLY 5 STAGES)
   // -------------------------------------------------------------
   const stages: ProgressStage[] = useMemo(() => {
+    // If an active scholarship renewal exists, elevate progress card to Renewal Lifecycle
+    if (isRenewalActive && activeRenewal) {
+      const renStatus = activeRenewal.renewal_status;
+      const isReviewDone = [
+        'For Evaluation',
+        'Recommended for Continuation',
+        'Recommended for Non-Continuation',
+        'For Certificate',
+        'Completed',
+      ].includes(renStatus);
+      const isReviewCurrent = [
+        'For Review',
+        'Under Review',
+        'For Compliance',
+        'Returned',
+      ].includes(renStatus);
+
+      const isEvalDone = [
+        'Recommended for Continuation',
+        'Recommended for Non-Continuation',
+        'For Certificate',
+        'Completed',
+      ].includes(renStatus);
+      const isEvalCurrent = renStatus === 'For Evaluation';
+
+      const isDecisionDone = ['For Certificate', 'Completed'].includes(renStatus);
+      const isDecisionCurrent = [
+        'Recommended for Continuation',
+        'Recommended for Non-Continuation',
+      ].includes(renStatus);
+
+      const isCertDone = renStatus === 'Completed';
+      const isCertCurrent = renStatus === 'For Certificate';
+
+      const submittedDate = formatDate(activeRenewal.submitted_at);
+
+      return [
+        {
+          id: 1,
+          label: 'Submitted',
+          title: 'Renewal Submitted',
+          description: 'Renewal application and academic records submitted.',
+          date: submittedDate,
+          state: 'completed',
+        },
+        {
+          id: 2,
+          label: 'Review',
+          title: 'Document & Secretariat Review',
+          description: 'Secretariat verification of applicant credentials and eligibility.',
+          date: isReviewDone || isReviewCurrent ? submittedDate : null,
+          state: isReviewDone ? 'completed' : isReviewCurrent ? 'current' : 'upcoming',
+          evaluatorName: activeRenewal.coordinator_name || null,
+        },
+        {
+          id: 3,
+          label: 'SSC Eval',
+          title: 'SSC Evaluation',
+          description: 'Scholarship Selection Committee review and continuation evaluation.',
+          date: null,
+          state: isEvalDone ? 'completed' : isEvalCurrent ? 'current' : 'upcoming',
+          evaluatorName: activeRenewal.evaluator_name || null,
+        },
+        {
+          id: 4,
+          label: 'Continuation',
+          title: 'Continuation Decision',
+          description: 'Committee determination on scholarship retention and renewal continuation.',
+          date: null,
+          state: isDecisionDone ? 'completed' : isDecisionCurrent ? 'current' : 'upcoming',
+        },
+        {
+          id: 5,
+          label: 'Certificate',
+          title: 'Renewal Certificate',
+          description: 'Official municipal scholarship renewal certificate processing and issuance.',
+          date: null,
+          state: isCertDone ? 'completed' : isCertCurrent ? 'current' : 'upcoming',
+        },
+      ];
+    }
+
     // Stage 1: Application Submitted
     const submittedItem = processTimeline.find(
       (i) => i.key === 'submitted' || i.title.toLowerCase().includes('submitted')
@@ -462,7 +590,7 @@ export function ScholarshipDashboardScreen() {
             hasGrantDisbursed),
       },
     ];
-  }, [scholar, application, processTimeline, grantReleases, grantOverview]);
+  }, [isRenewalActive, activeRenewal, scholar, application, processTimeline, grantReleases, grantOverview]);
 
   // Withdrawal detection
   const isWithdrawn = Boolean(application?.application_status === 'Withdrawn');
@@ -506,7 +634,79 @@ export function ScholarshipDashboardScreen() {
         badgeBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
       };
     }
-    if (scholar?.scholar_status === 'Active') {
+    if (scholar?.scholar_status === 'Active' || scholar?.scholar_status === 'For Renewal') {
+      if (isRenewalActive && activeRenewal) {
+        const renStatus = activeRenewal.renewal_status;
+        if (renStatus === 'For Review' || renStatus === 'Under Review') {
+          return {
+            label: 'Renewal Under Review',
+            description: 'Scholarship renewal application is currently under coordinator review.',
+            dotColor: '#7E22CE',
+            textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+            badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+            badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+          };
+        }
+        if (renStatus === 'For Evaluation') {
+          return {
+            label: 'For SSC Evaluation',
+            description: 'Renewal scheduled for Scholarship Selection Committee continuation evaluation.',
+            dotColor: '#7E22CE',
+            textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+            badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+            badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+          };
+        }
+        if (renStatus === 'For Compliance' || renStatus === 'Returned') {
+          return {
+            label: 'Renewal For Compliance',
+            description: 'Action required: additional requirements or clarification needed for renewal.',
+            dotColor: '#D97706',
+            textColor: isDarkMode ? '#FBBF24' : '#D97706',
+            badgeBg: isDarkMode ? '#451A03' : '#FEF3C7',
+            badgeBorder: isDarkMode ? '#B45309' : '#FDE68A',
+          };
+        }
+        if (renStatus === 'Recommended for Continuation') {
+          return {
+            label: 'Continuation Recommended',
+            description: 'Scholarship renewal recommended for continuation by the SSC.',
+            dotColor: '#16A34A',
+            textColor: isDarkMode ? '#4ADE80' : '#16A34A',
+            badgeBg: isDarkMode ? '#064E3B' : '#DCFCE7',
+            badgeBorder: isDarkMode ? '#059669' : '#86EFAC',
+          };
+        }
+        if (renStatus === 'Recommended for Non-Continuation') {
+          return {
+            label: 'Non-Continuation',
+            description: 'Scholarship renewal evaluated for non-continuation.',
+            dotColor: '#DC2626',
+            textColor: isDarkMode ? '#F87171' : '#DC2626',
+            badgeBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
+            badgeBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
+          };
+        }
+        if (renStatus === 'For Certificate') {
+          return {
+            label: 'For Certificate',
+            description: 'Renewal Certificate of Scholarship is being processed.',
+            dotColor: '#7E22CE',
+            textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+            badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+            badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+          };
+        }
+        return {
+          label: `Renewal ${renStatus}`,
+          description: 'Scholarship renewal application in progress.',
+          dotColor: '#7E22CE',
+          textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+          badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+          badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+        };
+      }
+
       if (stages[4].state === 'completed') {
         return {
           label: 'Grant Disbursed',
@@ -615,7 +815,7 @@ export function ScholarshipDashboardScreen() {
       badgeBg: isDarkMode ? '#1E293B' : '#F1F5F9',
       badgeBorder: isDarkMode ? '#334155' : '#E2E8F0',
     };
-  }, [isWithdrawn, isDisapproved, scholar, application, stages, isDarkMode]);
+  }, [isWithdrawn, isDisapproved, isRenewalActive, activeRenewal, scholar, application, stages, isDarkMode]);
 
 
   // -------------------------------------------------------------
@@ -624,6 +824,7 @@ export function ScholarshipDashboardScreen() {
   const historyList: HistoryItem[] = useMemo(() => {
     const list: HistoryItem[] = [];
     const seenCodes = new Set<string>();
+    const seenGrantPeriods = new Set<string>();
 
     const authoritativeFallback = currentPeriodString || 'Academic Period';
 
@@ -651,14 +852,21 @@ export function ScholarshipDashboardScreen() {
         item.details?.application_code ||
         item.details?.renewal_code ||
         item.id;
-      if (code && seenCodes.has(code)) continue;
-      if (code) seenCodes.add(code);
-
       let recordType: 'Application' | 'Renewal' | 'Grant' = 'Application';
       if (item.type === 'Scholarship Renewal') recordType = 'Renewal';
       else if (item.type === 'Scholarship Grant') recordType = 'Grant';
 
       const itemPeriod = cleanAcademicPeriod(item.details?.academic_period);
+
+      // Deduplicate grant records by academic period
+      if (recordType === 'Grant') {
+        if (seenGrantPeriods.has(itemPeriod)) continue;
+        seenGrantPeriods.add(itemPeriod);
+      }
+
+      if (code && seenCodes.has(code)) continue;
+      if (code) seenCodes.add(code);
+
       const isCurrent: boolean =
         Boolean(currentPeriodString) &&
         Boolean(
@@ -666,7 +874,8 @@ export function ScholarshipDashboardScreen() {
             (currentAcademicPeriod?.academic_year &&
               itemPeriod.includes(currentAcademicPeriod.academic_year)) ||
             (code && scholar?.scholar_code && code === scholar.scholar_code) ||
-            (code && application?.application_code && code === application.application_code)
+            (code && application?.application_code && code === application.application_code) ||
+            (code && activeRenewal?.renewal_code && code === activeRenewal.renewal_code)
         );
 
       const rawTime = new Date(item.updatedAt || item.createdAt).getTime();
@@ -699,12 +908,17 @@ export function ScholarshipDashboardScreen() {
 
     for (const rel of grantReleases) {
       if (rel.release_code && seenCodes.has(rel.release_code)) continue;
-      if (rel.release_code) seenCodes.add(rel.release_code);
 
       const rawRelPeriod = rel.academic_term
         ? `AY ${rel.academic_year} • ${rel.academic_term}`
         : `AY ${rel.academic_year}`;
       const relPeriod = cleanAcademicPeriod(rawRelPeriod);
+
+      // If a grant item for this period was already added, consolidate and skip
+      if (seenGrantPeriods.has(relPeriod)) continue;
+      seenGrantPeriods.add(relPeriod);
+
+      if (rel.release_code) seenCodes.add(rel.release_code);
 
       const isCurrent =
         Boolean(currentPeriodString) &&
@@ -754,7 +968,7 @@ export function ScholarshipDashboardScreen() {
     });
 
     return list;
-  }, [trackedItems, grantReleases, scholar, application, currentPeriodString, currentAcademicPeriod]);
+  }, [trackedItems, grantReleases, scholar, application, activeRenewal, currentPeriodString, currentAcademicPeriod]);
 
   // -------------------------------------------------------------
   // RECORD-SPECIFIC OFFICIAL DOCUMENTS RESOLUTION
@@ -1088,7 +1302,7 @@ export function ScholarshipDashboardScreen() {
                   isDarkMode && { color: '#C084FC' },
                 ]}
               >
-                CURRENT SCHOLARSHIP
+                {isRenewalActive ? 'CURRENT SCHOLARSHIP RENEWAL' : 'CURRENT SCHOLARSHIP'}
               </Text>
               <View
                 style={[
@@ -1189,7 +1403,7 @@ export function ScholarshipDashboardScreen() {
                 </View>
               ) : null}
 
-              {(scholar?.scholar_code || application?.application_code) ? (
+              {((isRenewalActive && activeRenewal?.renewal_code) || scholar?.scholar_code || application?.application_code) ? (
                 <View
                   style={[
                     styles.currentMetaChip,
@@ -1205,7 +1419,7 @@ export function ScholarshipDashboardScreen() {
                       isDarkMode && { color: '#94A3B8' },
                     ]}
                   >
-                    ID: {scholar?.scholar_code || application?.application_code}
+                    ID: {isRenewalActive && activeRenewal?.renewal_code ? activeRenewal.renewal_code : (scholar?.scholar_code || application?.application_code)}
                   </Text>
                 </View>
               ) : null}
