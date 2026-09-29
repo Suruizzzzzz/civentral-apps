@@ -488,12 +488,12 @@ export function CitizenScholarshipDetailScreen() {
     [dashboardData?.process_timeline]
   );
 
-  // Determine canonical Disapproved state (authoritative backend status takes priority)
+  // Determine canonical Disapproved state — use only live API data, never stale route params.
+  // params.status is a cached nav param from the list screen and may not reflect the current DB state.
   const isApplicationDisapproved = Boolean(
     activeRecordType === 'Application' &&
+      !scholar &&
       (application?.application_status === 'Disapproved' ||
-        params.status === 'Disapproved' ||
-        params.status?.toLowerCase() === 'rejected' ||
         application?.application_status?.toLowerCase() === 'rejected')
   );
 
@@ -878,8 +878,8 @@ export function CitizenScholarshipDetailScreen() {
   let headerSubtitle = 'City Government Educational Scholarship';
 
   if (activeRecordType === 'Application') {
-    // Authoritative backend status takes priority over stale route params
-    const rawStatus = (application?.application_status || params.status || scholar?.scholar_status || 'Active');
+    // Drive badge from live API data only — params.status is a stale nav param and must not override.
+    const rawStatus = application?.application_status || scholar?.scholar_status || 'Active';
     const currentStatus = rawStatus.toLowerCase() === 'rejected' ? 'Disapproved' : rawStatus;
     recordBadgeConfig = getApplicationBadgeConfig(currentStatus);
     recordReference = params.recordId || application?.application_code || scholar?.scholar_code || '—';

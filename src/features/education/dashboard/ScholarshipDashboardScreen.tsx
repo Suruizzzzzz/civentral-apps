@@ -1608,7 +1608,9 @@ export function ScholarshipDashboardScreen() {
                                 recordType: rec.recordType,
                                 recordId: rec.referenceCode || rec.id,
                                 academicPeriod: rec.academicPeriod,
-                                status: rec.status,
+                                // NOTE: Do NOT pass status here — CitizenScholarshipDetailScreen
+                                // must derive status from the live API (fetchCitizenDashboard),
+                                // not from a stale cached list-item value.
                               },
                             } as any)
                           }
