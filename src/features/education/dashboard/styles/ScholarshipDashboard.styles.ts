@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 12,
     paddingBottom: 140,
     flexGrow: 1,
   },
@@ -42,7 +42,7 @@ export const styles = StyleSheet.create({
     width: "100%",
     borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 16,
+    marginBottom: 10,
     backgroundColor: "transparent",
     borderWidth: 1,
     borderColor: "#7E22CE",
@@ -66,9 +66,9 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -80,7 +80,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 8,
     gap: 8,
   },
 
@@ -127,7 +127,7 @@ export const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: "600",
     color: "#64748B",
-    marginBottom: 12,
+    marginBottom: 10,
   },
 
   currentMetaRow: {
@@ -173,9 +173,9 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -232,23 +232,23 @@ export const styles = StyleSheet.create({
     lineHeight: 17,
   },
 
-  /* Short Progress Indicator (Compact stepper bar) */
+  /* Short Progress Indicator (icon pill track) */
   compactIndicatorContainer: {
-    marginBottom: 14,
-    paddingVertical: 4,
+    marginBottom: 12,
   },
 
   compactStepperRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
   },
 
   compactStepSegment: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   compactStepSegmentCompleted: {
@@ -256,6 +256,21 @@ export const styles = StyleSheet.create({
   },
 
   compactStepSegmentCurrent: {
+    backgroundColor: "#7E22CE",
+  },
+
+  stageConnector: {
+    flex: 1,
+    height: 2.5,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 2,
+  },
+
+  stageConnectorCompleted: {
+    backgroundColor: "#16A34A",
+  },
+
+  stageConnectorCurrent: {
     backgroundColor: "#7E22CE",
   },
 
@@ -298,9 +313,19 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
 
+  stageCounterText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#94A3B8",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+
   stageNameHighlight: {
     fontWeight: "700",
     color: "#7E22CE",
+    fontSize: 13,
   },
 
   completedMiniPill: {

@@ -1,11 +1,11 @@
-import { useRouter } from 'expo-router';
+﻿import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
-import { fetchMatchingEducationLevels, fetchPublicMatchingQuestions, submitPreScreen, EvaluatedProgram, MatchingQuestion, PreScreenResponse } from './api/ScholarshipProgramApi';
+import { fetchMatchingEducationLevels, fetchPublicMatchingQuestions, submitPreScreen, ApplicantProfile, EvaluatedProgram, MatchingQuestion, PreScreenResponse } from './api/ScholarshipProgramApi';
 import { styles } from './styles/ScholarshipMatching.styles';
 
 /**
@@ -37,11 +37,11 @@ export const CRITERIA_PREDEFINED_OPTIONS: Record<string, { option_value: string;
     { option_value: 'LGU / LUC', option_label: 'Local College / University' },
   ],
   household_income: [
-    { option_value: 'Below 10,000', option_label: 'Below ₱10,000 / month' },
-    { option_value: '10,000 - 20,000', option_label: '₱10,000 - ₱20,000 / month' },
-    { option_value: '20,001 - 40,000', option_label: '₱20,001 - ₱40,000 / month' },
-    { option_value: '40,001 - 60,000', option_label: '₱40,001 - ₱60,000 / month' },
-    { option_value: 'Above 60,000', option_label: 'Above ₱60,000 / month' },
+    { option_value: 'Below 10,000', option_label: 'Below â‚±10,000 / month' },
+    { option_value: '10,000 - 20,000', option_label: 'â‚±10,000 - â‚±20,000 / month' },
+    { option_value: '20,001 - 40,000', option_label: 'â‚±20,001 - â‚±40,000 / month' },
+    { option_value: '40,001 - 60,000', option_label: 'â‚±40,001 - â‚±60,000 / month' },
+    { option_value: 'Above 60,000', option_label: 'Above â‚±60,000 / month' },
   ],
   family_situation: [
     { option_value: 'Both Parents Living Together', option_label: 'Both Parents Living Together' },
@@ -664,6 +664,53 @@ export function ScholarshipMatchingScreen() {
                 </View>
               </View>
 
+              {/* APPLICANT PROFILE CHIP BAR */}
+              {preScreenResult.applicant_profile && (() => {
+                const profile = preScreenResult.applicant_profile!;
+                const chips: { label: string; value: string }[] = [];
+                if (profile.education_level) chips.push({ label: 'Level', value: profile.education_level });
+                if (profile.year_level)       chips.push({ label: 'Year', value: profile.year_level });
+                if (profile.course_program)   chips.push({ label: 'Course', value: profile.course_program });
+                if (profile.enrollment_status) chips.push({ label: 'Enrollment', value: profile.enrollment_status });
+                if (profile.is_shs_graduate)  chips.push({ label: 'SHS Grad', value: profile.is_shs_graduate });
+                if (profile.reported_gwa != null) chips.push({ label: 'GWA', value: String(profile.reported_gwa) });
+                if (chips.length === 0) return null;
+                return (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      gap: 6,
+                      marginBottom: 14,
+                      paddingHorizontal: 2,
+                    }}
+                  >
+                    {chips.map((chip) => (
+                      <View
+                        key={chip.label}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: isDarkMode ? '#0F2942' : '#EFF6FF',
+                          borderRadius: 20,
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderWidth: 1,
+                          borderColor: isDarkMode ? '#1D4470' : '#BFDBFE',
+                        }}
+                      >
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: isDarkMode ? '#7DD3FC' : '#2563EB', marginRight: 3 }}>
+                          {chip.label}:
+                        </Text>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: isDarkMode ? '#F0F9FF' : '#1E3A5F' }}>
+                          {chip.value}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
+
               {/* EVALUATED PROGRAM CARDS */}
               {preScreenResult.programs.length === 0 ? (
                 <View
@@ -781,17 +828,13 @@ export function ScholarshipMatchingScreen() {
                                 ? "checkmark.circle.fill"
                                 : isNotMet
                                   ? "xmark.circle.fill"
-                                  : critIncomplete
-                                    ? "exclamationmark.triangle.fill"
-                                    : "info.circle";
+                                  : "exclamationmark.triangle.fill";
 
                               const iconColor = isPassed
                                 ? isDarkMode ? "#34D399" : "#16A34A"
                                 : isNotMet
                                   ? isDarkMode ? "#F87171" : "#DC2626"
-                                  : critIncomplete
-                                    ? isDarkMode ? "#FBBF24" : "#D97706"
-                                    : isDarkMode ? "#94A3B8" : "#64748B";
+                                  : isDarkMode ? "#FBBF24" : "#D97706";
 
                               const containerBg = isPassed
                                 ? isDarkMode ? "#042F22" : "#F0FDF4"
@@ -910,38 +953,67 @@ export function ScholarshipMatchingScreen() {
                         </View>
                       ) : null}
 
-                      {/* VIEW PROGRAM DETAILS ACTION FOOTER */}
-                      <TouchableOpacity
-                        style={{
-                          flexDirection: "row",
-                          justifyContent: "flex-end",
-                          alignItems: "center",
-                          marginTop: 12,
-                          gap: 4,
-                        }}
-                        onPress={() =>
-                          router.push({
-                            pathname: "/education/new-applicant/scholarship-details" as any,
-                            params: { program_id: String(program.program_id) },
-                          })
-                        }
-                        activeOpacity={0.7}
-                      >
-                        <Text
+                      {/* ACTION FOOTER — Apply Now (eligible) or View Program Details (not eligible) */}
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 8 }}>
+                        {/* Secondary: always show View Program Details */}
+                        <TouchableOpacity
                           style={{
-                            fontSize: 13,
-                            fontWeight: "700",
-                            color: isDarkMode ? "#38BDF8" : "#2563EB",
+                            flex: 1,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            paddingVertical: 9,
+                            paddingHorizontal: 12,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: isDarkMode ? "#334155" : "#CBD5E1",
+                            backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
                           }}
+                          onPress={() =>
+                            router.push({
+                              pathname: "/education/new-applicant/scholarship-details" as any,
+                              params: { program_id: String(program.program_id) },
+                            })
+                          }
+                          activeOpacity={0.75}
                         >
-                          View Program Details
-                        </Text>
-                        <IconSymbol
-                          name="chevron.right"
-                          size={14}
-                          color={isDarkMode ? "#38BDF8" : "#2563EB"}
-                        />
-                      </TouchableOpacity>
+                          <Text style={{ fontSize: 12, fontWeight: "700", color: isDarkMode ? "#94A3B8" : "#475569" }}>
+                            View Details
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Primary: Apply Now — only when Eligible or match_percentage >= 80 */}
+                        {(program.eligibility_status === "Eligible" || (program.match_percentage != null && program.match_percentage >= 80)) && (
+                          <TouchableOpacity
+                            style={{
+                              flex: 2,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              paddingVertical: 10,
+                              paddingHorizontal: 14,
+                              borderRadius: 10,
+                              backgroundColor: isDarkMode ? "#EA580C" : "#F97316",
+                              gap: 6,
+                            }}
+                            onPress={() =>
+                              router.push({
+                                pathname: "/education/new-applicant/application" as any,
+                                params: {
+                                  program_id: String(program.program_id),
+                                  program_name: program.program_name,
+                                },
+                              })
+                            }
+                            activeOpacity={0.8}
+                          >
+                            <Text style={{ fontSize: 13, fontWeight: "800", color: "#FFFFFF" }}>
+                              Apply Now
+                            </Text>
+                            <IconSymbol name="arrow.right" size={14} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   );
                 })

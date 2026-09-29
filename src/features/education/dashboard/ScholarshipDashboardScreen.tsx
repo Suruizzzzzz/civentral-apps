@@ -140,6 +140,23 @@ function getStatusColors(status: string, isDarkMode: boolean) {
   };
 }
 
+function getStageIcon(
+  id: number,
+  isRenewal: boolean,
+  state: 'completed' | 'current' | 'upcoming'
+): string {
+  const filled = state === 'completed';
+  if (id === 1) return filled ? 'paper-plane'         : 'paper-plane-outline';
+  if (id === 2) return filled ? 'document-text'       : 'document-text-outline';
+  if (id === 3) return filled ? 'people'              : 'people-outline';
+  if (id === 4) return filled ? 'checkmark-circle'    : 'checkmark-circle-outline';
+  if (id === 5) {
+    if (isRenewal) return filled ? 'ribbon'           : 'ribbon-outline';
+    return          filled       ? 'cash'             : 'cash-outline';
+  }
+  return 'ellipse-outline';
+}
+
 export function ScholarshipDashboardScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
@@ -639,7 +656,7 @@ export function ScholarshipDashboardScreen() {
         const renStatus = activeRenewal.renewal_status;
         if (renStatus === 'For Review' || renStatus === 'Under Review') {
           return {
-            label: 'Renewal Under Review',
+            label: 'Under Review',
             description: 'Scholarship renewal application is currently under coordinator review.',
             dotColor: '#7E22CE',
             textColor: isDarkMode ? '#C084FC' : '#7E22CE',
@@ -649,7 +666,7 @@ export function ScholarshipDashboardScreen() {
         }
         if (renStatus === 'For Evaluation') {
           return {
-            label: 'For SSC Evaluation',
+            label: 'SSC Evaluation',
             description: 'Renewal scheduled for Scholarship Selection Committee continuation evaluation.',
             dotColor: '#7E22CE',
             textColor: isDarkMode ? '#C084FC' : '#7E22CE',
@@ -659,7 +676,7 @@ export function ScholarshipDashboardScreen() {
         }
         if (renStatus === 'For Compliance' || renStatus === 'Returned') {
           return {
-            label: 'Renewal For Compliance',
+            label: 'For Compliance',
             description: 'Action required: additional requirements or clarification needed for renewal.',
             dotColor: '#D97706',
             textColor: isDarkMode ? '#FBBF24' : '#D97706',
@@ -669,7 +686,7 @@ export function ScholarshipDashboardScreen() {
         }
         if (renStatus === 'Recommended for Continuation') {
           return {
-            label: 'Continuation Recommended',
+            label: 'Recommended',
             description: 'Scholarship renewal recommended for continuation by the SSC.',
             dotColor: '#16A34A',
             textColor: isDarkMode ? '#4ADE80' : '#16A34A',
@@ -698,7 +715,7 @@ export function ScholarshipDashboardScreen() {
           };
         }
         return {
-          label: `Renewal ${renStatus}`,
+          label: renStatus,
           description: 'Scholarship renewal application in progress.',
           dotColor: '#7E22CE',
           textColor: isDarkMode ? '#C084FC' : '#7E22CE',
@@ -1380,29 +1397,6 @@ export function ScholarshipDashboardScreen() {
                 </View>
               ) : null}
 
-              {scholarship?.program_code ? (
-                <View
-                  style={[
-                    styles.currentMetaChip,
-                    styles.currentMetaChipViolet,
-                    isDarkMode && {
-                      backgroundColor: '#3B0764',
-                      borderColor: '#7E22CE',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.currentMetaChipText,
-                      styles.currentMetaChipVioletText,
-                      isDarkMode && { color: '#C084FC' },
-                    ]}
-                  >
-                    {scholarship.program_code}
-                  </Text>
-                </View>
-              ) : null}
-
               {((isRenewalActive && activeRenewal?.renewal_code) || scholar?.scholar_code || application?.application_code) ? (
                 <View
                   style={[
@@ -1446,42 +1440,6 @@ export function ScholarshipDashboardScreen() {
                 ]}
               >
                 SCHOLARSHIP PROGRESS
-              </Text>
-            </View>
-
-            {/* Current Status Section */}
-            <View style={styles.progressStatusSection}>
-              <Text
-                style={[
-                  styles.progressStatusLabel,
-                  isDarkMode && { color: '#94A3B8' },
-                ]}
-              >
-                Current Status
-              </Text>
-              <View style={styles.progressStatusValueRow}>
-                <View
-                  style={[
-                    styles.currentStatusBadgeDot,
-                    { backgroundColor: currentStatusInfo.dotColor },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.progressStatusValue,
-                    isDarkMode && { color: '#F8FAFC' },
-                  ]}
-                >
-                  {currentStatusInfo.label}
-                </Text>
-              </View>
-              <Text
-                style={[
-                  styles.progressStatusDesc,
-                  isDarkMode && { color: '#CBD5E1' },
-                ]}
-              >
-                {currentStatusInfo.description}
               </Text>
             </View>
 
@@ -1538,47 +1496,64 @@ export function ScholarshipDashboardScreen() {
               ) : (
                 <>
                   <View style={styles.compactStepperRow}>
-                    {stages.map((stg) => {
+                    {stages.map((stg, idx) => {
                       const isCompleted = stg.state === 'completed';
                       const isCurrent = stg.state === 'current';
+                      const prevCompleted = idx > 0 && stages[idx - 1].state === 'completed';
+                      const iconName = getStageIcon(stg.id, isRenewalActive, stg.state);
+                      const iconColor = isCompleted || isCurrent ? '#FFFFFF'
+                        : isDarkMode ? '#475569' : '#CBD5E1';
                       return (
-                        <View
-                          key={stg.id}
-                          style={[
-                            styles.compactStepSegment,
-                            isCompleted && styles.compactStepSegmentCompleted,
-                            isCurrent && [
-                              styles.compactStepSegmentCurrent,
-                              isDarkMode && { backgroundColor: '#C084FC' },
-                            ],
-                            isDarkMode &&
-                              !isCompleted &&
-                              !isCurrent && { backgroundColor: '#334155' },
-                          ]}
-                        />
+                        <React.Fragment key={stg.id}>
+                          {idx > 0 && (
+                            <View
+                              style={[
+                                styles.stageConnector,
+                                prevCompleted && isCompleted && styles.stageConnectorCompleted,
+                                prevCompleted && isCurrent && styles.stageConnectorCurrent,
+                                isDarkMode && !prevCompleted && { backgroundColor: '#1E293B' },
+                              ]}
+                            />
+                          )}
+                          <View
+                            style={[
+                              styles.compactStepSegment,
+                              isCompleted && styles.compactStepSegmentCompleted,
+                              isCurrent && [
+                                styles.compactStepSegmentCurrent,
+                                isDarkMode && { backgroundColor: '#9333EA' },
+                              ],
+                              isDarkMode && !isCompleted && !isCurrent && { backgroundColor: '#1E293B' },
+                            ]}
+                          >
+                            <Ionicons name={iconName as any} size={14} color={iconColor} />
+                          </View>
+                        </React.Fragment>
                       );
                     })}
                   </View>
                   <View style={styles.stageMetaContainer}>
                     {/* Row 1: Stage Counter & Status Pill */}
                     <View style={styles.stageHeaderRow}>
-                      <Text
-                        style={[
-                          styles.stageTitleText,
-                          isDarkMode && { color: '#94A3B8' },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        Stage {currentStageIndex + 1} of {stages.length}:{' '}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            styles.stageCounterText,
+                            isDarkMode && { color: '#94A3B8' },
+                          ]}
+                        >
+                          Stage {currentStageIndex + 1} of {stages.length}
+                        </Text>
                         <Text
                           style={[
                             styles.stageNameHighlight,
                             isDarkMode && { color: '#C084FC' },
                           ]}
+                          numberOfLines={2}
                         >
                           {stages[currentStageIndex]?.title || stages[currentStageIndex]?.label || 'Scholarship Grant'}
                         </Text>
-                      </Text>
+                      </View>
                       {stages[currentStageIndex]?.state === 'completed' ? (
                         <View
                           style={[

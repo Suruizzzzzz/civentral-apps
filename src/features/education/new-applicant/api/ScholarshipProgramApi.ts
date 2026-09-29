@@ -1,4 +1,4 @@
-import type * as DocumentPicker from 'expo-document-picker';
+﻿import type * as DocumentPicker from 'expo-document-picker';
 import { fetch as expoFetch } from 'expo/fetch';
 import { Platform } from 'react-native';
 
@@ -102,14 +102,24 @@ export interface MatchingQuestion {
   program_mappings: ProgramMapping[];
 }
 
+
+export interface ApplicantProfile {
+  education_level?: string | null;
+  course_program?: string | null;
+  year_level?: string | null;
+  enrollment_status?: string | null;
+  is_shs_graduate?: string | null;
+  reported_gwa?: string | number | null;
+}
+
 export interface CriterionItem {
   question_key: string;
   label: string;
   applicant_value: string;
   requirement_display: string;
   requirement: string;
-  status: 'Passed' | 'Not Met' | 'Incomplete' | 'Informational';
-  result?: 'Passed' | 'Not Met' | 'Incomplete' | 'Informational';
+  status: 'Passed' | 'Not Met' | 'Incomplete' | 'Configuration Error';
+  result?: 'Passed' | 'Not Met' | 'Incomplete' | 'Configuration Error';
   message: string;
 }
 
@@ -121,9 +131,10 @@ export interface EvaluatedProgram {
   program_name: string;
   category_name?: string;
   description: string;
-  match_score: number;
+  match_score: number | null;
+  match_percentage: number | null;
   score_status: string;
-  eligibility_status: 'Eligible' | 'Not Eligible' | 'Incomplete';
+  eligibility_status: 'Eligible' | 'Not Eligible' | 'Incomplete' | 'Configuration Error';
   availability_status: string;
   criteria: CriterionItem[];
   rag_explanation?: string;
@@ -139,6 +150,7 @@ export interface PreScreenSummary {
 }
 
 export interface PreScreenResponse {
+  applicant_profile?: ApplicantProfile;
   summary: PreScreenSummary;
   programs: EvaluatedProgram[];
 }
