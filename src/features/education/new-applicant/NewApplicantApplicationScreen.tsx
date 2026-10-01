@@ -853,7 +853,12 @@ export function NewApplicantApplicationScreen() {
 
           <TouchableOpacity
             style={[styles.submitButton, { width: '100%' }]}
-            onPress={() => router.replace('/education/new-applicant/my-application' as any)}
+            onPress={() => {
+              if (router.canDismiss?.()) {
+                router.dismissAll();
+              }
+              router.replace('/education/dashboard' as any);
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.submitButtonText}>Track My Application</Text>
