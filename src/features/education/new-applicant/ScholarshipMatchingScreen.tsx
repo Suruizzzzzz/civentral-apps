@@ -37,11 +37,11 @@ export const CRITERIA_PREDEFINED_OPTIONS: Record<string, { option_value: string;
     { option_value: 'LGU / LUC', option_label: 'Local College / University' },
   ],
   household_income: [
-    { option_value: 'Below 10,000', option_label: 'Below â‚±10,000 / month' },
-    { option_value: '10,000 - 20,000', option_label: 'â‚±10,000 - â‚±20,000 / month' },
-    { option_value: '20,001 - 40,000', option_label: 'â‚±20,001 - â‚±40,000 / month' },
-    { option_value: '40,001 - 60,000', option_label: 'â‚±40,001 - â‚±60,000 / month' },
-    { option_value: 'Above 60,000', option_label: 'Above â‚±60,000 / month' },
+    { option_value: 'Below 10,000', option_label: 'Below ₱10,000 / month' },
+    { option_value: '10,000 - 20,000', option_label: '₱10,000 - ₱20,000 / month' },
+    { option_value: '20,001 - 40,000', option_label: '₱20,001 - ₱40,000 / month' },
+    { option_value: '40,001 - 60,000', option_label: '₱40,001 - ₱60,000 / month' },
+    { option_value: 'Above 60,000', option_label: 'Above ₱60,000 / month' },
   ],
   family_situation: [
     { option_value: 'Both Parents Living Together', option_label: 'Both Parents Living Together' },
