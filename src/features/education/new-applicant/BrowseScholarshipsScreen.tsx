@@ -19,6 +19,7 @@ const BASE_CATEGORY_PILLS: CategoryPill[] = [
   { id: 'Senior High', label: 'Senior High' },
   { id: 'Tertiary', label: 'Tertiary' },
   { id: 'Continuing Education / Vocational', label: 'Continuing Education / Vocational' },
+  { id: 'Postgraduate', label: 'Postgraduate' },
 ];
 
 export function BrowseScholarshipsScreen() {
@@ -122,6 +123,14 @@ export function BrowseScholarshipsScreen() {
           categoryCode.includes('cont_ed') ||
           programName.includes('vocational') ||
           programName.includes('continuing')
+        );
+      }
+
+      if (target.includes('postgraduate') || target.includes('postgrad')) {
+        return (
+          categoryName.includes('postgraduate') ||
+          categoryCode.includes('postgraduate') ||
+          programName.includes('postgraduate')
         );
       }
 

@@ -87,6 +87,7 @@ export function ScholarshipMatchingScreen() {
     'Senior High School',
     'Tertiary',
     'Continuing Education/Vocational',
+    'Postgraduate',
   ]);
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [questions, setQuestions] = useState<MatchingQuestion[]>([]);

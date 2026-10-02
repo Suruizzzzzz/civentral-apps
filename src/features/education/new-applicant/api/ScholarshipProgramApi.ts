@@ -203,7 +203,7 @@ export function sanitizeScholarshipProgramContent(program: ScholarshipProgram): 
 }
 
 export async function fetchScholarshipCategories(): Promise<ScholarshipCategory[]> {
-  const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-programs/categories`);
+  const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-categories`);
   const json = await res.json();
   return json.data || [];
 }
@@ -263,7 +263,7 @@ export async function fetchMatchingEducationLevels(): Promise<string[]> {
   } catch (err) {
     console.error('[ScholarshipProgramApi] fetchMatchingEducationLevels error:', err);
   }
-  return ['Senior High School', 'Tertiary', 'Continuing Education/Vocational'];
+  return ['Senior High School', 'Tertiary', 'Continuing Education/Vocational', 'Postgraduate'];
 }
 
 import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
