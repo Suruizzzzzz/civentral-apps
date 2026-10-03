@@ -196,10 +196,12 @@ export function BrowseScholarshipsScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.filterPillsScroll}
         contentContainerStyle={styles.filterPillsContainer}
       >
-        {filterPills.map((pill) => {
+        {filterPills.map((pill, index) => {
           const isActive = selectedCategory === pill.id;
+          const isLast = index === filterPills.length - 1;
           return (
             <TouchableOpacity
               key={pill.id}
@@ -207,11 +209,13 @@ export function BrowseScholarshipsScreen() {
                 styles.filterPill,
                 isActive ? styles.filterPillActive : styles.filterPillInactive,
                 isDarkMode && !isActive && styles.filterPillInactiveDark,
+                isLast && styles.filterPillLast,
               ]}
               onPress={() => handleSelectCategory(pill.id)}
               activeOpacity={0.7}
             >
               <Text
+                numberOfLines={1}
                 style={[
                   styles.filterPillText,
                   isActive ? styles.filterPillTextActive : styles.filterPillTextInactive,
@@ -227,7 +231,7 @@ export function BrowseScholarshipsScreen() {
 
       {/* PROGRAM CARDS LIST */}
       {isLoading ? (
-        <View style={{ gap: 16 }}>
+        <View style={styles.cardListContainer}>
           <Skeleton height={140} borderRadius={16} />
           <Skeleton height={140} borderRadius={16} />
         </View>
@@ -244,54 +248,56 @@ export function BrowseScholarshipsScreen() {
           </Text>
         </View>
       ) : (
-        filteredPrograms.map((program) => {
-          const period = program.application_period || (program.application_periods && program.application_periods[0]);
-          const statusLabel = period?.status || (program.program_status === 'Active' ? 'Open' : 'Upcoming');
-          const isOpen = statusLabel === 'Open';
+        <View style={styles.cardListContainer}>
+          {filteredPrograms.map((program) => {
+            const period = program.application_period || (program.application_periods && program.application_periods[0]);
+            const statusLabel = period?.status || (program.program_status === 'Active' ? 'Open' : 'Upcoming');
+            const isOpen = statusLabel === 'Open';
 
-          return (
-            <View key={program.program_id} style={[styles.card, { marginBottom: 14 }, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-              <View style={styles.cardTop}>
-                <View style={styles.titleArea}>
-                  <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryText}>
-                      {program.category_name || (program as any).category?.category_name || 'General'}
+            return (
+              <View key={program.program_id} style={[styles.card, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+                <View style={styles.cardTop}>
+                  <View style={styles.titleArea}>
+                    <View style={styles.categoryBadge}>
+                      <Text style={styles.categoryText}>
+                        {program.category_name || (program as any).category?.category_name || 'General'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.programTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                      {program.program_name}
                     </Text>
                   </View>
-                  <Text style={[styles.programTitle, isDarkMode && { color: '#F8FAFC' }]}>
-                    {program.program_name}
-                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: isOpen ? '#DCFCE7' : '#F1F5F9' }]}>
+                    <Text style={[styles.statusText, { color: isOpen ? '#15803D' : '#475569' }]}>
+                      {statusLabel}
+                    </Text>
+                  </View>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: isOpen ? '#DCFCE7' : '#F1F5F9' }]}>
-                  <Text style={[styles.statusText, { color: isOpen ? '#15803D' : '#475569' }]}>
-                    {statusLabel}
-                  </Text>
-                </View>
-              </View>
 
-              {program.description ? (
-                <Text
-                  style={[styles.description, isDarkMode && { color: '#94A3B8' }]}
-                  numberOfLines={2}
+                {program.description ? (
+                  <Text
+                    style={[styles.description, isDarkMode && { color: '#94A3B8' }]}
+                    numberOfLines={2}
+                  >
+                    {program.description}
+                  </Text>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.applyButton]}
+                  onPress={() => router.push({
+                    pathname: '/education/new-applicant/scholarship-details' as any,
+                    params: { program_id: String(program.program_id) }
+                  })}
+                  activeOpacity={0.7}
                 >
-                  {program.description}
-                </Text>
-              ) : null}
-
-              <TouchableOpacity
-                style={[styles.actionButton, styles.applyButton]}
-                onPress={() => router.push({
-                  pathname: '/education/new-applicant/scholarship-details' as any,
-                  params: { program_id: String(program.program_id) }
-                })}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.actionText, { color: '#FFFFFF' }]}>View Program Details</Text>
-                <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          );
-        })
+                  <Text style={[styles.actionText, { color: '#FFFFFF' }]}>View Program Details</Text>
+                  <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
       )}
     </ScrollView>
   );

@@ -3,8 +3,9 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
+    justifyContent: "flex-start",
     padding: 16,
-    paddingBottom: 120,
+    paddingBottom: 32,
   },
 
   backButton: {
@@ -237,21 +238,32 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  filterPillsContainer: {
-    gap: 8,
-    paddingHorizontal: 2,
+  filterPillsScroll: {
+    flexGrow: 0,
+    marginHorizontal: -16,
     marginBottom: 12,
+  },
+
+  filterPillsContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
     alignItems: "center",
   },
 
   filterPill: {
     paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 22,
+    paddingVertical: 8,
+    borderRadius: 9999,
     borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "flex-start",
+    flexShrink: 0,
+  },
+
+  filterPillLast: {
+    marginRight: 16,
   },
 
   filterPillActive: {
@@ -271,6 +283,7 @@ export const styles = StyleSheet.create({
 
   filterPillText: {
     fontSize: 13,
+    flexShrink: 0,
   },
 
   filterPillTextActive: {
@@ -286,5 +299,13 @@ export const styles = StyleSheet.create({
   filterPillTextInactiveDark: {
     color: "#94A3B8",
     fontWeight: "600",
+  },
+
+  cardListContainer: {
+    marginTop: 12,
+    gap: 14,
+    width: "100%",
+    justifyContent: "flex-start",
+    alignItems: "stretch",
   },
 });
