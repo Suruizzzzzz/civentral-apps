@@ -78,6 +78,14 @@ function getStatusColors(status: string, isDarkMode: boolean) {
       pillBorder: isDarkMode ? '#059669' : '#86EFAC',
     };
   }
+  if (s === 'draft' || s.includes('draft')) {
+    return {
+      dotColor: '#D97706',
+      textColor: isDarkMode ? '#FBBF24' : '#B45309',
+      pillBg: isDarkMode ? '#451A03' : '#FEF3C7',
+      pillBorder: isDarkMode ? '#B45309' : '#FDE68A',
+    };
+  }
   if (
     s.includes('review') ||
     s.includes('eval') ||
@@ -97,7 +105,6 @@ function getStatusColors(status: string, isDarkMode: boolean) {
     s.includes('complian') ||
     s.includes('action') ||
     s.includes('return') ||
-    s.includes('draft') ||
     s.includes('pend')
   ) {
     return {
@@ -334,6 +341,17 @@ export function ScholarshipHistoryScreen() {
       ) {
         recordStatus = 'Disapproved';
       }
+      // Never default unsubmitted drafts to 'Under Review'
+      if (
+        item.status?.trim().toLowerCase() === 'draft' ||
+        rawStatus.trim().toLowerCase() === 'draft' ||
+        (recordType === 'Grant' &&
+          grantOverview?.application &&
+          (code === grantOverview.application.grant_application_code || item.id === `GRA-${grantOverview.application.grant_application_id}`) &&
+          grantOverview.application.grant_status?.toLowerCase() === 'draft')
+      ) {
+        recordStatus = 'Draft';
+      }
 
       list.push({
         id: `tracked-${item.id}`,
@@ -409,7 +427,7 @@ export function ScholarshipHistoryScreen() {
           academicPeriod: gPeriod,
           isCurrent: true,
           recordType: 'Grant',
-          status: gApp.grant_status || 'Under Review',
+          status: gApp.grant_status || 'Draft',
           date: formatDate(gApp.submitted_at || gApp.created_at),
           referenceCode: gCode,
           programTitle: 'Scholarship Financial Assistance & Grant',

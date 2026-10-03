@@ -776,6 +776,16 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
 
+  historyStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4.5,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+
   historyStatusDot: {
     width: 6,
     height: 6,

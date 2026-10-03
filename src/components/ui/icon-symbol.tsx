@@ -98,6 +98,12 @@ const MAPPING: IconMapping = {
   'clock.arrow.circlepath': 'history',
   'chart.bar.fill': 'bar-chart',
   'receipt.fill': 'receipt',
+  'pencil.circle.fill': 'edit',
+  'pencil.circle': 'edit',
+  'file-edit': 'edit',
+  'document-text-outline': 'description',
+  'information-circle': 'info',
+  'banknote.fill': 'payments',
 };
 
 export type IconSymbolName = keyof typeof MAPPING;

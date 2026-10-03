@@ -95,6 +95,8 @@ function getStatusColors(status: string, isDarkMode: boolean) {
     return {
       dotColor: '#DC2626',
       textColor: isDarkMode ? '#F87171' : '#DC2626',
+      badgeBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
+      badgeBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
     };
   }
   if (
@@ -107,6 +109,16 @@ function getStatusColors(status: string, isDarkMode: boolean) {
     return {
       dotColor: '#16A34A',
       textColor: isDarkMode ? '#4ADE80' : '#16A34A',
+      badgeBg: isDarkMode ? '#064E3B' : '#DCFCE7',
+      badgeBorder: isDarkMode ? '#059669' : '#86EFAC',
+    };
+  }
+  if (s === 'draft' || s.includes('draft')) {
+    return {
+      dotColor: '#D97706',
+      textColor: isDarkMode ? '#FBBF24' : '#B45309',
+      badgeBg: isDarkMode ? '#451A03' : '#FEF3C7',
+      badgeBorder: isDarkMode ? '#B45309' : '#FDE68A',
     };
   }
   if (
@@ -120,23 +132,28 @@ function getStatusColors(status: string, isDarkMode: boolean) {
     return {
       dotColor: '#7E22CE',
       textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+      badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+      badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
     };
   }
   if (
     s.includes('complian') ||
     s.includes('action') ||
     s.includes('return') ||
-    s.includes('draft') ||
     s.includes('pend')
   ) {
     return {
       dotColor: '#D97706',
       textColor: isDarkMode ? '#FBBF24' : '#D97706',
+      badgeBg: isDarkMode ? '#451A03' : '#FEF3C7',
+      badgeBorder: isDarkMode ? '#B45309' : '#FDE68A',
     };
   }
   return {
     dotColor: '#64748B',
     textColor: isDarkMode ? '#94A3B8' : '#64748B',
+    badgeBg: isDarkMode ? '#1E293B' : '#F1F5F9',
+    badgeBorder: isDarkMode ? '#334155' : '#E2E8F0',
   };
 }
 
@@ -909,6 +926,17 @@ export function ScholarshipDashboardScreen() {
       ) {
         recordStatus = 'Disapproved';
       }
+      // Never default unsubmitted drafts to 'Under Review'
+      if (
+        item.status?.trim().toLowerCase() === 'draft' ||
+        rawStatus.trim().toLowerCase() === 'draft' ||
+        (recordType === 'Grant' &&
+          grantOverview?.application &&
+          (code === grantOverview.application.grant_application_code || item.id === `GRA-${grantOverview.application.grant_application_id}`) &&
+          grantOverview.application.grant_status?.toLowerCase() === 'draft')
+      ) {
+        recordStatus = 'Draft';
+      }
 
       list.push({
         id: `tracked-${item.id}`,
@@ -955,6 +983,35 @@ export function ScholarshipDashboardScreen() {
         referenceCode: rel.release_code,
         timestamp: isNaN(rawTime) ? 0 : rawTime,
       });
+    }
+
+    // 3. Map active grant application if not already captured
+    if (grantOverview?.has_existing_application && grantOverview.application) {
+      const gApp = grantOverview.application;
+      const gCode = gApp.grant_application_code || `GRA-${gApp.grant_application_id || 'ACTIVE'}`;
+      const rawGPeriod = gApp.academic_year && gApp.academic_term
+        ? `AY ${gApp.academic_year} • ${gApp.academic_term}`
+        : gApp.academic_year
+        ? `AY ${gApp.academic_year}`
+        : currentPeriodString;
+      const gPeriod = cleanAcademicPeriod(rawGPeriod);
+
+      // Consolidate: only add standalone grant application if NO release/grant exists for this cycle
+      if (!seenCodes.has(gCode) && !seenGrantPeriods.has(gPeriod)) {
+        seenCodes.add(gCode);
+        seenGrantPeriods.add(gPeriod);
+        list.push({
+          id: `grant-app-${gCode}`,
+          rawId: gApp.grant_application_id,
+          academicPeriod: gPeriod,
+          isCurrent: true,
+          recordType: 'Grant',
+          status: gApp.grant_status || 'Draft',
+          date: formatDate(gApp.submitted_at || gApp.created_at),
+          referenceCode: gCode,
+          timestamp: gApp.submitted_at ? new Date(gApp.submitted_at).getTime() : Date.now(),
+        });
+      }
     }
 
     if (list.length === 0 && (scholar || application)) {
@@ -1761,18 +1818,28 @@ export function ScholarshipDashboardScreen() {
                         <View style={styles.historyPreviewStatusGroup}>
                           <View
                             style={[
-                              styles.historyStatusDot,
-                              { backgroundColor: colors.dotColor },
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.historyStatusText,
-                              { color: colors.textColor },
+                              styles.historyStatusBadge,
+                              {
+                                backgroundColor: colors.badgeBg,
+                                borderColor: colors.badgeBorder,
+                              },
                             ]}
                           >
-                            {rec.status.toUpperCase()}
-                          </Text>
+                            <View
+                              style={[
+                                styles.historyStatusDot,
+                                { backgroundColor: colors.dotColor },
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                styles.historyStatusText,
+                                { color: colors.textColor },
+                              ]}
+                            >
+                              {rec.status.toUpperCase()}
+                            </Text>
+                          </View>
                           {rec.referenceCode ? (
                             <Text
                               style={[

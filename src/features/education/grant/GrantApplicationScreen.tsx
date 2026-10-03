@@ -653,7 +653,7 @@ export function GrantApplicationScreen() {
         };
       case 'Draft':
         return {
-          icon: 'pencil.circle.fill',
+          icon: 'document-text-outline',
           title: 'Application Draft Initiated',
           color: '#EA580C',
           bgLight: '#FFF7ED',
