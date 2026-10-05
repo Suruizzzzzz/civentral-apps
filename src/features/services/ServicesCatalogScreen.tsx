@@ -13,6 +13,7 @@ import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Badge } from '@/src/components/ui/Badge';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
+import { UnderDevelopmentModal } from '@/src/components/common/UnderDevelopmentModal';
 import { styles } from './styles/ServicesCatalogScreen.styles';
 
 export interface ServiceCatalogItem {
@@ -394,6 +395,10 @@ export function ServicesCatalogScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<typeof CATEGORIES[number]>('ALL');
   const [isAuthGateVisible, setIsAuthGateVisible] = useState(false);
+  const [underDevModal, setUnderDevModal] = useState<{ visible: boolean; serviceName: string }>({
+    visible: false,
+    serviceName: '',
+  });
 
   const filteredServices = SERVICES_CATALOG.filter((item) => {
     const matchesCat = selectedCategory === 'ALL' || item.category === selectedCategory;
@@ -406,12 +411,26 @@ export function ServicesCatalogScreen() {
     return matchesCat && matchesQuery;
   });
 
-  const handleServicePress = (route: string) => {
+  const handleServicePress = (service: ServiceCatalogItem) => {
     if (isGuestMode) {
       setIsAuthGateVisible(true);
       return;
     }
-    router.push(route as any);
+    // 1. Education & Scholarship (Operational)
+    if (service.id === 'SVC-EDU' || service.category === 'EDUCATION' || service.route.startsWith('/education')) {
+      router.push('/education' as any);
+      return;
+    }
+    // 2. Barangay Clearance / Citizen ID (Operational)
+    if (service.id === 'SVC-BRG' || service.route === '/(auth)/verify-citizen') {
+      router.push('/(auth)/verify-citizen' as any);
+      return;
+    }
+    // 3. All other municipal services are currently Under Development
+    setUnderDevModal({
+      visible: true,
+      serviceName: service.title,
+    });
   };
 
   return (
@@ -493,7 +512,7 @@ export function ServicesCatalogScreen() {
                     isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
                     isGuestMode && styles.serviceCardLocked
                   ]}
-                  onPress={() => handleServicePress(service.route)}
+                  onPress={() => handleServicePress(service)}
                   activeOpacity={0.88}>
                   <ImageBackground
                     source={
@@ -528,7 +547,7 @@ export function ServicesCatalogScreen() {
                   isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B' },
                   isGuestMode && styles.serviceCardLocked
                 ]}
-                onPress={() => handleServicePress(service.route)}
+                onPress={() => handleServicePress(service)}
                 activeOpacity={0.85}>
                 <View style={styles.cardHeaderRow}>
                   <View style={[styles.iconCircle, { backgroundColor: isDarkMode ? '#0F2942' : service.iconBg }]}>
@@ -614,6 +633,13 @@ export function ServicesCatalogScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Reusable Under Development Modal */}
+      <UnderDevelopmentModal
+        visible={underDevModal.visible}
+        serviceName={underDevModal.serviceName}
+        onClose={() => setUnderDevModal({ visible: false, serviceName: '' })}
+      />
     </View>
   );
 }

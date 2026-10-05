@@ -5,6 +5,7 @@ import { Badge } from '@/src/components/ui/Badge';
 export { default as AuthScreen } from './components/AuthScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { VerifyCitizenScreen } from './screens/VerifyCitizenScreen';
+export { OfficialCitizenCard } from './components/OfficialCitizenCard';
 
 export function IdentityDomainCard() {
   return (

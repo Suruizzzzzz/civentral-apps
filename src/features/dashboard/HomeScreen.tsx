@@ -7,12 +7,11 @@ import {
     ProfileService,
 } from "@/src/services/profile-service";
 import { CivicApiService, SummaryCounts } from "@/src/services/api";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
     ImageBackground,
     Modal,
-    Platform,
     RefreshControl,
     ScrollView,
     Text,
@@ -21,6 +20,7 @@ import {
     View,
 } from "react-native";
 import { styles } from "./styles/HomeScreen.styles";
+import { UnderDevelopmentModal } from "@/src/components/common/UnderDevelopmentModal";
 
 import { HomeScreenSkeleton } from "./HomeScreenSkeleton";
 
@@ -82,22 +82,6 @@ const INITIAL_ANNOUNCEMENTS: AnnouncementItem[] = [
   },
 ];
 
-const RECENT_ACTIVITY: ActivityItem[] = [
-  {
-    id: "APP-2026-001",
-    serviceTitle: "Barangay Clearance and Citizen ID",
-    status: "Under Review",
-    updatedAt: "Today",
-    domainId: "identity",
-  },
-  {
-    id: "APP-2026-042",
-    serviceTitle: "New Business Permit Application",
-    status: "Approved",
-    updatedAt: "Yesterday",
-    domainId: "business",
-  },
-];
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -179,16 +163,27 @@ export function HomeScreen() {
         ? "CIV-GUEST-2026"
         : "CIV-2026-00001",
     status: isGuestMode ? "Guest" : "Active",
-    isVerified: true,
+    isVerified: false,
     registryCompleted: true,
     biometricEnabled: false,
     memberSince: "2026",
     lastLogin: isGuestMode ? "Current Session (Guest Mode)" : "Just Now",
   });
 
+  const [verificationData, setVerificationData] = useState<{
+    status: 'Not_Submitted' | 'Pending' | 'Under_Review' | 'Returned_For_Correction' | 'Approved' | 'Rejected';
+    citizen_id_number?: string;
+    admin_action_notes?: string;
+    rejection_reason?: string;
+  }>({ status: 'Not_Submitted' });
+
   const [selectedAnnouncement, setSelectedAnnouncement] =
     useState<AnnouncementItem | null>(null);
   const [isQrModalVisible, setIsQrModalVisible] = useState(false);
+  const [underDevModal, setUnderDevModal] = useState<{ visible: boolean; serviceName: string }>({
+    visible: false,
+    serviceName: '',
+  });
 
   const [summaryCounts, setSummaryCounts] = useState<SummaryCounts | null>(null);
   const [isSummaryError, setIsSummaryError] = useState(false);
@@ -213,6 +208,35 @@ export function HomeScreen() {
         citizen_user_id: data.citizen_user_id || activeUserId,
         user: data,
       });
+    }
+
+    try {
+      const verifRes = await ProfileService.getVerificationStatus(
+        activeUserId || userProfile.citizen_user_id,
+        emailToUse
+      );
+      if (verifRes && verifRes.verification_status) {
+        setVerificationData({
+          status: verifRes.verification_status,
+          citizen_id_number: verifRes.citizen_id_number,
+          admin_action_notes: verifRes.admin_action_notes,
+          rejection_reason: verifRes.rejection_reason,
+        });
+        if (verifRes.citizen_id_number) {
+          setUserProfile((prev) => ({
+            ...prev,
+            citizenId: verifRes.citizen_id_number || prev.citizenId,
+            isVerified: verifRes.verification_status === 'Approved',
+          }));
+        } else {
+          setUserProfile((prev) => ({
+            ...prev,
+            isVerified: verifRes.verification_status === 'Approved',
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Error loading verification status:', e);
     }
   };
 
@@ -273,7 +297,17 @@ export function HomeScreen() {
       setIsLoadingProfile(false);
     }
     initData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGuestMode, activeEmail, activeUserId]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!isGuestMode) {
+        loadProfile();
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isGuestMode, activeEmail, activeUserId])
+  );
 
   const handleRefresh = async () => {
     if (isGuestMode) return;
@@ -431,30 +465,149 @@ export function HomeScreen() {
               </TouchableOpacity>
 
               {/* PILLAR 4: Digital Resident ID */}
-              <TouchableOpacity
-                style={[
-                  styles.pillarCard,
-                  { backgroundColor: dm ? "#210C36" : "#FAF5FF" },
-                ]}
-                onPress={() => setIsQrModalVisible(true)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.pillarIconBadge, { backgroundColor: "#9333EA" }]}>
-                  <IconSymbol name="person.text.rectangle.fill" size={20} color="#FFFFFF" />
-                </View>
-                <Text style={[styles.pillarValueStatus, { color: C.textPrimary }]}>Active</Text>
-                <Text style={[styles.pillarLabel, { color: C.textSecondary }]}>
-                  Digital{"\n"}Resident ID
-                </Text>
-              </TouchableOpacity>
+              {(() => {
+                const vStatus = verificationData.status;
+                const isApproved = vStatus === 'Approved';
+                const isPending = vStatus === 'Pending' || vStatus === 'Under_Review';
+                const isRework = vStatus === 'Returned_For_Correction';
+                const isDeclined = vStatus === 'Rejected';
+
+                let pillarBadgeBg = dm ? '#0F1E36' : '#EFF6FF';
+                let pillarBadgeColor = dm ? '#38BDF8' : '#2563EB';
+                let pillarStatusLabel = 'Get Verified';
+
+                if (isApproved) {
+                  pillarBadgeBg = dm ? '#052818' : '#DCFCE7';
+                  pillarBadgeColor = '#16A34A';
+                  pillarStatusLabel = 'Active';
+                } else if (isPending) {
+                  pillarBadgeBg = dm ? '#291D07' : '#FEF3C7';
+                  pillarBadgeColor = '#D97706';
+                  pillarStatusLabel = 'Pending';
+                } else if (isRework) {
+                  pillarBadgeBg = dm ? '#301306' : '#FFEDD5';
+                  pillarBadgeColor = '#EA580C';
+                  pillarStatusLabel = 'Action';
+                } else if (isDeclined) {
+                  pillarBadgeBg = dm ? '#300808' : '#FEE2E2';
+                  pillarBadgeColor = '#DC2626';
+                  pillarStatusLabel = 'Declined';
+                }
+
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.pillarCard,
+                      { backgroundColor: dm ? '#210C36' : '#FAF5FF' },
+                    ]}
+                    onPress={() => router.push('/(auth)/verify-citizen')}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Digital Resident ID: ${pillarStatusLabel}`}
+                  >
+                    <View style={[styles.pillarIconBadge, { backgroundColor: '#9333EA' }]}>
+                      <IconSymbol name="person.text.rectangle.fill" size={20} color="#FFFFFF" />
+                    </View>
+                    <View
+                      style={{
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 8,
+                        backgroundColor: pillarBadgeBg,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: '800',
+                          color: pillarBadgeColor,
+                          textAlign: 'center',
+                        }}
+                        numberOfLines={1}
+                      >
+                        {pillarStatusLabel}
+                      </Text>
+                    </View>
+                    <Text style={[styles.pillarLabel, { color: C.textSecondary }]}>
+                      Digital{'\n'}Resident ID
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
 
             {/* BOTTOM PAGINATION INDICATOR BAR */}
             <View style={styles.paginationRow}>
-              <View style={[styles.paginationPillActive, { backgroundColor: dm ? "#38BDF8" : "#2563EB" }]} />
-              <View style={[styles.paginationPill, { backgroundColor: dm ? "#334155" : "#E2E8F0" }]} />
+              <View style={[styles.paginationPillActive, { backgroundColor: dm ? '#38BDF8' : '#2563EB' }]} />
+              <View style={[styles.paginationPill, { backgroundColor: dm ? '#334155' : '#E2E8F0' }]} />
             </View>
           </View>
+
+          {/* DYNAMIC CITIZEN VERIFICATION ONBOARDING BANNER */}
+          {verificationData.status !== 'Approved' && (() => {
+            const vStatus = verificationData.status;
+            let bannerBg = dm ? '#0284C7' : '#176B87';
+            let iconName: any = 'checkmark.seal.fill';
+            let bannerTitle = 'Verify Your Citizenship';
+            let bannerSub =
+              'Complete identity verification to access official Digital Resident IDs, scholarship releases, and municipal services.';
+            let buttonText = 'Verify Now';
+
+            if (vStatus === 'Pending' || vStatus === 'Under_Review') {
+              bannerBg = '#D97706';
+              iconName = 'clock.fill';
+              bannerTitle = 'Verification Under Review';
+              bannerSub =
+                'City Civil Registry staff are verifying your documents. Tap to check status.';
+              buttonText = 'Check Status';
+            } else if (vStatus === 'Returned_For_Correction') {
+              bannerBg = '#EA580C';
+              iconName = 'exclamationmark.triangle.fill';
+              bannerTitle = 'Action Required: Rework Requested';
+              bannerSub =
+                'Admin requested corrections on your verification documents. Tap to review & resubmit.';
+              buttonText = 'Review Now';
+            } else if (vStatus === 'Rejected') {
+              bannerBg = '#DC2626';
+              iconName = 'xmark.circle.fill';
+              bannerTitle = 'Application Declined';
+              bannerSub =
+                'Tap to review administrative reason and resubmit your verification.';
+              buttonText = 'Review';
+            }
+
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.registerNowBanner,
+                  { backgroundColor: bannerBg },
+                ]}
+                onPress={() => router.push('/(auth)/verify-citizen')}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={bannerTitle}
+              >
+                <View style={styles.registerNowBannerLeft}>
+                  <View style={styles.registerNowIconBox}>
+                    <IconSymbol name={iconName} size={20} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.registerNowTextBlock}>
+                    <Text style={styles.registerNowBannerText}>
+                      {bannerTitle}
+                    </Text>
+                    <Text style={styles.registerNowBannerSub} numberOfLines={2}>
+                      {bannerSub}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.registerNowBtn}>
+                  <Text style={styles.registerNowBtnText}>{buttonText}</Text>
+                  <IconSymbol name="chevron.right" size={12} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+            );
+          })()}
 
           {/* SEARCH BAR CONTAINER */}
           <View
@@ -517,7 +670,7 @@ export function HomeScreen() {
                 styles.serviceItem,
                 { backgroundColor: C.surface, borderColor: C.border },
               ]}
-              onPress={() => router.push("/(tabs)/services")}
+              onPress={() => setUnderDevModal({ visible: true, serviceName: "Barangay Clearance" })}
               activeOpacity={0.8}
             >
               <View
@@ -557,7 +710,7 @@ export function HomeScreen() {
                 styles.serviceItem,
                 { backgroundColor: C.surface, borderColor: C.border },
               ]}
-              onPress={() => router.push("/(tabs)/services")}
+              onPress={() => setUnderDevModal({ visible: true, serviceName: "Business Permit" })}
               activeOpacity={0.8}
             >
               <View
@@ -593,7 +746,7 @@ export function HomeScreen() {
                 styles.serviceItem,
                 { backgroundColor: C.surface, borderColor: C.border },
               ]}
-              onPress={() => router.push("/(tabs)/services")}
+              onPress={() => setUnderDevModal({ visible: true, serviceName: "Real Property Tax" })}
               activeOpacity={0.8}
             >
               <View
@@ -664,7 +817,7 @@ export function HomeScreen() {
           <View style={[styles.shortcutRow, { backgroundColor: C.surface, borderColor: C.border }]}>
             <TouchableOpacity
               style={styles.shortcutItem}
-              onPress={() => router.push("/(tabs)/services")}
+              onPress={() => setUnderDevModal({ visible: true, serviceName: "Health and Medical Clinic Services" })}
               activeOpacity={0.8}
             >
               <IconSymbol name="cross.case.fill" size={15} color={C.blue} />
@@ -1030,6 +1183,13 @@ export function HomeScreen() {
           ) : null}
         </View>
       </Modal>
+
+      {/* Reusable Under Development Modal */}
+      <UnderDevelopmentModal
+        visible={underDevModal.visible}
+        serviceName={underDevModal.serviceName}
+        onClose={() => setUnderDevModal({ visible: false, serviceName: "" })}
+      />
     </View>
   );
 }

@@ -10,6 +10,7 @@ import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
+import { CitizenVerificationService, CitizenVerificationStatusType } from '@/src/services/citizenVerificationService';
 import { FormDraftService } from '@/src/services/form-draft-service';
 import { ProfileService } from '@/src/services/profile-service';
 import {
@@ -70,6 +71,45 @@ export function NewApplicantApplicationScreen() {
   const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
   const [residentialAddress, setResidentialAddress] = useState('');
 
+  // Citizen verification status & Fast-Track autofill
+  const [verificationStatus, setVerificationStatus] = useState<CitizenVerificationStatusType | null>(null);
+  const [citizenVerificationData, setCitizenVerificationData] = useState<any>(null);
+  const [isVerificationLoading, setIsVerificationLoading] = useState<boolean>(true);
+  const [isNoticeDismissed, setIsNoticeDismissed] = useState<boolean>(false);
+
+  const isVerifiedCitizen = verificationStatus === 'Approved';
+
+  const verifiedFullName = useMemo(() => {
+    if (!citizenVerificationData) {
+      return AuthService.getCurrentUser()?.user?.full_name || 'Verified Citizen';
+    }
+    const parts = [
+      citizenVerificationData.first_name,
+      citizenVerificationData.middle_name,
+      citizenVerificationData.last_name,
+      citizenVerificationData.suffix,
+    ].filter(Boolean);
+    if (parts.length > 0) {
+      return parts.join(' ');
+    }
+    return AuthService.getCurrentUser()?.user?.full_name || 'Verified Citizen';
+  }, [citizenVerificationData]);
+
+  const isResidencyProofDoc = useCallback((doc: ScholarshipRequiredDocument): boolean => {
+    const code = (doc.document_code || '').toUpperCase();
+    const name = (doc.document_name || '').toUpperCase();
+    const desc = (doc.description || '').toUpperCase();
+    return (
+      code.includes('RESIDENCY') ||
+      code.includes('BARANGAY') ||
+      name.includes('RESIDENCY') ||
+      name.includes('BARANGAY') ||
+      name.includes('PROOF OF RESIDENCE') ||
+      desc.includes('PROOF OF RESIDENCY') ||
+      desc.includes('CERTIFICATE OF RESIDENCY')
+    );
+  }, []);
+
   // Dynamic file upload state mapped by document key
   const [files, setFiles] = useState<Record<string, SelectedFileState>>({});
   const [docValidations, setDocValidations] = useState<Record<string, DocumentValidationState>>({});
@@ -81,6 +121,55 @@ export function NewApplicantApplicationScreen() {
   const [submitResult, setSubmitResult] = useState<SubmitApplicationResult | null>(null);
   const hasHydratedRef = useRef<boolean>(false);
 
+  const loadVerificationStatus = useCallback(async (): Promise<{ isVerified: boolean; address?: string }> => {
+    try {
+      setIsVerificationLoading(true);
+      const currentUser = AuthService.getCurrentUser();
+      const citizenUserId = currentUser?.citizen_user_id;
+      const email = currentUser?.email;
+
+      if (!citizenUserId && !email) {
+        setIsVerificationLoading(false);
+        return { isVerified: false };
+      }
+
+      const res = await CitizenVerificationService.getVerificationStatus(
+        citizenUserId || undefined,
+        email || undefined
+      );
+      if (res && res.status === 'success') {
+        const vStatus = res.verification_status || (res.is_verified ? 'Approved' : 'Not_Submitted');
+        setVerificationStatus(vStatus);
+        setCitizenVerificationData(res.data || res);
+
+        if (vStatus === 'Approved') {
+          const vData = res.data || res;
+          const addressParts = [
+            vData.street_address,
+            vData.barangay
+              ? vData.barangay.toLowerCase().startsWith('barangay')
+                ? vData.barangay
+                : `Barangay ${vData.barangay}`
+              : '',
+            vData.district ? `District ${vData.district}` : '',
+          ].filter(Boolean);
+          const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : (vData.street_address || vData.barangay || '');
+          if (fullAddress) {
+            setResidentialAddress(fullAddress);
+            return { isVerified: true, address: fullAddress };
+          }
+          return { isVerified: true };
+        }
+      }
+      return { isVerified: false };
+    } catch (err) {
+      console.warn('[NewApplicantApplicationScreen] Verification status lookup error:', err);
+      return { isVerified: false };
+    } finally {
+      setIsVerificationLoading(false);
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     if (!programId) {
       setFetchError('No scholarship program selected.');
@@ -90,9 +179,10 @@ export function NewApplicantApplicationScreen() {
 
     try {
       setFetchError(null);
-      const [data, schools] = await Promise.all([
+      const [data, schools, vResult] = await Promise.all([
         getScholarshipProgramDetails(programId),
         getPartnerSchoolsLookup(programId),
+        loadVerificationStatus(),
       ]);
       setPartnerSchools(schools);
       if (!data) {
@@ -138,7 +228,10 @@ export function NewApplicantApplicationScreen() {
                 setIsCourseSuggestionSelected(draft.isCourseSuggestionSelected);
               }
               if (draft.yearLevel) setYearLevel(draft.yearLevel);
-              if (draft.residentialAddress) setResidentialAddress(draft.residentialAddress);
+              // Do not overwrite verified municipal address if citizen is approved
+              if (draft.residentialAddress && !vResult?.isVerified) {
+                setResidentialAddress(draft.residentialAddress);
+              }
 
               if (draft.files && typeof draft.files === 'object') {
                 const restoredFiles: Record<string, SelectedFileState> = {};
@@ -177,7 +270,7 @@ export function NewApplicantApplicationScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [programId]);
+  }, [programId, loadVerificationStatus]);
 
   useEffect(() => {
     loadData();
@@ -287,11 +380,11 @@ export function NewApplicantApplicationScreen() {
           }
         }
 
-        if (!isMounted) return;
+        if (!isMounted || isVerifiedCitizen) return;
 
-        // Pre-fill only if residentialAddress is still empty (never overwrite manual input)
+        // Pre-fill only if residentialAddress is still empty (never overwrite manual input or verified address)
         setResidentialAddress((prev) => {
-          if (prev && prev.trim().length > 0) {
+          if (isVerifiedCitizen || (prev && prev.trim().length > 0)) {
             return prev;
           }
 
@@ -316,7 +409,7 @@ export function NewApplicantApplicationScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isVerifiedCitizen]);
 
   // Auto-save form draft to local storage (debounced by 500ms)
   useEffect(() => {
@@ -560,6 +653,9 @@ export function NewApplicantApplicationScreen() {
     const key = doc.program_document_id
       ? `doc_${doc.program_document_id}`
       : `doc_${doc.document_requirement_id}`;
+    if (isVerifiedCitizen && isResidencyProofDoc(doc)) {
+      return false; // Exempt residency proof if verified citizen
+    }
     return !files[key];
   });
 
@@ -725,6 +821,17 @@ export function NewApplicantApplicationScreen() {
       if (courseProgram.trim()) formData.append('course_program', courseProgram.trim());
       if (yearLevel.trim()) formData.append('year_level', yearLevel.trim());
       formData.append('residential_address', residentialAddress.trim());
+
+      // Fast-Track Verified Citizen Snapshot
+      if (isVerifiedCitizen) {
+        formData.append('is_citizen_verified', '1');
+        if (citizenVerificationData?.citizen_id_number) {
+          formData.append('citizen_id_number', String(citizenVerificationData.citizen_id_number).trim());
+        }
+        formData.append('verified_address_snapshot', residentialAddress.trim());
+      } else {
+        formData.append('is_citizen_verified', '0');
+      }
 
       // Append uploaded documents with Expo File objects expected by expo/fetch
       requiredDocsList.forEach((doc) => {
@@ -958,6 +1065,67 @@ export function NewApplicantApplicationScreen() {
               <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '600' }}>
                 {submitError}
               </Text>
+            </View>
+          ) : null}
+
+          {/* VERIFIED CITIZEN FAST-TRACK CARD OR UNVERIFIED NOTICE */}
+          {isVerifiedCitizen ? (
+            <View style={[styles.fastTrackCard, isDarkMode && { backgroundColor: '#064E3B20', borderColor: '#059669' }]}>
+              <View style={styles.fastTrackHeader}>
+                <View style={[styles.fastTrackBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
+                  <IconSymbol name="checkmark.seal.fill" size={14} color={isDarkMode ? '#34D399' : '#15803D'} />
+                  <Text style={[styles.fastTrackBadgeText, isDarkMode && { color: '#A7F3D0' }]}>
+                    Verified Citizen Profile (Fast-Track)
+                  </Text>
+                </View>
+                {citizenVerificationData?.citizen_id_number ? (
+                  <Text style={[styles.fastTrackIdNumber, isDarkMode && { color: '#6EE7B7' }]}>
+                    {citizenVerificationData.citizen_id_number}
+                  </Text>
+                ) : null}
+              </View>
+
+              <View style={styles.fastTrackRow}>
+                <Text style={[styles.fastTrackLabel, isDarkMode && { color: '#94A3B8' }]}>Applicant:</Text>
+                <Text style={[styles.fastTrackValue, isDarkMode && { color: '#F8FAFC' }]}>{verifiedFullName}</Text>
+              </View>
+
+              <View style={styles.fastTrackRow}>
+                <Text style={[styles.fastTrackLabel, isDarkMode && { color: '#94A3B8' }]}>Residency:</Text>
+                <Text style={[styles.fastTrackValue, isDarkMode && { color: '#F8FAFC' }]}>
+                  {residentialAddress || 'Registered Municipal Citizen'}
+                </Text>
+              </View>
+
+              <Text style={[styles.fastTrackNote, isDarkMode && { color: '#34D399' }]}>
+                Personal identification and municipal residency are pre-verified via your Citizen ID and locked for application integrity.
+              </Text>
+            </View>
+          ) : !isVerificationLoading && !isNoticeDismissed ? (
+            <View style={[styles.unverifiedTipBanner, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#0284C7' }]}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                <IconSymbol name="info.circle.fill" size={18} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.unverifiedTipText, isDarkMode && { color: '#E0F2FE' }]}>
+                    Tip: Verify your Citizen ID to auto-fill details and speed up scholarship processing.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => router.push('/(auth)/verify-citizen' as any)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.unverifiedTipLink, isDarkMode && { color: '#38BDF8' }]}>
+                      Verify as Citizen Now →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsNoticeDismissed(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{ padding: 4 }}
+              >
+                <IconSymbol name="xmark" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+              </TouchableOpacity>
             </View>
           ) : null}
 
@@ -1333,14 +1501,29 @@ export function NewApplicantApplicationScreen() {
 
             {/* RESIDENTIAL ADDRESS */}
             <View style={[styles.inputGroup, { marginBottom: 6 }]}>
-              <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                Residential Address *
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[styles.inputLabel, { marginBottom: 0 }, isDarkMode && { color: '#F8FAFC' }]}>
+                  Residential Address *
+                </Text>
+                {isVerifiedCitizen ? (
+                  <View style={[styles.verifiedLockedBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
+                    <IconSymbol name="lock.fill" size={11} color={isDarkMode ? '#34D399' : '#15803D'} />
+                    <Text style={[styles.verifiedLockedText, isDarkMode && { color: '#A7F3D0' }]}>
+                      Verified & Locked
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
               <TextInput
                 style={[
                   styles.textInput,
                   { minHeight: 52, textAlignVertical: 'top', paddingTop: 10 },
-                  isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                  isVerifiedCitizen && {
+                    backgroundColor: isDarkMode ? '#1E293B80' : '#F1F5F9',
+                    borderColor: isDarkMode ? '#334155' : '#CBD5E1',
+                    color: isDarkMode ? '#CBD5E1' : '#475569',
+                  },
+                  isDarkMode && !isVerifiedCitizen && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
                 ]}
                 value={residentialAddress}
                 onChangeText={setResidentialAddress}
@@ -1348,10 +1531,12 @@ export function NewApplicantApplicationScreen() {
                 placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
                 autoCapitalize="words"
                 multiline={true}
-                editable={!isSubmitting}
+                editable={!isVerifiedCitizen && !isSubmitting}
               />
               <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                Enter complete residential address (e.g. Street, Barangay, City).
+                {isVerifiedCitizen
+                  ? 'Locked to your registered municipal citizen address.'
+                  : 'Enter complete residential address (e.g. Street, Barangay, City).'}
               </Text>
             </View>
           </View>
@@ -1373,6 +1558,7 @@ export function NewApplicantApplicationScreen() {
               const isVideoDoc =
                 doc.document_code?.toUpperCase().includes('VIDEO') ||
                 doc.document_name?.toUpperCase().includes('VIDEO');
+              const isPreClearedResidency = isVerifiedCitizen && isResidencyProofDoc(doc);
 
               return (
                 <View key={key} style={[styles.docItemCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
@@ -1380,7 +1566,10 @@ export function NewApplicantApplicationScreen() {
                     <Text style={[styles.docTitle, isDarkMode && { color: '#F8FAFC' }]}>
                       {doc.document_name}
                     </Text>
-                    <Badge variant={selectedFile ? 'success' : 'warning'} label={selectedFile ? 'Attached' : 'Required'} />
+                    <Badge
+                      variant={selectedFile ? 'success' : isPreClearedResidency ? 'success' : 'warning'}
+                      label={selectedFile ? 'Attached' : isPreClearedResidency ? 'Pre-Cleared' : 'Required'}
+                    />
                   </View>
 
                   {doc.description ? (
@@ -1391,6 +1580,15 @@ export function NewApplicantApplicationScreen() {
                     <Text style={[styles.docInstructions, isDarkMode && { color: '#94A3B8' }]}>
                       {doc.instructions}
                     </Text>
+                  ) : null}
+
+                  {isPreClearedResidency ? (
+                    <View style={[styles.preClearedCallout, isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' }]}>
+                      <IconSymbol name="checkmark.seal.fill" size={16} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
+                      <Text style={[styles.preClearedCalloutText, isDarkMode && { color: '#86EFAC' }]}>
+                        Residency pre-verified via your Citizen ID (Barangay residency is pre-cleared). Physical upload is optional.
+                      </Text>
+                    </View>
                   ) : null}
 
                   {isVideoDoc ? (
@@ -1429,7 +1627,11 @@ export function NewApplicantApplicationScreen() {
                     </View>
                   ) : null}
                   <TouchableOpacity
-                    style={[styles.uploadBox, selectedFile && styles.uploadBoxSuccess, isDarkMode && !selectedFile && { backgroundColor: '#1E293B', borderColor: '#0284C7' }]}
+                    style={[
+                      styles.uploadBox,
+                      (selectedFile || isPreClearedResidency) && styles.uploadBoxSuccess,
+                      isDarkMode && !selectedFile && !isPreClearedResidency && { backgroundColor: '#1E293B', borderColor: '#0284C7' },
+                    ]}
                     onPress={() => handlePickDocument(doc)}
                     activeOpacity={0.75}
                   >
@@ -1437,19 +1639,23 @@ export function NewApplicantApplicationScreen() {
                       name={
                         selectedFile
                           ? 'checkmark.circle.fill'
-                          : isVideoDoc
-                            ? 'video.fill'
-                            : 'doc.badge.plus'
+                          : isPreClearedResidency
+                            ? 'checkmark.seal.fill'
+                            : isVideoDoc
+                              ? 'video.fill'
+                              : 'doc.badge.plus'
                       }
                       size={18}
-                      color={selectedFile ? '#16A34A' : '#0284C7'}
+                      color={selectedFile || isPreClearedResidency ? '#16A34A' : '#0284C7'}
                     />
-                    <Text style={[styles.uploadText, selectedFile && styles.fileNameText]}>
+                    <Text style={[styles.uploadText, (selectedFile || isPreClearedResidency) && styles.fileNameText]}>
                       {selectedFile
                         ? selectedFile.name
-                        : (doc.document_code?.toUpperCase().includes('VIDEO') || doc.document_name?.toUpperCase().includes('VIDEO'))
-                          ? `Select ${doc.document_name} (MP4, MOV, WEBM up to 20MB)`
-                          : `Select ${doc.document_name} (PDF, PNG, JPG up to 5MB)`}
+                        : isPreClearedResidency
+                          ? 'Optional: Tap to attach physical proof of residency'
+                          : (doc.document_code?.toUpperCase().includes('VIDEO') || doc.document_name?.toUpperCase().includes('VIDEO'))
+                            ? `Select ${doc.document_name} (MP4, MOV, WEBM up to 20MB)`
+                            : `Select ${doc.document_name} (PDF, PNG, JPG up to 5MB)`}
                     </Text>
                   </TouchableOpacity>
 
@@ -1581,6 +1787,31 @@ export function NewApplicantApplicationScreen() {
             <Text style={[styles.sectionTitle, { fontSize: 18, marginBottom: 8 }, isDarkMode && { color: '#F8FAFC' }]}>
               Confirm Application Submission
             </Text>
+            {isVerifiedCitizen ? (
+              <View
+                style={{
+                  backgroundColor: isDarkMode ? '#052E16' : '#DCFCE7',
+                  borderColor: isDarkMode ? '#15803D' : '#86EFAC',
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <IconSymbol name="checkmark.seal.fill" size={20} color={isDarkMode ? '#4ADE80' : '#15803D'} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: isDarkMode ? '#86EFAC' : '#15803D' }}>
+                    Fast-Track Verified Citizen
+                  </Text>
+                  <Text style={{ fontSize: 11, color: isDarkMode ? '#BBF7D0' : '#166534', marginTop: 2 }}>
+                    Citizen ID: {citizenVerificationData?.citizen_id_number || 'Approved'} · Residency Pre-Cleared
+                  </Text>
+                </View>
+              </View>
+            ) : null}
             <Text style={[styles.docInstructions, { fontSize: 13, marginBottom: 16 }, isDarkMode && { color: '#CBD5E1' }]}>
               {`Are you sure you want to submit your application for "${program?.program_name}"? Please verify that all uploaded documents are accurate and complete.`}
             </Text>

@@ -186,8 +186,8 @@ export class CitizenVerificationService {
    * Fetch verification status from Citizen Admin backend
    */
   static async getVerificationStatus(
-    citizenUserId?: number,
-    email?: string
+    citizenUserId?: number | null,
+    email?: string | null
   ): Promise<CitizenVerificationStatusResult> {
     try {
       if ((!citizenUserId || citizenUserId <= 0) && (!email || !email.trim())) {
@@ -242,4 +242,6 @@ export class CitizenVerificationService {
       };
     }
   }
+
+  static fetchVerificationStatus = CitizenVerificationService.getVerificationStatus;
 }
