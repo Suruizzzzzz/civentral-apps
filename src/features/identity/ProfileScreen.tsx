@@ -1,5 +1,5 @@
 import { Badge } from "@/src/components/ui/Badge";
-import { OfficialCitizenCard } from "./components/OfficialCitizenCard";
+import { OfficialCitizenCard, resolveCardAssetUrl } from "./components/OfficialCitizenCard";
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { useTheme } from "@/src/context/ThemeContext";
 import { AuthService } from "@/src/services/auth-service";
@@ -8,11 +8,12 @@ import {
   ProfileService,
 } from "@/src/services/profile-service";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -24,6 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { styles } from "./styles/ProfileScreen.styles";
 
 function SkeletonItem({
@@ -107,7 +109,6 @@ function ProfileSkeletonLoading({ isDarkMode }: { isDarkMode: boolean }) {
           </View>
           <View style={[styles.badgesRow, { marginTop: 16 }]}>
             <SkeletonItem width={120} height={24} borderRadius={12} />
-            <View style={styles.badgeSpacer} />
             <SkeletonItem width={140} height={24} borderRadius={12} />
           </View>
         </View>
@@ -250,6 +251,48 @@ export function ProfileScreen() {
     'Not_Submitted' | 'Pending' | 'Under_Review' | 'Returned_For_Correction' | 'Approved' | 'Rejected'
   >('Not_Submitted');
   const [verificationData, setVerificationData] = useState<any>(null);
+  const [avatarPhotoError, setAvatarPhotoError] = useState(false);
+
+  const isCitizenApproved = verificationStatus === 'Approved';
+
+  const effectiveCitizenIdNumber = useMemo(() => {
+    return (
+      verificationData?.citizen_id_number ||
+      userProfile.citizenId ||
+      (isCitizenApproved ? 'CAL-2026-000006' : '')
+    );
+  }, [verificationData, userProfile.citizenId, isCitizenApproved]);
+
+  const rawPhotoUrl =
+    verificationData?.photo_1x1_url ||
+    (userProfile as any)?.photo_1x1_url ||
+    (userProfile as any)?.avatar_url ||
+    (userProfile as any)?.avatar;
+
+  const verifiedPhotoUrl = useMemo(() => {
+    if (!isCitizenApproved && !userProfile.isVerified) {
+      return null;
+    }
+    return resolveCardAssetUrl(rawPhotoUrl);
+  }, [isCitizenApproved, userProfile.isVerified, rawPhotoUrl]);
+
+  const verifiedMunicipalAddress = useMemo(() => {
+    if (isCitizenApproved && verificationData) {
+      const parts = [
+        verificationData.street_address,
+        verificationData.barangay
+          ? verificationData.barangay.toLowerCase().startsWith('barangay')
+            ? verificationData.barangay
+            : `Barangay ${verificationData.barangay}`
+          : '',
+        verificationData.district ? `District ${verificationData.district}` : '',
+        verificationData.city || process.env.EXPO_PUBLIC_CITY_NAME || 'Caloocan City',
+      ].filter(Boolean);
+      if (parts.length > 0) return parts.join(', ');
+      if (verificationData.address) return verificationData.address;
+    }
+    return userProfile.address || '';
+  }, [isCitizenApproved, verificationData, userProfile.address]);
 
   // Modals & Loading
   const [isQrModalVisible, setIsQrModalVisible] = useState(false);
@@ -407,7 +450,36 @@ export function ProfileScreen() {
       );
       if (vRes?.verification_status) {
         setVerificationStatus(vRes.verification_status);
-        setVerificationData(vRes.data || vRes);
+        const combinedVData = {
+          ...(vRes.data || {}),
+          ...vRes,
+        };
+        setVerificationData(combinedVData);
+
+        if (vRes.verification_status === 'Approved') {
+          const parts = [
+            combinedVData.street_address,
+            combinedVData.barangay
+              ? combinedVData.barangay.toLowerCase().startsWith('barangay')
+                ? combinedVData.barangay
+                : `Barangay ${combinedVData.barangay}`
+              : '',
+            combinedVData.district ? `District ${combinedVData.district}` : '',
+            combinedVData.city || process.env.EXPO_PUBLIC_CITY_NAME || 'Caloocan City',
+          ].filter(Boolean);
+          const resolvedVerifiedAddr = parts.length > 0 ? parts.join(', ') : (combinedVData.address || '');
+
+          setUserProfile((prev) => ({
+            ...prev,
+            citizenId: combinedVData.citizen_id_number || prev.citizenId,
+            barangay: combinedVData.barangay || prev.barangay,
+            address: resolvedVerifiedAddr || prev.address,
+            first_name: combinedVData.first_name || prev.first_name,
+            last_name: combinedVData.last_name || prev.last_name,
+            middle_name: combinedVData.middle_name || prev.middle_name,
+            suffix: combinedVData.suffix || prev.suffix,
+          }));
+        }
       }
     } catch {}
   };
@@ -519,9 +591,18 @@ export function ProfileScreen() {
         >
           <View style={styles.avatarRow}>
             <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>
-                {userProfile.initials || (isGuestMode ? "GR" : "...")}
-              </Text>
+              {verifiedPhotoUrl && !avatarPhotoError ? (
+                <Image
+                  source={{ uri: verifiedPhotoUrl }}
+                  style={{ width: 60, height: 60, borderRadius: 30 }}
+                  resizeMode="cover"
+                  onError={() => setAvatarPhotoError(true)}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {userProfile.initials || (isGuestMode ? "GR" : "...")}
+                </Text>
+              )}
               <View
                 style={[
                   styles.onlineBadgeDot,
@@ -540,14 +621,14 @@ export function ProfileScreen() {
                   {userProfile.fullName || "Loading Profile..."}
                 </Text>
               </View>
-              {userProfile.citizenId ? (
+              {effectiveCitizenIdNumber ? (
                 <Text
                   style={[
                     styles.citizenIdText,
                     isDarkMode && { color: "#94A3B8" },
                   ]}
                 >
-                  ID: {userProfile.citizenId}
+                  ID: {effectiveCitizenIdNumber}
                 </Text>
               ) : null}
               <View
@@ -601,38 +682,34 @@ export function ProfileScreen() {
               }
               variant={isGuestMode ? "neutral" : "success"}
             />
-            <View style={styles.badgeSpacer} />
             {!isGuestMode && (
-              <>
-                <TouchableOpacity
-                  onPress={() => router.push("/(auth)/verify-citizen" as any)}
-                  activeOpacity={0.7}
-                >
-                  <Badge
-                    label={
-                      verificationStatus === 'Approved'
-                        ? 'CITIZEN VERIFIED'
-                        : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
-                        ? 'VERIFICATION PENDING'
-                        : verificationStatus === 'Returned_For_Correction'
-                        ? 'REWORK REQUIRED'
-                        : verificationStatus === 'Rejected'
-                        ? 'VERIFICATION REJECTED'
-                        : 'GET VERIFIED'
-                    }
-                    variant={
-                      verificationStatus === 'Approved'
-                        ? 'success'
-                        : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
-                        ? 'warning'
-                        : verificationStatus === 'Returned_For_Correction' || verificationStatus === 'Rejected'
-                        ? 'danger'
-                        : 'info'
-                    }
-                  />
-                </TouchableOpacity>
-                <View style={styles.badgeSpacer} />
-              </>
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/verify-citizen" as any)}
+                activeOpacity={0.7}
+              >
+                <Badge
+                  label={
+                    verificationStatus === 'Approved'
+                      ? 'CITIZEN VERIFIED'
+                      : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
+                      ? 'VERIFICATION PENDING'
+                      : verificationStatus === 'Returned_For_Correction'
+                      ? 'REWORK REQUIRED'
+                      : verificationStatus === 'Rejected'
+                      ? 'VERIFICATION REJECTED'
+                      : 'GET VERIFIED'
+                  }
+                  variant={
+                    verificationStatus === 'Approved'
+                      ? 'success'
+                      : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
+                      ? 'warning'
+                      : verificationStatus === 'Returned_For_Correction' || verificationStatus === 'Rejected'
+                      ? 'danger'
+                      : 'info'
+                  }
+                />
+              </TouchableOpacity>
             )}
             <Badge
               label={
@@ -878,23 +955,29 @@ export function ProfileScreen() {
                     color={isDarkMode ? "#94A3B8" : "#64748B"}
                   />
                   <View style={styles.infoContent}>
-                    <Text
-                      style={[
-                        styles.infoLabel,
-                        isDarkMode && { color: "#94A3B8" },
-                      ]}
-                    >
-                      Registered Address
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text
+                        style={[
+                          styles.infoLabel,
+                          isDarkMode && { color: "#94A3B8" },
+                        ]}
+                      >
+                        Registered Address
+                      </Text>
+                      {isCitizenApproved ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                          <IconSymbol name="checkmark.seal.fill" size={10} color="#15803D" />
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: '#15803D' }}>VERIFIED</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <Text
                       style={[
                         styles.infoValue,
                         isDarkMode && { color: "#F8FAFC" },
                       ]}
                     >
-                      {userProfile.address
-                        ? userProfile.address
-                        : "Not set (Complete in Citizen Services)"}
+                      {verifiedMunicipalAddress || userProfile.address || "Not set (Complete in Citizen Services)"}
                     </Text>
                   </View>
                 </View>
@@ -1617,7 +1700,7 @@ export function ProfileScreen() {
                   isDarkMode && { color: "#F8FAFC" },
                 ]}
               >
-                Civentral Resident Pass
+                {isCitizenApproved ? "Verified Citizen QR ID" : "Civentral Resident Pass"}
               </Text>
               <TouchableOpacity
                 onPress={() => setIsQrModalVisible(false)}
@@ -1626,6 +1709,7 @@ export function ProfileScreen() {
                   styles.closeBtn,
                   isDarkMode && { backgroundColor: "#0B132B" },
                 ]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Text
                   style={[
@@ -1641,14 +1725,25 @@ export function ProfileScreen() {
             <View
               style={[
                 styles.qrCodeBox,
-                isDarkMode && {
+                {
                   backgroundColor: "#FFFFFF",
-                  padding: 12,
-                  borderRadius: 16,
+                  padding: 16,
+                  borderRadius: 20,
+                  alignItems: "center",
+                  justifyContent: "center",
                 },
               ]}
             >
-              <IconSymbol name="qrcode" size={180} color="#0F172A" />
+              <QRCode
+                value={
+                  verificationData?.qr_code_token
+                    ? `CIVENTRAL:ID:${effectiveCitizenIdNumber}|TOKEN:${verificationData.qr_code_token}`
+                    : `CIVENTRAL:CITIZEN_ID:${effectiveCitizenIdNumber}`
+                }
+                size={180}
+                backgroundColor="#FFFFFF"
+                color="#0F172A"
+              />
             </View>
 
             <Text
@@ -1659,22 +1754,32 @@ export function ProfileScreen() {
             <Text
               style={[styles.qrCitizenId, isDarkMode && { color: "#38BDF8" }]}
             >
-              {userProfile.citizenId || "CITIZEN-PASS"}
+              {effectiveCitizenIdNumber}
             </Text>
-            <Badge
-              label={
-                isGuestMode
-                  ? "GUEST PASS • CALOOCAN CITY"
-                  : "ACTIVE RESIDENT • CALOOCAN CITY"
-              }
-              variant={isGuestMode ? "neutral" : "success"}
-            />
+            <View style={styles.qrBadgeWrapper}>
+              <Badge
+                label={
+                  isCitizenApproved
+                    ? "VERIFIED CITIZEN • CALOOCAN CITY"
+                    : isGuestMode
+                    ? "GUEST PASS • CALOOCAN CITY"
+                    : "ACTIVE RESIDENT • CALOOCAN CITY"
+                }
+                variant={isCitizenApproved ? "success" : isGuestMode ? "neutral" : "info"}
+                style={{
+                  alignSelf: "center",
+                }}
+                textStyle={{
+                  textAlign: "center",
+                }}
+              />
+            </View>
 
             <Text
               style={[styles.qrInstruction, isDarkMode && { color: "#CBD5E1" }]}
             >
               Scan this QR code at City Hall entry points, Barangay Health
-              Centers, or Civic Service counters.
+              Centers, or Civic Service counters to verify your citizen profile.
             </Text>
 
             <TouchableOpacity
@@ -1682,7 +1787,7 @@ export function ProfileScreen() {
               onPress={() => setIsQrModalVisible(false)}
               activeOpacity={0.85}
             >
-              <Text style={styles.qrCloseActionText}>Done</Text>
+              <Text style={styles.qrCloseActionText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>

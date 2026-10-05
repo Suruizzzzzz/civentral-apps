@@ -170,12 +170,18 @@ export function HomeScreen() {
     lastLogin: isGuestMode ? "Current Session (Guest Mode)" : "Just Now",
   });
 
+  const initialIsVerified =
+    Number(session.user?.is_citizen_verified) === 1 ||
+    session.user?.verification_status === 'Approved';
   const [verificationData, setVerificationData] = useState<{
     status: 'Not_Submitted' | 'Pending' | 'Under_Review' | 'Returned_For_Correction' | 'Approved' | 'Rejected';
     citizen_id_number?: string;
     admin_action_notes?: string;
     rejection_reason?: string;
-  }>({ status: 'Not_Submitted' });
+  }>({
+    status: initialIsVerified ? 'Approved' : ((session.user?.verification_status as any) || 'Not_Submitted'),
+    citizen_id_number: session.user?.citizen_id_number,
+  });
 
   const [selectedAnnouncement, setSelectedAnnouncement] =
     useState<AnnouncementItem | null>(null);
@@ -198,11 +204,23 @@ export function HomeScreen() {
     );
     if (res.status === "success" && res.data) {
       const data = res.data;
+      const isVerifiedCitizen =
+        Number((data as any).is_citizen_verified) === 1 ||
+        (data as any).verification_status === 'Approved';
       setUserProfile((prev) => ({
         ...prev,
         ...data,
         status: data.status || "Active",
+        isVerified: isVerifiedCitizen || prev.isVerified,
+        citizenId: (data as any).citizen_id_number || prev.citizenId,
       }));
+      if (isVerifiedCitizen) {
+        setVerificationData((prev) => ({
+          ...prev,
+          status: 'Approved',
+          citizen_id_number: (data as any).citizen_id_number || prev.citizen_id_number,
+        }));
+      }
       AuthService.setCurrentUser({
         email: data.email || activeEmail,
         citizen_user_id: data.citizen_user_id || activeUserId,
@@ -467,14 +485,17 @@ export function HomeScreen() {
               {/* PILLAR 4: Digital Resident ID */}
               {(() => {
                 const vStatus = verificationData.status;
-                const isApproved = vStatus === 'Approved';
+                const isApproved =
+                  vStatus === 'Approved' ||
+                  userProfile.isVerified ||
+                  Number(session.user?.is_citizen_verified) === 1;
                 const isPending = vStatus === 'Pending' || vStatus === 'Under_Review';
                 const isRework = vStatus === 'Returned_For_Correction';
                 const isDeclined = vStatus === 'Rejected';
 
                 let pillarBadgeBg = dm ? '#0F1E36' : '#EFF6FF';
                 let pillarBadgeColor = dm ? '#38BDF8' : '#2563EB';
-                let pillarStatusLabel = 'Get Verified';
+                let pillarStatusLabel = 'Get ID';
 
                 if (isApproved) {
                   pillarBadgeBg = dm ? '#052818' : '#DCFCE7';
@@ -545,7 +566,7 @@ export function HomeScreen() {
           </View>
 
           {/* DYNAMIC CITIZEN VERIFICATION ONBOARDING BANNER */}
-          {verificationData.status !== 'Approved' && (() => {
+          {verificationData.status !== 'Approved' && !userProfile.isVerified && Number(session.user?.is_citizen_verified) !== 1 && (() => {
             const vStatus = verificationData.status;
             let bannerBg = dm ? '#0284C7' : '#176B87';
             let iconName: any = 'checkmark.seal.fill';
@@ -1085,14 +1106,30 @@ export function HomeScreen() {
             <Text style={[styles.qrCitizenId, dm && { color: "#38BDF8" }]}>
               {userProfile.citizenId || "CITIZEN-PASS"}
             </Text>
-            <Badge
-              label={
-                isGuestMode
-                  ? "GUEST PASS - CALOOCAN CITY"
-                  : "ACTIVE RESIDENT - CALOOCAN CITY"
-              }
-              variant={isGuestMode ? "neutral" : "success"}
-            />
+            <View style={styles.qrBadgeWrapper}>
+              <Badge
+                label={
+                  userProfile.isVerified || verificationData.status === 'Approved'
+                    ? "VERIFIED CITIZEN • CALOOCAN CITY"
+                    : isGuestMode
+                    ? "GUEST PASS • CALOOCAN CITY"
+                    : "ACTIVE RESIDENT • CALOOCAN CITY"
+                }
+                variant={
+                  userProfile.isVerified || verificationData.status === 'Approved'
+                    ? "success"
+                    : isGuestMode
+                    ? "neutral"
+                    : "info"
+                }
+                style={{
+                  alignSelf: "center",
+                }}
+                textStyle={{
+                  textAlign: "center",
+                }}
+              />
+            </View>
             <Text
               style={[styles.qrInstructionText, dm && { color: "#CBD5E1" }]}
             >

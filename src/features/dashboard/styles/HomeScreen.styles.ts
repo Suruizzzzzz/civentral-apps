@@ -459,6 +459,12 @@ export const styles = StyleSheet.create({
     color: "#176B87",
     marginBottom: 8,
   },
+  qrBadgeWrapper: {
+    alignSelf: "center",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 8,
+  },
   qrInstructionText: {
     fontSize: 12,
     color: "#64748B",

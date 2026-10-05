@@ -13,6 +13,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { Defs, LinearGradient as SvgGradient, Stop as SvgStop, Path as SvgPath } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { useTheme } from '@/src/context/ThemeContext';
 import { CITIZEN_API_BASE_URL } from '@/src/services/citizenVerificationService';
@@ -108,10 +109,10 @@ export function resolveCitizenCategory(
     };
   }
 
-  // Default: Regular Adult Citizen (Ruby Red official design)
+  // Default: Regular Adult Resident (Ruby Red official design)
   return {
-    title: 'REGULAR CITIZEN',
-    type: 'REGULAR CITIZEN',
+    title: 'RESIDENT',
+    type: 'RESIDENT',
     stops: ['#7F1D1D', '#991B1B', '#B91C1C', '#DC2626'],
     accentColor: '#B91C1C',
     badgeBg: '#FEF2F2',
@@ -808,9 +809,6 @@ export function OfficialCitizenCard({
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-          <View style={{ backgroundColor: '#10B981', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-            <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>VERIFIED</Text>
-          </View>
           <View
             style={{
               backgroundColor: classification.badgeBg,
@@ -1254,7 +1252,7 @@ export function OfficialCitizenCard({
               gap: 8,
             }}
           >
-            <IconSymbol name="printer.fill" size={17} color="#FFFFFF" />
+            <Ionicons name="print-outline" size={18} color="#FFFFFF" />
             <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
               {isPrinting ? 'Preparing Document...' : 'Print / Save PDF'}
             </Text>
@@ -1282,7 +1280,7 @@ export function OfficialCitizenCard({
               gap: 8,
             }}
           >
-            <IconSymbol name="square.and.arrow.up" size={17} color={isDarkMode ? '#38BDF8' : '#0F4C81'} />
+            <Ionicons name="share-social-outline" size={18} color={isDarkMode ? '#38BDF8' : '#0F4C81'} />
             <Text style={{ color: isDarkMode ? '#38BDF8' : '#0F4C81', fontSize: 13, fontWeight: '800' }}>
               Share PDF
             </Text>

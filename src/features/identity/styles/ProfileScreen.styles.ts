@@ -109,11 +109,13 @@ export const styles = StyleSheet.create({
   },
   badgesRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
     marginTop: 14,
     alignItems: "center",
   },
   badgeSpacer: {
-    width: 8,
+    width: 0,
   },
   tabBarContainer: {
     flexDirection: "row",
@@ -486,6 +488,12 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#176B87",
     marginBottom: 8,
+  },
+  qrBadgeWrapper: {
+    alignSelf: "center",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 8,
   },
   qrInstruction: {
     fontSize: 12,

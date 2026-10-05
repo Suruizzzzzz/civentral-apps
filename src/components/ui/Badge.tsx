@@ -1,12 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleProp, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 
 export interface BadgeProps {
   label: string;
   variant?: 'info' | 'success' | 'warning' | 'danger' | 'neutral';
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
-export function Badge({ label, variant = 'info' }: BadgeProps) {
+export function Badge({ label, variant = 'info', style, textStyle }: BadgeProps) {
   const getColors = () => {
     switch (variant) {
       case 'success':
@@ -25,8 +27,8 @@ export function Badge({ label, variant = 'info' }: BadgeProps) {
   const colors = getColors();
 
   return (
-    <View style={[styles.badge, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.text, { color: colors.text }]}>{label}</Text>
+    <View style={[styles.badge, { backgroundColor: colors.bg }, style]}>
+      <Text style={[styles.text, { color: colors.text }, textStyle]}>{label}</Text>
     </View>
   );
 }

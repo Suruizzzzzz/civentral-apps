@@ -1,9 +1,11 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { validateFileSize } from '@/src/utils/fileValidation';
-import { formatDateTime } from '@/src/utils/dateUtils';
+import { formatDate, formatDateTime } from '@/src/utils/dateUtils';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
@@ -26,10 +28,26 @@ import {
 } from './api/ScholarshipProgramApi';
 import { fetchCitizenDashboard } from '../dashboard/api/scholarshipDashboardApi';
 import { COMMON_COURSE_SUGGESTIONS, CourseSuggestion } from './constants/courseSuggestions';
-import { getAvailableYearLevels } from './constants/yearLevelOptions';
+import { getAvailableYearLevels, resolveEducationLevelCategory } from './constants/yearLevelOptions';
 import { styles } from './styles/NewApplicantApplication.styles';
 
 const videoDeclarationGuideImg = require('@/assets/images/video-inter.png');
+
+const SUFFIX_OPTIONS = ['None', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V'];
+
+const extractPhoneDigits = (raw?: string | null): string => {
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  const clean = digits.startsWith('63') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits;
+  return clean.slice(0, 10);
+};
+
+const formatPhoneNumber = (val: string): string => {
+  if (!val) return '';
+  if (val.length <= 3) return val;
+  if (val.length <= 6) return `${val.slice(0, 3)} ${val.slice(3)}`;
+  return `${val.slice(0, 3)} ${val.slice(3, 6)} ${val.slice(6, 10)}`;
+};
 
 interface SelectedFileState {
   name: string;
@@ -53,23 +71,41 @@ export function NewApplicantApplicationScreen() {
   const params = useLocalSearchParams<{ program_id?: string }>();
   const programId = params.program_id ? parseInt(params.program_id, 10) : null;
   const { isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   const [program, setProgram] = useState<ScholarshipProgram | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Form input fields
+  // Step 1: Personal & Identity Information fields
+  const [email, setEmail] = useState('');
+  const [phoneDigits, setPhoneDigits] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [noMiddleName, setNoMiddleName] = useState(false);
+  const [lastName, setLastName] = useState('');
+  const [suffix, setSuffix] = useState('');
+  const [showSuffixModal, setShowSuffixModal] = useState(false);
+  const [residentialAddress, setResidentialAddress] = useState('');
+
+  // Step 2: Academic information fields
   const [institutionName, setInstitutionName] = useState('');
   const [partnerSchools, setPartnerSchools] = useState<PartnerSchoolLookupItem[]>([]);
   const [selectedPartnerSchoolId, setSelectedPartnerSchoolId] = useState<number | null>(null);
-  const [isSchoolDropdownOpen, setIsSchoolDropdownOpen] = useState(false);
+  const [isManualSchool, setIsManualSchool] = useState<boolean>(false);
+  const [showSchoolModal, setShowSchoolModal] = useState<boolean>(false);
+  const [schoolSearchQuery, setSchoolSearchQuery] = useState<string>('');
   const [courseProgram, setCourseProgram] = useState('');
-  const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false);
+  const [isManualCourse, setIsManualCourse] = useState<boolean>(false);
+  const [showCourseModal, setShowCourseModal] = useState<boolean>(false);
+  const [courseSearchQuery, setCourseSearchQuery] = useState<string>('');
   const [isCourseSuggestionSelected, setIsCourseSuggestionSelected] = useState(false);
   const [yearLevel, setYearLevel] = useState('');
   const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
-  const [residentialAddress, setResidentialAddress] = useState('');
 
   // Citizen verification status & Fast-Track autofill
   const [verificationStatus, setVerificationStatus] = useState<CitizenVerificationStatusType | null>(null);
@@ -78,6 +114,12 @@ export function NewApplicantApplicationScreen() {
   const [isNoticeDismissed, setIsNoticeDismissed] = useState<boolean>(false);
 
   const isVerifiedCitizen = verificationStatus === 'Approved';
+
+  const handlePhoneChange = (text: string) => {
+    const digits = text.replace(/\D/g, '');
+    const clean = digits.startsWith('63') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits;
+    setPhoneDigits(clean.slice(0, 10));
+  };
 
   const verifiedFullName = useMemo(() => {
     if (!citizenVerificationData) {
@@ -144,6 +186,20 @@ export function NewApplicantApplicationScreen() {
 
         if (vStatus === 'Approved') {
           const vData = res.data || res;
+          if (vData.first_name) setFirstName(vData.first_name);
+          if (vData.middle_name) {
+            setMiddleName(vData.middle_name);
+            setNoMiddleName(false);
+          } else {
+            setMiddleName('');
+            setNoMiddleName(true);
+          }
+          if (vData.last_name) setLastName(vData.last_name);
+          if (vData.suffix) setSuffix(vData.suffix);
+          if (vData.email) setEmail(vData.email);
+          const vPhone = vData.contact_number || vData.phone_number || vData.phone;
+          if (vPhone) setPhoneDigits(extractPhoneDigits(vPhone));
+
           const addressParts = [
             vData.street_address,
             vData.barangay
@@ -152,6 +208,7 @@ export function NewApplicantApplicationScreen() {
                 : `Barangay ${vData.barangay}`
               : '',
             vData.district ? `District ${vData.district}` : '',
+            vData.city || process.env.EXPO_PUBLIC_CITY_NAME || 'Taguig City',
           ].filter(Boolean);
           const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : (vData.street_address || vData.barangay || '');
           if (fullAddress) {
@@ -208,6 +265,14 @@ export function NewApplicantApplicationScreen() {
         if (activeUserId && programId && !hasHydratedRef.current) {
           try {
             const draft = await FormDraftService.loadDraft<{
+              currentStep?: 1 | 2 | 3;
+              email?: string;
+              phoneDigits?: string;
+              firstName?: string;
+              middleName?: string;
+              noMiddleName?: boolean;
+              lastName?: string;
+              suffix?: string;
               institutionName: string;
               selectedPartnerSchoolId: number | null;
               courseProgram: string;
@@ -219,13 +284,31 @@ export function NewApplicantApplicationScreen() {
             }>('new_applicant', activeUserId, programId);
 
             if (draft) {
-              if (draft.institutionName) setInstitutionName(draft.institutionName);
-              if (draft.selectedPartnerSchoolId !== undefined && draft.selectedPartnerSchoolId !== null) {
-                setSelectedPartnerSchoolId(draft.selectedPartnerSchoolId);
+              if (draft.currentStep && [1, 2, 3].includes(draft.currentStep)) {
+                setCurrentStep(draft.currentStep as 1 | 2 | 3);
               }
-              if (draft.courseProgram) setCourseProgram(draft.courseProgram);
-              if (draft.isCourseSuggestionSelected !== undefined) {
-                setIsCourseSuggestionSelected(draft.isCourseSuggestionSelected);
+              if (draft.email && !vResult?.isVerified) setEmail(draft.email);
+              if (draft.phoneDigits && !vResult?.isVerified) setPhoneDigits(draft.phoneDigits);
+              if (draft.firstName && !vResult?.isVerified) setFirstName(draft.firstName);
+              if (draft.middleName !== undefined && !vResult?.isVerified) setMiddleName(draft.middleName);
+              if (draft.noMiddleName !== undefined && !vResult?.isVerified) setNoMiddleName(draft.noMiddleName);
+              if (draft.lastName && !vResult?.isVerified) setLastName(draft.lastName);
+              if (draft.suffix !== undefined && !vResult?.isVerified) setSuffix(draft.suffix);
+              if (draft.institutionName) {
+                setInstitutionName(draft.institutionName);
+                if (draft.selectedPartnerSchoolId !== undefined && draft.selectedPartnerSchoolId !== null) {
+                  setSelectedPartnerSchoolId(draft.selectedPartnerSchoolId);
+                  setIsManualSchool(false);
+                } else {
+                  setIsManualSchool(true);
+                }
+              }
+              if (draft.courseProgram) {
+                setCourseProgram(draft.courseProgram);
+                if (draft.isCourseSuggestionSelected !== undefined) {
+                  setIsCourseSuggestionSelected(draft.isCourseSuggestionSelected);
+                  setIsManualCourse(!draft.isCourseSuggestionSelected);
+                }
               }
               if (draft.yearLevel) setYearLevel(draft.yearLevel);
               // Do not overwrite verified municipal address if citizen is approved
@@ -275,6 +358,44 @@ export function NewApplicantApplicationScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Pre-fill initial applicant details from current session if unverified
+  useEffect(() => {
+    const currentUser = AuthService.getCurrentUser();
+    if (currentUser) {
+      if (currentUser.email) {
+        setEmail((prev) => prev || currentUser.email || '');
+      }
+      if (currentUser.phone) {
+        setPhoneDigits((prev) => prev || extractPhoneDigits(currentUser.phone));
+      }
+      const cachedUser = currentUser.user;
+      if (cachedUser) {
+        if (cachedUser.first_name) {
+          setFirstName((prev) => prev || cachedUser.first_name || '');
+        }
+        if (cachedUser.middle_name) {
+          setMiddleName((prev) => prev || cachedUser.middle_name || '');
+          setNoMiddleName(false);
+        }
+        if (cachedUser.last_name) {
+          setLastName((prev) => prev || cachedUser.last_name || '');
+        }
+        if (cachedUser.suffix) {
+          setSuffix((prev) => prev || cachedUser.suffix || '');
+        }
+        if (!cachedUser.first_name && cachedUser.full_name) {
+          const parts = cachedUser.full_name.trim().split(/\s+/);
+          if (parts.length === 1) {
+            setFirstName((prev) => prev || parts[0]);
+          } else if (parts.length >= 2) {
+            setFirstName((prev) => prev || parts[0]);
+            setLastName((prev) => prev || parts.slice(1).join(' '));
+          }
+        }
+      }
+    }
+  }, []);
 
   // Proactive Active Application Guard on Screen Entry
   useEffect(() => {
@@ -418,6 +539,10 @@ export function NewApplicantApplicationScreen() {
     if (!activeUserId) return;
 
     const hasData =
+      email.trim().length > 0 ||
+      phoneDigits.trim().length > 0 ||
+      firstName.trim().length > 0 ||
+      lastName.trim().length > 0 ||
       institutionName.trim().length > 0 ||
       courseProgram.trim().length > 0 ||
       yearLevel.trim().length > 0 ||
@@ -429,6 +554,14 @@ export function NewApplicantApplicationScreen() {
 
     const timer = setTimeout(() => {
       FormDraftService.saveDraft('new_applicant', activeUserId, programId, {
+        currentStep,
+        email,
+        phoneDigits,
+        firstName,
+        middleName,
+        noMiddleName,
+        lastName,
+        suffix,
         institutionName,
         selectedPartnerSchoolId,
         courseProgram,
@@ -444,6 +577,14 @@ export function NewApplicantApplicationScreen() {
 
     return () => clearTimeout(timer);
   }, [
+    currentStep,
+    email,
+    phoneDigits,
+    firstName,
+    middleName,
+    noMiddleName,
+    lastName,
+    suffix,
     institutionName,
     selectedPartnerSchoolId,
     courseProgram,
@@ -659,132 +800,201 @@ export function NewApplicantApplicationScreen() {
     return !files[key];
   });
 
-  const filteredPartnerSchools =
-    institutionName.trim().length >= 2
-      ? partnerSchools.filter(
-          (s) =>
-            s.institution_name.toLowerCase().includes(institutionName.toLowerCase()) ||
-            s.institution_code.toLowerCase().includes(institutionName.toLowerCase())
-        )
-      : [];
-
-  const handleSchoolChangeText = (text: string) => {
-    setInstitutionName(text);
-    if (selectedPartnerSchoolId !== null) {
-      setSelectedPartnerSchoolId(null);
-    }
-    setIsSchoolDropdownOpen(text.trim().length >= 2);
-    setIsYearDropdownOpen(false);
-  };
-
-  const handleSelectPartnerSchool = (school: PartnerSchoolLookupItem) => {
-    setInstitutionName(school.institution_name);
-    setSelectedPartnerSchoolId(school.institution_id);
-    setIsSchoolDropdownOpen(false);
-    setIsYearDropdownOpen(false);
-  };
-
   const selectedPartnerSchool = useMemo(() => {
     if (selectedPartnerSchoolId === null) return null;
     return partnerSchools.find((s) => s.institution_id === selectedPartnerSchoolId) || null;
   }, [selectedPartnerSchoolId, partnerSchools]);
 
-  const filteredCourseSuggestions = useMemo(() => {
-    const query = courseProgram.trim().toLowerCase();
-    if (query.length < 2) return [];
+  const educationCategory = useMemo(() => resolveEducationLevelCategory(program), [program]);
+  const isSeniorHighProgram = useMemo(() => {
+    if (educationCategory === 'SENIOR_HIGH') return true;
+    const progCode = (program?.program_code || '').toUpperCase();
+    const progName = (program?.program_name || '').toUpperCase();
+    return progCode.includes('SHS') || progName.includes('SENIOR HIGH');
+  }, [educationCategory, program]);
 
-    const queryWords = query.split(/\s+/).filter((w) => w.length > 0);
+  const modalFilteredPartnerSchools = useMemo(() => {
+    const q = schoolSearchQuery.trim().toLowerCase();
+    if (!q) return partnerSchools;
+    return partnerSchools.filter(
+      (s) =>
+        s.institution_name.toLowerCase().includes(q) ||
+        s.institution_code.toLowerCase().includes(q)
+    );
+  }, [schoolSearchQuery, partnerSchools]);
 
-    const isShsYear = yearLevel === 'Grade 11' || yearLevel === 'Grade 12';
-    const isCollegeYear = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'].includes(yearLevel);
+  const availableProgramCourses = useMemo(() => {
+    if (isSeniorHighProgram) {
+      return COMMON_COURSE_SUGGESTIONS.filter((c) => c.category === 'Senior High School');
+    }
+    return COMMON_COURSE_SUGGESTIONS.filter((c) => c.category !== 'Senior High School');
+  }, [isSeniorHighProgram]);
 
-    const matches = COMMON_COURSE_SUGGESTIONS.filter((course) => {
-      // Cascade filtering by year level
-      if (isShsYear) {
-        if (course.category !== 'Senior High School') return false;
-      } else if (isCollegeYear) {
-        if (course.category === 'Senior High School') return false;
-      }
-
-      const nameLower = course.name.toLowerCase();
-      const codeLower = course.code ? course.code.toLowerCase() : '';
-
-      // Direct code match or substring match in abbreviation
-      if (codeLower && (codeLower === query || codeLower.includes(query))) {
-        return true;
-      }
-
-      // Substring match in full name
-      if (nameLower.includes(query)) {
-        return true;
-      }
-
-      // Multi-word search (e.g. "Bachelor of Information" matches "Bachelor of Science in Information Technology")
-      if (queryWords.length > 1) {
-        const allWordsMatch = queryWords.every(
-          (word) => nameLower.includes(word) || codeLower.includes(word)
-        );
-        if (allWordsMatch) return true;
-      }
-
-      return false;
+  const modalFilteredCourses = useMemo(() => {
+    const q = courseSearchQuery.trim().toLowerCase();
+    if (!q) return availableProgramCourses;
+    return availableProgramCourses.filter((course) => {
+      const nameMatch = course.name.toLowerCase().includes(q);
+      const codeMatch = course.code ? course.code.toLowerCase().includes(q) : false;
+      return nameMatch || codeMatch;
     });
-
-    // Sort matches so exact code or name prefix comes first
-    matches.sort((a, b) => {
-      const aCode = (a.code || '').toLowerCase();
-      const bCode = (b.code || '').toLowerCase();
-      const aName = a.name.toLowerCase();
-      const bName = b.name.toLowerCase();
-
-      if (aCode === query && bCode !== query) return -1;
-      if (bCode === query && aCode !== query) return 1;
-      if (aName.startsWith(query) && !bName.startsWith(query)) return -1;
-      if (bName.startsWith(query) && !aName.startsWith(query)) return 1;
-      return 0;
-    });
-
-    return matches.slice(0, 8);
-  }, [courseProgram, yearLevel]);
+  }, [courseSearchQuery, availableProgramCourses]);
 
   const availableYearLevels = useMemo(() => getAvailableYearLevels(program), [program]);
-
-  const handleCourseChangeText = (text: string) => {
-    setCourseProgram(text);
-    if (isCourseSuggestionSelected) {
-      setIsCourseSuggestionSelected(false);
-    }
-    setIsCourseDropdownOpen(text.trim().length >= 2);
-    setIsYearDropdownOpen(false);
-  };
 
   const handleSelectCourse = (course: CourseSuggestion) => {
     const selectedText = course.code ? `${course.name} (${course.code})` : course.name;
     setCourseProgram(selectedText);
     setIsCourseSuggestionSelected(true);
-    setIsCourseDropdownOpen(false);
-    setIsYearDropdownOpen(false);
+    setIsManualCourse(false);
+    setShowCourseModal(false);
   };
 
-  const isFormValid =
-    institutionName.trim().length > 0 &&
-    yearLevel.trim().length > 0 &&
+  const isStep1Valid =
+    firstName.trim().length >= 2 &&
+    lastName.trim().length >= 2 &&
     residentialAddress.trim().length > 0 &&
-    missingDocs.length === 0;
+    (noMiddleName || middleName.trim().length !== 1);
+  const isStep2Valid = institutionName.trim().length > 0 && yearLevel.trim().length > 0;
+  const isStep3Valid = missingDocs.length === 0;
 
-  const handleSubmitPress = () => {
+  const isFormValid = isStep1Valid && isStep2Valid && isStep3Valid;
+
+  // Hardware Back Button (Android)
+  useEffect(() => {
+    const onBackPress = () => {
+      if (currentStep > 1) {
+        setCurrentStep((prev) => ((prev - 1) as 1 | 2));
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        return true;
+      }
+      return false;
+    };
+
+    const backSubscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backSubscription.remove();
+  }, [currentStep]);
+
+  const handleTopBackPress = () => {
+    if (currentStep > 1) {
+      setCurrentStep((prev) => ((prev - 1) as 1 | 2));
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    } else {
+      router.back();
+    }
+  };
+
+  const handleGoToStep = (targetStep: 1 | 2 | 3) => {
+    if (targetStep === 1) {
+      setCurrentStep(1);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    } else if (targetStep === 2) {
+      if (!isStep1Valid) {
+        if (firstName.trim().length < 2) {
+          Alert.alert('First Name Required', 'Please enter your First Name before proceeding.');
+          return;
+        }
+        if (lastName.trim().length < 2) {
+          Alert.alert('Last Name Required', 'Please enter your Last Name before proceeding.');
+          return;
+        }
+        if (!noMiddleName && middleName.trim().length === 1) {
+          Alert.alert('Invalid Middle Name', 'Middle Name must be at least 2 characters long, or select "I have no middle name".');
+          return;
+        }
+        Alert.alert('Missing Address', 'Please provide your current Residential Address before proceeding.');
+        return;
+      }
+      setCurrentStep(2);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    } else if (targetStep === 3) {
+      if (!isStep1Valid) {
+        if (firstName.trim().length < 2) {
+          Alert.alert('First Name Required', 'Please enter your First Name before proceeding.');
+        } else if (lastName.trim().length < 2) {
+          Alert.alert('Last Name Required', 'Please enter your Last Name before proceeding.');
+        } else if (!noMiddleName && middleName.trim().length === 1) {
+          Alert.alert('Invalid Middle Name', 'Middle Name must be at least 2 characters long, or select "I have no middle name".');
+        } else {
+          Alert.alert('Missing Address', 'Please provide your current Residential Address before proceeding.');
+        }
+        setCurrentStep(1);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        return;
+      }
+      if (!isStep2Valid) {
+        Alert.alert('Missing Academic Info', 'Please enter your school and year level before proceeding to documents.');
+        setCurrentStep(2);
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        return;
+      }
+      setCurrentStep(3);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  };
+
+  const handleNextFromStep1 = () => {
+    if (firstName.trim().length < 2) {
+      Alert.alert('First Name Required', 'Please enter your First Name (at least 2 characters).');
+      return;
+    }
+    if (lastName.trim().length < 2) {
+      Alert.alert('Last Name Required', 'Please enter your Last Name (at least 2 characters).');
+      return;
+    }
+    if (!noMiddleName && middleName.trim().length === 1) {
+      Alert.alert('Invalid Middle Name', 'Middle Name must be at least 2 characters long, or select "I have no middle name".');
+      return;
+    }
+    if (residentialAddress.trim().length === 0) {
+      Alert.alert('Missing Address', 'Please enter your current Residential Address before proceeding.');
+      return;
+    }
+    setCurrentStep(2);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleBackToStep1 = () => {
+    setCurrentStep(1);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleNextFromStep2 = () => {
     if (institutionName.trim().length === 0) {
       Alert.alert('Missing Field', 'Please enter your current School or Institution Name.');
       return;
     }
-
     if (yearLevel.trim().length === 0) {
       Alert.alert('Missing Field', 'Please select or enter your current Grade or Year Level.');
       return;
     }
+    setCurrentStep(3);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
-    if (residentialAddress.trim().length === 0) {
-      Alert.alert('Missing Field', 'Please enter your current Residential Address.');
+  const handleBackToStep2 = () => {
+    setCurrentStep(2);
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleSubmitPress = () => {
+    if (!isStep1Valid) {
+      if (firstName.trim().length < 2) {
+        Alert.alert('Incomplete Profile', 'Please enter your First Name in Step 1 before submitting.');
+      } else if (lastName.trim().length < 2) {
+        Alert.alert('Incomplete Profile', 'Please enter your Last Name in Step 1 before submitting.');
+      } else {
+        Alert.alert('Missing Address', 'Please enter your Residential Address in Step 1 before submitting.');
+      }
+      setCurrentStep(1);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+
+    if (!isStep2Valid) {
+      Alert.alert('Missing Field', 'Please enter your school and year level.');
+      setCurrentStep(2);
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
 
@@ -817,6 +1027,7 @@ export function NewApplicantApplicationScreen() {
       formData.append('institution_name', institutionName.trim());
       if (selectedPartnerSchoolId !== null) {
         formData.append('institution_id', String(selectedPartnerSchoolId));
+        formData.append('partner_school_id', String(selectedPartnerSchoolId));
       }
       if (courseProgram.trim()) formData.append('course_program', courseProgram.trim());
       if (yearLevel.trim()) formData.append('year_level', yearLevel.trim());
@@ -832,6 +1043,17 @@ export function NewApplicantApplicationScreen() {
       } else {
         formData.append('is_citizen_verified', '0');
       }
+
+      // Exact applicant personal name and contact payload
+      const fullComputedName = [firstName.trim(), middleName.trim(), lastName.trim(), suffix.trim()].filter(Boolean).join(' ');
+      formData.append('first_name', firstName.trim());
+      if (middleName.trim()) formData.append('middle_name', middleName.trim());
+      formData.append('last_name', lastName.trim());
+      if (suffix.trim()) formData.append('suffix', suffix.trim());
+      formData.append('full_name', fullComputedName);
+      if (email.trim()) formData.append('email', email.trim());
+      const normalizedPhone = phoneDigits.trim() ? `+63${phoneDigits.trim()}` : '';
+      if (normalizedPhone) formData.append('mobile_number', normalizedPhone);
 
       // Append uploaded documents with Expo File objects expected by expo/fetch
       requiredDocsList.forEach((doc) => {
@@ -977,7 +1199,11 @@ export function NewApplicantApplicationScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      ref={scrollViewRef}
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: Math.max(140, insets.bottom + 100) },
+      ]}
       showsVerticalScrollIndicator={false}
       style={{ backgroundColor: isDarkMode ? '#0B132B' : '#F8FAFC' }}
       refreshControl={
@@ -992,7 +1218,7 @@ export function NewApplicantApplicationScreen() {
       {/* BACK BUTTON */}
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => router.back()}
+        onPress={handleTopBackPress}
         activeOpacity={0.7}
       >
         <View
@@ -1008,7 +1234,11 @@ export function NewApplicantApplicationScreen() {
           />
         </View>
         <Text style={[styles.backText, isDarkMode && { color: '#38BDF8' }]}>
-          Back to Details
+          {currentStep === 1
+            ? 'Back to Details'
+            : currentStep === 2
+              ? 'Back to Personal'
+              : 'Back to Academic'}
         </Text>
       </TouchableOpacity>
 
@@ -1042,22 +1272,24 @@ export function NewApplicantApplicationScreen() {
         </View>
       ) : program ? (
         <>
-          {/* HEADER CARD */}
-          <View style={[styles.headerCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <View style={styles.badgeRow}>
-              <Badge variant="info" label={program.category_name || 'General'} />
-              {program.application_period ? (
-                <Badge variant="neutral" label={`AY ${program.application_period.academic_year}`} />
-              ) : null}
-            </View>
+          {/* HEADER CARD (Step 1 only - full presentation) */}
+          {currentStep === 1 ? (
+            <View style={[styles.headerCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <View style={styles.badgeRow}>
+                <Badge variant="info" label={program.category_name || 'General'} />
+                {program.application_period ? (
+                  <Badge variant="neutral" label={`AY ${program.application_period.academic_year}`} />
+                ) : null}
+              </View>
 
-            <Text style={[styles.programTitle, isDarkMode && { color: '#F8FAFC' }]}>
-              New Application: {program.program_name}
-            </Text>
-            <Text style={[styles.programCode, isDarkMode && { color: '#94A3B8' }]}>
-              Code: {program.program_code}
-            </Text>
-          </View>
+              <Text style={[styles.programTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                New Application: {program.program_name}
+              </Text>
+              <Text style={[styles.programCode, isDarkMode && { color: '#94A3B8' }]}>
+                Code: {program.program_code}
+              </Text>
+            </View>
+          ) : null}
 
           {/* SUBMIT ERROR BANNER */}
           {submitError ? (
@@ -1068,296 +1300,860 @@ export function NewApplicantApplicationScreen() {
             </View>
           ) : null}
 
-          {/* VERIFIED CITIZEN FAST-TRACK CARD OR UNVERIFIED NOTICE */}
-          {isVerifiedCitizen ? (
-            <View style={[styles.fastTrackCard, isDarkMode && { backgroundColor: '#064E3B20', borderColor: '#059669' }]}>
-              <View style={styles.fastTrackHeader}>
-                <View style={[styles.fastTrackBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
-                  <IconSymbol name="checkmark.seal.fill" size={14} color={isDarkMode ? '#34D399' : '#15803D'} />
-                  <Text style={[styles.fastTrackBadgeText, isDarkMode && { color: '#A7F3D0' }]}>
-                    Verified Citizen Profile (Fast-Track)
-                  </Text>
-                </View>
-                {citizenVerificationData?.citizen_id_number ? (
-                  <Text style={[styles.fastTrackIdNumber, isDarkMode && { color: '#6EE7B7' }]}>
-                    {citizenVerificationData.citizen_id_number}
-                  </Text>
-                ) : null}
-              </View>
-
-              <View style={styles.fastTrackRow}>
-                <Text style={[styles.fastTrackLabel, isDarkMode && { color: '#94A3B8' }]}>Applicant:</Text>
-                <Text style={[styles.fastTrackValue, isDarkMode && { color: '#F8FAFC' }]}>{verifiedFullName}</Text>
-              </View>
-
-              <View style={styles.fastTrackRow}>
-                <Text style={[styles.fastTrackLabel, isDarkMode && { color: '#94A3B8' }]}>Residency:</Text>
-                <Text style={[styles.fastTrackValue, isDarkMode && { color: '#F8FAFC' }]}>
-                  {residentialAddress || 'Registered Municipal Citizen'}
-                </Text>
-              </View>
-
-              <Text style={[styles.fastTrackNote, isDarkMode && { color: '#34D399' }]}>
-                Personal identification and municipal residency are pre-verified via your Citizen ID and locked for application integrity.
-              </Text>
-            </View>
-          ) : !isVerificationLoading && !isNoticeDismissed ? (
-            <View style={[styles.unverifiedTipBanner, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#0284C7' }]}>
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                <IconSymbol name="info.circle.fill" size={18} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.unverifiedTipText, isDarkMode && { color: '#E0F2FE' }]}>
-                    Tip: Verify your Citizen ID to auto-fill details and speed up scholarship processing.
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => router.push('/(auth)/verify-citizen' as any)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.unverifiedTipLink, isDarkMode && { color: '#38BDF8' }]}>
-                      Verify as Citizen Now →
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+          {/* PROGRESSIVE STEPPER HEADER */}
+          <View style={[styles.stepperCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+            <View style={styles.stepperRow}>
+              {/* Step 1 Node */}
               <TouchableOpacity
-                onPress={() => setIsNoticeDismissed(true)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={{ padding: 4 }}
+                style={styles.stepItem}
+                onPress={() => handleGoToStep(1)}
+                activeOpacity={0.7}
               >
-                <IconSymbol name="xmark" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                <View
+                  style={[
+                    styles.stepNode,
+                    currentStep === 1
+                      ? styles.stepNodeActive
+                      : currentStep > 1
+                        ? styles.stepNodeCompleted
+                        : styles.stepNodeUpcoming,
+                    isDarkMode && currentStep > 1 && { backgroundColor: '#15803D', borderColor: '#15803D' },
+                    isDarkMode && currentStep < 1 && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                  ]}
+                >
+                  {currentStep > 1 ? (
+                    <IconSymbol name="checkmark" size={14} color="#FFFFFF" />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.stepNodeText,
+                        currentStep === 1 ? styles.stepNodeTextActive : styles.stepNodeTextUpcoming,
+                      ]}
+                    >
+                      1
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    currentStep === 1
+                      ? [styles.stepLabelActive, isDarkMode && { color: '#38BDF8' }]
+                      : currentStep > 1
+                        ? [styles.stepLabelCompleted, isDarkMode && { color: '#4ADE80' }]
+                        : [styles.stepLabelUpcoming, isDarkMode && { color: '#64748B' }],
+                  ]}
+                >
+                  Personal
+                </Text>
               </TouchableOpacity>
+
+              {/* Connector 1 -> 2 */}
+              <View
+                style={[
+                  styles.stepConnector,
+                  currentStep > 1 && styles.stepConnectorCompleted,
+                  isDarkMode && currentStep <= 1 && { backgroundColor: '#334155' },
+                ]}
+              />
+
+              {/* Step 2 Node */}
+              <TouchableOpacity
+                style={styles.stepItem}
+                onPress={() => handleGoToStep(2)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.stepNode,
+                    currentStep === 2
+                      ? styles.stepNodeActive
+                      : currentStep > 2
+                        ? styles.stepNodeCompleted
+                        : styles.stepNodeUpcoming,
+                    isDarkMode && currentStep > 2 && { backgroundColor: '#15803D', borderColor: '#15803D' },
+                    isDarkMode && currentStep < 2 && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                  ]}
+                >
+                  {currentStep > 2 ? (
+                    <IconSymbol name="checkmark" size={14} color="#FFFFFF" />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.stepNodeText,
+                        currentStep === 2 ? styles.stepNodeTextActive : styles.stepNodeTextUpcoming,
+                      ]}
+                    >
+                      2
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    currentStep === 2
+                      ? [styles.stepLabelActive, isDarkMode && { color: '#38BDF8' }]
+                      : currentStep > 2
+                        ? [styles.stepLabelCompleted, isDarkMode && { color: '#4ADE80' }]
+                        : [styles.stepLabelUpcoming, isDarkMode && { color: '#64748B' }],
+                  ]}
+                >
+                  Academic
+                </Text>
+              </TouchableOpacity>
+
+              {/* Connector 2 -> 3 */}
+              <View
+                style={[
+                  styles.stepConnector,
+                  currentStep > 2 && styles.stepConnectorCompleted,
+                  isDarkMode && currentStep <= 2 && { backgroundColor: '#334155' },
+                ]}
+              />
+
+              {/* Step 3 Node */}
+              <TouchableOpacity
+                style={styles.stepItem}
+                onPress={() => handleGoToStep(3)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.stepNode,
+                    currentStep === 3 ? styles.stepNodeActive : styles.stepNodeUpcoming,
+                    isDarkMode && currentStep < 3 && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.stepNodeText,
+                      currentStep === 3 ? styles.stepNodeTextActive : styles.stepNodeTextUpcoming,
+                    ]}
+                  >
+                    3
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    currentStep === 3
+                      ? [styles.stepLabelActive, isDarkMode && { color: '#38BDF8' }]
+                      : [styles.stepLabelUpcoming, isDarkMode && { color: '#64748B' }],
+                  ]}
+                >
+                  Documents
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* COMPACT PROGRAM SUBHEADER (Steps 2 and 3) */}
+          {currentStep > 1 ? (
+            <View style={[styles.programSubheader, isDarkMode && { backgroundColor: '#0B2942', borderColor: '#0369A1' }]}>
+              <IconSymbol name="book.closed.fill" size={15} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+              <Text style={[styles.programSubheaderText, isDarkMode && { color: '#E0F2FE' }]} numberOfLines={1}>
+                Applying for: <Text style={{ fontWeight: '700' }}>{program.program_name}</Text>
+                {program.application_period ? ` (AY ${program.application_period.academic_year})` : ''}
+              </Text>
             </View>
           ) : null}
 
-          {/* 1. ACADEMIC INFORMATION */}
-          <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
-              Academic & School Information
-            </Text>
-            <Text style={[styles.sectionSubtitle, isDarkMode && { color: '#94A3B8' }]}>
-              Provide your current school, academic program, and year level.
-            </Text>
+          {/* ================================================================ */}
+          {/* STEP 1: PERSONAL & IDENTITY INFORMATION                          */}
+          {/* ================================================================ */}
+          {currentStep === 1 ? (
+            <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <View style={styles.stepHeaderRow}>
+                <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }, { marginBottom: 0 }]}>
+                  Personal & Identity Information
+                </Text>
+                <View style={[styles.stepProgressBadge, isDarkMode && { backgroundColor: '#0369A1' }]}>
+                  <Text style={[styles.stepProgressBadgeText, isDarkMode && { color: '#BAE6FD' }]}>
+                    Step 1 of 3
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.sectionSubtitle, isDarkMode && { color: '#94A3B8' }]}>
+                Review your identity profile and confirm your registered municipal residency.
+              </Text>
+
+              {isVerifiedCitizen ? (
+                <>
+                  {/* VERIFIED CITIZEN FAST-TRACK CARD */}
+                  <View style={[styles.fastTrackCard, isDarkMode && { backgroundColor: '#064E3B20', borderColor: '#059669' }]}>
+                    <View style={styles.fastTrackHeader}>
+                      <View style={[styles.fastTrackBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
+                        <IconSymbol name="checkmark.seal.fill" size={14} color={isDarkMode ? '#34D399' : '#15803D'} />
+                        <Text style={[styles.fastTrackBadgeText, isDarkMode && { color: '#A7F3D0' }]}>
+                          Verified Citizen Profile (Fast-Track)
+                        </Text>
+                      </View>
+                      {citizenVerificationData?.citizen_id_number ? (
+                        <View style={[styles.fastTrackIdBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
+                          <Text style={[styles.fastTrackIdLabel, isDarkMode && { color: '#A7F3D0' }]}>ID:</Text>
+                          <Text style={[styles.fastTrackIdNumber, isDarkMode && { color: '#6EE7B7' }]}>
+                            {citizenVerificationData.citizen_id_number}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    <Text style={[styles.fastTrackNote, isDarkMode && { color: '#34D399' }, { marginTop: 0 }]}>
+                      Personal identification and municipal residency are pre-verified via your Citizen ID and locked for application integrity.
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  {/* UNVERIFIED NOTICE */}
+                  {!isVerificationLoading && !isNoticeDismissed ? (
+                    <View style={[styles.unverifiedTipBanner, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#0284C7' }]}>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                        <IconSymbol name="info.circle.fill" size={18} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.unverifiedTipText, isDarkMode && { color: '#E0F2FE' }]}>
+                            Tip: Verify your Citizen ID to auto-fill details and speed up scholarship processing.
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => router.push('/(auth)/verify-citizen' as any)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.unverifiedTipLink, isDarkMode && { color: '#38BDF8' }]}>
+                              Verify as Citizen Now →
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setIsNoticeDismissed(true)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={{ padding: 4 }}
+                      >
+                        <IconSymbol name="xmark" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                </>
+              )}
+
+              {/* INDIVIDUAL FORM INPUT FIELDS */}
+              {/* 1. EMAIL ADDRESS */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
+                  Email Address
+                </Text>
+                {isVerifiedCitizen ? (
+                  <View
+                    style={[
+                      styles.lockedInputContainer,
+                      isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' },
+                    ]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.lockedTextInput,
+                        isDarkMode && { color: '#F8FAFC' },
+                      ]}
+                      value={email}
+                      editable={false}
+                    />
+                    <Ionicons name="lock-closed-outline" size={16} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                  </View>
+                ) : (
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                    ]}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Enter email address"
+                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={!isSubmitting}
+                  />
+                )}
+              </View>
+
+              {/* 2. MOBILE PHONE NUMBER */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
+                  Mobile Phone Number
+                </Text>
+                <View
+                  style={[
+                    styles.phoneInputContainer,
+                    isVerifiedCitizen && [
+                      styles.lockedInputContainer,
+                      isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' },
+                    ],
+                    isDarkMode && !isVerifiedCitizen && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.phonePrefixBox,
+                      isDarkMode && { backgroundColor: '#1E293B', borderRightColor: '#334155' },
+                    ]}
+                  >
+                    <Text style={{ fontSize: 16 }}>🇵🇭</Text>
+                    <Text style={[styles.phonePrefixText, isDarkMode && { color: '#CBD5E1' }]}>+63</Text>
+                  </View>
+                  <TextInput
+                    style={[
+                      styles.phoneTextInput,
+                      isDarkMode && { color: '#F8FAFC' },
+                      isVerifiedCitizen && styles.lockedTextInput,
+                      isVerifiedCitizen && isDarkMode && { color: '#F8FAFC' },
+                    ]}
+                    placeholder="9XX XXX XXXX"
+                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    value={formatPhoneNumber(phoneDigits)}
+                    onChangeText={handlePhoneChange}
+                    keyboardType="phone-pad"
+                    maxLength={12}
+                    autoCapitalize="none"
+                    editable={!isVerifiedCitizen && !isSubmitting}
+                  />
+                  {isVerifiedCitizen ? (
+                    <View style={{ paddingRight: 12 }}>
+                      <Ionicons name="lock-closed-outline" size={16} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+
+              {/* 3. NAME FIELDS: FIRST NAME (flex: 2) + SUFFIX (flex: 1) */}
+              <View style={styles.inputGroup}>
+                <View style={styles.rowFields}>
+                  <View style={styles.firstNameContainer}>
+                    <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
+                      First Name *
+                    </Text>
+                    {isVerifiedCitizen ? (
+                      <View
+                        style={[
+                          styles.lockedInputContainer,
+                          isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' },
+                        ]}
+                      >
+                        <TextInput
+                          style={[
+                            styles.lockedTextInput,
+                            isDarkMode && { color: '#F8FAFC' },
+                          ]}
+                          value={firstName}
+                          editable={false}
+                        />
+                        <Ionicons name="lock-closed-outline" size={16} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                      </View>
+                    ) : (
+                      <TextInput
+                        style={[
+                          styles.textInput,
+                          isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                        ]}
+                        placeholder="First Name *"
+                        placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                        value={firstName}
+                        onChangeText={setFirstName}
+                        autoCapitalize="words"
+                        maxLength={50}
+                        editable={!isSubmitting}
+                      />
+                    )}
+                  </View>
+                  <View style={styles.suffixContainer}>
+                    <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
+                      Suffix
+                    </Text>
+                    {isVerifiedCitizen ? (
+                      <View
+                        style={[
+                          styles.lockedInputContainer,
+                          isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' },
+                        ]}
+                      >
+                        <TextInput
+                          style={[
+                            styles.lockedTextInput,
+                            isDarkMode && { color: '#F8FAFC' },
+                          ]}
+                          value={suffix || 'None'}
+                          editable={false}
+                        />
+                        <Ionicons name="lock-closed-outline" size={16} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[
+                          styles.suffixSelectBtn,
+                          isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                        ]}
+                        onPress={() => !isSubmitting && setShowSuffixModal(true)}
+                        disabled={isSubmitting}
+                        activeOpacity={0.8}
+                      >
+                        <Text
+                          style={[
+                            styles.suffixSelectText,
+                            isDarkMode && { color: '#F8FAFC' },
+                            !suffix && { color: isDarkMode ? '#64748B' : '#94A3B8' },
+                          ]}
+                        >
+                          {suffix || 'Suffix'}
+                        </Text>
+                        <IconSymbol
+                          name="chevron.right"
+                          size={13}
+                          color={isDarkMode ? '#94A3B8' : '#64748B'}
+                          style={{ transform: [{ rotate: '90deg' }] }}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              {/* 4. MIDDLE NAME + CHECKBOX */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
+                  Middle Name
+                </Text>
+                {isVerifiedCitizen ? (
+                  <View
+                    style={[
+                      styles.lockedInputContainer,
+                      isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' },
+                    ]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.lockedTextInput,
+                        isDarkMode && { color: '#F8FAFC' },
+                      ]}
+                      value={middleName || 'No Middle Name'}
+                      editable={false}
+                    />
+                    <Ionicons name="lock-closed-outline" size={16} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                  </View>
+                ) : (
+                  <>
+                    <TextInput
+                      style={[
+                        styles.textInput,
+                        noMiddleName && [styles.verifiedLockedField, isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' }],
+                        isDarkMode && !noMiddleName && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                        noMiddleName && { color: isDarkMode ? '#64748B' : '#94A3B8' },
+                      ]}
+                      placeholder="Middle Name"
+                      placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                      value={noMiddleName ? '' : middleName}
+                      onChangeText={setMiddleName}
+                      editable={!noMiddleName && !isSubmitting}
+                      autoCapitalize="words"
+                      maxLength={50}
+                    />
+                    <TouchableOpacity
+                      style={styles.checkboxRow}
+                      onPress={() => {
+                        if (isSubmitting) return;
+                        setNoMiddleName((prev) => !prev);
+                        if (!noMiddleName) setMiddleName('');
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View
+                        style={[
+                          styles.checkbox,
+                          noMiddleName && styles.checkboxChecked,
+                          isDarkMode && { backgroundColor: noMiddleName ? '#0284C7' : '#0F172A', borderColor: '#334155' },
+                        ]}
+                      >
+                        {noMiddleName ? <IconSymbol name="checkmark" size={12} color="#FFFFFF" /> : null}
+                      </View>
+                      <Text style={[styles.checkboxLabel, isDarkMode && { color: '#94A3B8' }]}>
+                        I have no middle name
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+
+              {/* 5. LAST NAME */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
+                  Last Name *
+                </Text>
+                {isVerifiedCitizen ? (
+                  <View
+                    style={[
+                      styles.lockedInputContainer,
+                      isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' },
+                    ]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.lockedTextInput,
+                        isDarkMode && { color: '#F8FAFC' },
+                      ]}
+                      value={lastName}
+                      editable={false}
+                    />
+                    <Ionicons name="lock-closed-outline" size={16} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                  </View>
+                ) : (
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                    ]}
+                    placeholder="Last Name *"
+                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    autoCapitalize="words"
+                    maxLength={50}
+                    editable={!isSubmitting}
+                  />
+                )}
+              </View>
+
+              {/* DEMOGRAPHICS GRID (Verified Citizens only) */}
+              {isVerifiedCitizen ? (
+                <View style={[styles.demographicsRow, { marginBottom: 16 }]}>
+                  <View style={styles.demographicItem}>
+                    <Text style={[styles.demographicLabel, isDarkMode && { color: '#94A3B8' }]}>
+                      Sex / Gender
+                    </Text>
+                    <View style={[styles.demographicBox, isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={[styles.demographicValue, isDarkMode && { color: '#F8FAFC' }]}>
+                          {citizenVerificationData?.gender || citizenVerificationData?.sex || 'N/A'}
+                        </Text>
+                        <Ionicons name="lock-closed-outline" size={15} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.demographicItem}>
+                    <Text style={[styles.demographicLabel, isDarkMode && { color: '#94A3B8' }]}>
+                      Date of Birth
+                    </Text>
+                    <View style={[styles.demographicBox, isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={[styles.demographicValue, isDarkMode && { color: '#F8FAFC' }]}>
+                          {(() => {
+                            const dob = citizenVerificationData?.birthdate || citizenVerificationData?.birth_date;
+                            const formatted = formatDate(dob);
+                            return formatted === '—' ? 'N/A' : formatted;
+                          })()}
+                        </Text>
+                        <Ionicons name="lock-closed-outline" size={15} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* 6. RESIDENTIAL ADDRESS */}
+              <View style={[styles.inputGroup, { marginBottom: 6 }]}>
+                <Text style={[styles.inputLabel, { marginBottom: 6 }, isDarkMode && { color: '#F8FAFC' }]}>
+                  Residential Address *
+                </Text>
+                {isVerifiedCitizen ? (
+                  <View
+                    style={[
+                      styles.lockedAddressContainer,
+                      isDarkMode && { backgroundColor: '#1E293B80', borderColor: '#334155' },
+                    ]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.lockedTextInput,
+                        { minHeight: 44, textAlignVertical: 'top' },
+                        isDarkMode && { color: '#F8FAFC' },
+                      ]}
+                      value={residentialAddress}
+                      editable={false}
+                      multiline={true}
+                    />
+                    <View style={{ paddingTop: 2 }}>
+                      <Ionicons name="lock-closed-outline" size={16} color={isDarkMode ? '#64748B' : '#94A3B8'} />
+                    </View>
+                  </View>
+                ) : (
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      { minHeight: 52, textAlignVertical: 'top', paddingTop: 10 },
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                    ]}
+                    value={residentialAddress}
+                    onChangeText={setResidentialAddress}
+                    placeholder="Enter complete residential address (Street, Barangay, City)..."
+                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    autoCapitalize="words"
+                    multiline={true}
+                    editable={!isSubmitting}
+                  />
+                )}
+                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                  {isVerifiedCitizen
+                    ? 'Locked to your registered municipal citizen address.'
+                    : 'Enter complete residential address (e.g. Street, Barangay, City).'}
+                </Text>
+              </View>
+
+              {/* STEP 1 NAVIGATION BUTTON */}
+              <View style={[styles.wizardNavRow, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
+                <TouchableOpacity
+                  style={styles.wizardNextBtnFull}
+                  onPress={handleNextFromStep1}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.wizardNextBtnText}>Next: Academic Info →</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+
+          {/* ================================================================ */}
+          {/* STEP 2: ACADEMIC & SCHOOL INFORMATION                            */}
+          {/* ================================================================ */}
+          {currentStep === 2 ? (
+            <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <View style={styles.stepHeaderRow}>
+                <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }, { marginBottom: 0 }]}>
+                  Academic & School Information
+                </Text>
+                <View style={[styles.stepProgressBadge, isDarkMode && { backgroundColor: '#0369A1' }]}>
+                  <Text style={[styles.stepProgressBadgeText, isDarkMode && { color: '#BAE6FD' }]}>
+                    Step 2 of 3
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.sectionSubtitle, isDarkMode && { color: '#94A3B8' }]}>
+                Provide your current school, academic program, and year level.
+              </Text>
 
             {/* SCHOOL / INSTITUTION */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                School / Institution *
-              </Text>
-              <TextInput
-                style={[styles.textInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }]}
-                value={institutionName}
-                onChangeText={handleSchoolChangeText}
-                onFocus={() => {
-                  if (institutionName.trim().length >= 2 && selectedPartnerSchoolId === null) {
-                    setIsSchoolDropdownOpen(true);
-                  }
-                }}
-                placeholder="Search your school..."
-                placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
-                autoCapitalize="words"
-                editable={!isSubmitting}
-              />
-
-              {selectedPartnerSchool ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
-                  <IconSymbol name="checkmark.circle.fill" size={13} color="#16A34A" />
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#16A34A' }}>
-                    {selectedPartnerSchool.institution_code} · Registered Partner School
-                  </Text>
-                </View>
-              ) : institutionName.trim().length >= 3 && filteredPartnerSchools.length === 0 && selectedPartnerSchoolId === null ? (
-                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                  School not listed? You can continue with your school name.
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[styles.inputLabel, { marginBottom: 0 }, isDarkMode && { color: '#F8FAFC' }]}>
+                  School / Institution *
                 </Text>
-              ) : (
-                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                  Type to search registered partner schools or enter your school name.
-                </Text>
-              )}
-
-              {isSchoolDropdownOpen && filteredPartnerSchools.length > 0 && selectedPartnerSchoolId === null ? (
-                <View
-                  style={{
-                    marginTop: 6,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: isDarkMode ? '#334155' : '#E2E8F0',
-                    backgroundColor: isDarkMode ? '#0F172A' : '#FFFFFF',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <View
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
-                      borderBottomWidth: 1,
-                      borderBottomColor: isDarkMode ? '#334155' : '#E2E8F0',
+                {isManualSchool ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsManualSchool(false);
+                      setSchoolSearchQuery('');
+                      setShowSchoolModal(true);
                     }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0284C7' }}>
+                      Select Partner School
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsManualSchool(true);
+                      setSelectedPartnerSchoolId(null);
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                      Enter manually
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {isManualSchool ? (
+                <>
+                  <TextInput
+                    style={[styles.textInput, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }]}
+                    value={institutionName}
+                    onChangeText={setInstitutionName}
+                    placeholder="Enter full school / institution name..."
+                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    autoCapitalize="words"
+                    editable={!isSubmitting}
+                  />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
+                    <Ionicons name="information-circle-outline" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                    <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                      Standard / Non-partner School
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.textInput,
+                      {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        minHeight: 44,
+                      },
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                    ]}
+                    onPress={() => {
+                      setSchoolSearchQuery('');
+                      setShowSchoolModal(true);
+                    }}
+                    activeOpacity={0.7}
+                    disabled={isSubmitting}
                   >
                     <Text
                       style={{
-                        fontSize: 10,
-                        fontWeight: '700',
-                        color: isDarkMode ? '#94A3B8' : '#64748B',
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.8,
+                        fontSize: 14,
+                        fontWeight: institutionName ? '600' : '400',
+                        color: institutionName
+                          ? (isDarkMode ? '#F8FAFC' : '#0F172A')
+                          : (isDarkMode ? '#64748B' : '#94A3B8'),
+                        flex: 1,
+                        paddingRight: 8,
                       }}
+                      numberOfLines={1}
                     >
-                      Registered Partner Schools
+                      {institutionName || 'Select registered partner school...'}
                     </Text>
-                  </View>
+                    <Ionicons name="chevron-down" size={16} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                  </TouchableOpacity>
 
-                  {filteredPartnerSchools.slice(0, 5).map((school, idx) => (
-                    <TouchableOpacity
-                      key={school.institution_id}
-                      style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        borderBottomWidth: idx < Math.min(filteredPartnerSchools.length, 5) - 1 ? 1 : 0,
-                        borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9',
-                      }}
-                      onPress={() => handleSelectPartnerSchool(school)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: '600',
-                            color: isDarkMode ? '#F8FAFC' : '#1E293B',
-                            flex: 1,
-                            paddingRight: 8,
-                          }}
-                          numberOfLines={2}
-                        >
-                          {school.institution_name}
-                        </Text>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284C7', marginLeft: 8 }}>
-                          {school.institution_code}
-                        </Text>
-                      </View>
-                      <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2 }}>
-                        Registered Partner School
+                  {selectedPartnerSchool ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
+                      <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#16A34A' }}>
+                        {selectedPartnerSchool.institution_code} · Registered Partner School
                       </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : null}
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                      Choose your school from registered partner institutions.
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
 
             {/* COURSE / PROGRAM */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, isDarkMode && { color: '#F8FAFC' }]}>
-                Course / Program *
-              </Text>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
-                ]}
-                value={courseProgram}
-                onChangeText={handleCourseChangeText}
-                onFocus={() => {
-                  if (courseProgram.trim().length >= 2 && !isCourseSuggestionSelected) {
-                    setIsCourseDropdownOpen(true);
-                  }
-                }}
-                placeholder="Search course or program..."
-                placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
-                autoCapitalize="words"
-                editable={!isSubmitting}
-              />
-
-              {isCourseSuggestionSelected ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
-                  <IconSymbol name="checkmark.circle.fill" size={13} color="#16A34A" />
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#16A34A' }}>
-                    Suggested course selected
-                  </Text>
-                </View>
-              ) : courseProgram.trim().length >= 2 && filteredCourseSuggestions.length === 0 && !isCourseSuggestionSelected ? (
-                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                  {"Can't find your course? You can enter it manually."}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[styles.inputLabel, { marginBottom: 0 }, isDarkMode && { color: '#F8FAFC' }]}>
+                  {isSeniorHighProgram ? 'Strand / Track *' : 'Course / Program *'}
                 </Text>
-              ) : (
-                <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                  Type to search common courses, or enter your course manually.
-                </Text>
-              )}
-
-              {isCourseDropdownOpen && filteredCourseSuggestions.length > 0 && !isCourseSuggestionSelected ? (
-                <View
-                  style={{
-                    marginTop: 6,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: isDarkMode ? '#334155' : '#E2E8F0',
-                    backgroundColor: isDarkMode ? '#0F172A' : '#FFFFFF',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <View
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
-                      borderBottomWidth: 1,
-                      borderBottomColor: isDarkMode ? '#334155' : '#E2E8F0',
+                {isManualCourse ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsManualCourse(false);
+                      setCourseSearchQuery('');
+                      setShowCourseModal(true);
                     }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0284C7' }}>
+                      Select from list
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsManualCourse(true);
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                      Enter custom course
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {isManualCourse ? (
+                <>
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
+                    ]}
+                    value={courseProgram}
+                    onChangeText={setCourseProgram}
+                    placeholder={
+                      isSeniorHighProgram
+                        ? 'Enter Senior High strand / track...'
+                        : 'Enter course or academic program...'
+                    }
+                    placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                    autoCapitalize="words"
+                    editable={!isSubmitting}
+                  />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
+                    <Ionicons name="information-circle-outline" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                    <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                      Custom Course / Non-standard Track
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.textInput,
+                      {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        minHeight: 44,
+                      },
+                      isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' },
+                    ]}
+                    onPress={() => {
+                      setCourseSearchQuery('');
+                      setShowCourseModal(true);
+                    }}
+                    activeOpacity={0.7}
+                    disabled={isSubmitting}
                   >
                     <Text
                       style={{
-                        fontSize: 10,
-                        fontWeight: '700',
-                        color: isDarkMode ? '#94A3B8' : '#64748B',
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.8,
+                        fontSize: 14,
+                        fontWeight: courseProgram ? '600' : '400',
+                        color: courseProgram
+                          ? (isDarkMode ? '#F8FAFC' : '#0F172A')
+                          : (isDarkMode ? '#64748B' : '#94A3B8'),
+                        flex: 1,
+                        paddingRight: 8,
                       }}
+                      numberOfLines={1}
                     >
-                      Course Suggestions
+                      {courseProgram || (isSeniorHighProgram ? 'Select Senior High strand...' : 'Select course / program...')}
                     </Text>
-                  </View>
+                    <Ionicons name="chevron-down" size={16} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                  </TouchableOpacity>
 
-                  {filteredCourseSuggestions.slice(0, 6).map((item, idx) => (
-                    <TouchableOpacity
-                      key={`${item.name}_${item.code || idx}`}
-                      style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        borderBottomWidth: idx < Math.min(filteredCourseSuggestions.length, 6) - 1 ? 1 : 0,
-                        borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9',
-                      }}
-                      onPress={() => handleSelectCourse(item)}
-                      activeOpacity={0.7}
-                    >
-                      {item.code ? (
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: '700',
-                            color: '#0284C7',
-                            marginBottom: 2,
-                          }}
-                        >
-                          {item.code}
-                        </Text>
-                      ) : null}
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: '600',
-                          color: isDarkMode ? '#F8FAFC' : '#1E293B',
-                          lineHeight: 18,
-                        }}
-                        numberOfLines={2}
-                      >
-                        {item.name}
+                  {isCourseSuggestionSelected ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 }}>
+                      <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#16A34A' }}>
+                        {isSeniorHighProgram ? 'Accredited SHS Strand' : 'Recognized Academic Program'}
                       </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : null}
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
+                      {isSeniorHighProgram
+                        ? 'Choose from available SHS strands or enter custom track.'
+                        : 'Choose your undergraduate program from the list.'}
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
 
             {/* GRADE / YEAR LEVEL */}
@@ -1379,8 +2175,6 @@ export function NewApplicantApplicationScreen() {
                       isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' },
                     ]}
                     onPress={() => {
-                      setIsSchoolDropdownOpen(false);
-                      setIsCourseDropdownOpen(false);
                       setIsYearDropdownOpen((prev) => !prev);
                     }}
                     activeOpacity={0.7}
@@ -1397,9 +2191,9 @@ export function NewApplicantApplicationScreen() {
                     >
                       {yearLevel || 'Select year level'}
                     </Text>
-                    <IconSymbol
-                      name={isYearDropdownOpen ? 'chevron.up' : 'chevron.down'}
-                      size={15}
+                    <Ionicons
+                      name={isYearDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                      size={18}
                       color={isDarkMode ? '#94A3B8' : '#64748B'}
                     />
                   </TouchableOpacity>
@@ -1499,56 +2293,122 @@ export function NewApplicantApplicationScreen() {
               )}
             </View>
 
-            {/* RESIDENTIAL ADDRESS */}
-            <View style={[styles.inputGroup, { marginBottom: 6 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={[styles.inputLabel, { marginBottom: 0 }, isDarkMode && { color: '#F8FAFC' }]}>
-                  Residential Address *
-                </Text>
-                {isVerifiedCitizen ? (
-                  <View style={[styles.verifiedLockedBadge, isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' }]}>
-                    <IconSymbol name="lock.fill" size={11} color={isDarkMode ? '#34D399' : '#15803D'} />
-                    <Text style={[styles.verifiedLockedText, isDarkMode && { color: '#A7F3D0' }]}>
-                      Verified & Locked
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  { minHeight: 52, textAlignVertical: 'top', paddingTop: 10 },
-                  isVerifiedCitizen && {
-                    backgroundColor: isDarkMode ? '#1E293B80' : '#F1F5F9',
-                    borderColor: isDarkMode ? '#334155' : '#CBD5E1',
-                    color: isDarkMode ? '#CBD5E1' : '#475569',
-                  },
-                  isDarkMode && !isVerifiedCitizen && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
-                ]}
-                value={residentialAddress}
-                onChangeText={setResidentialAddress}
-                placeholder="Enter your residential address..."
-                placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
-                autoCapitalize="words"
-                multiline={true}
-                editable={!isVerifiedCitizen && !isSubmitting}
-              />
-              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 4 }}>
-                {isVerifiedCitizen
-                  ? 'Locked to your registered municipal citizen address.'
-                  : 'Enter complete residential address (e.g. Street, Barangay, City).'}
-              </Text>
+            {/* STEP 2 NAVIGATION BUTTONS */}
+            <View style={[styles.wizardNavRow, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
+              <TouchableOpacity
+                style={[styles.wizardBackBtn, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}
+                onPress={handleBackToStep1}
+                activeOpacity={0.8}
+              >
+                <IconSymbol name="chevron.left" size={14} color={isDarkMode ? '#F8FAFC' : '#475569'} />
+                <Text style={[styles.wizardBackBtnText, isDarkMode && { color: '#F8FAFC' }]}>Back</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.wizardNextBtn}
+                onPress={handleNextFromStep2}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.wizardNextBtnText}>Next: Documents →</Text>
+              </TouchableOpacity>
             </View>
           </View>
+        ) : null}
 
-          {/* 2. REQUIRED DOCUMENTS (BACKEND DRIVEN) */}
-          <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
-            <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }]}>
-              2. Required Documents Upload
-            </Text>
-            <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginBottom: 12 }}>
-              Maximum allowed file size: 5 MB per document (PDF, PNG, JPG accepted).
-            </Text>
+        {/* ================================================================ */}
+        {/* STEP 3: REQUIRED DOCUMENTS & FINAL SUBMISSION                    */}
+        {/* ================================================================ */}
+        {currentStep === 3 ? (
+          <>
+            {/* REVIEW DOSSIER COMPACT SUMMARY */}
+            <View style={[styles.reviewSummaryCard, isDarkMode && { backgroundColor: '#0F243A', borderColor: '#0369A1' }]}>
+              <View style={[styles.reviewSummaryHeader, isDarkMode && { borderBottomColor: '#0369A1' }]}>
+                <Text style={[styles.reviewSummaryTitle, isDarkMode && { color: '#38BDF8' }]}>
+                  Application Summary Review
+                </Text>
+                <TouchableOpacity onPress={() => handleGoToStep(1)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: isDarkMode ? '#38BDF8' : '#0284C7' }}>
+                    Edit Details
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.reviewRow}>
+                <Text style={[styles.reviewLabel, isDarkMode && { color: '#94A3B8' }]}>Applicant:</Text>
+                <Text style={[styles.reviewValue, isDarkMode && { color: '#F8FAFC' }]}>
+                  {[firstName.trim(), middleName.trim(), lastName.trim(), suffix.trim()].filter(Boolean).join(' ') || verifiedFullName}
+                </Text>
+              </View>
+
+              {email ? (
+                <View style={styles.reviewRow}>
+                  <Text style={[styles.reviewLabel, isDarkMode && { color: '#94A3B8' }]}>Email:</Text>
+                  <Text style={[styles.reviewValue, isDarkMode && { color: '#F8FAFC' }]}>{email}</Text>
+                </View>
+              ) : null}
+
+              {phoneDigits ? (
+                <View style={styles.reviewRow}>
+                  <Text style={[styles.reviewLabel, isDarkMode && { color: '#94A3B8' }]}>Mobile:</Text>
+                  <Text style={[styles.reviewValue, isDarkMode && { color: '#F8FAFC' }]}>{`+63 ${formatPhoneNumber(phoneDigits)}`}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.reviewRow}>
+                <Text style={[styles.reviewLabel, isDarkMode && { color: '#94A3B8' }]}>Citizen Status:</Text>
+                <Text style={[styles.reviewValue, isDarkMode && { color: '#4ADE80' }, !isVerifiedCitizen && { color: isDarkMode ? '#CBD5E1' : '#475569' }]}>
+                  {isVerifiedCitizen
+                    ? `Verified Citizen (${citizenVerificationData?.citizen_id_number || 'Approved'})`
+                    : 'Standard / Unverified Applicant'}
+                </Text>
+              </View>
+
+              <View style={styles.reviewRow}>
+                <Text style={[styles.reviewLabel, isDarkMode && { color: '#94A3B8' }]}>Address:</Text>
+                <Text style={[styles.reviewValue, isDarkMode && { color: '#F8FAFC' }]} numberOfLines={2}>
+                  {residentialAddress || 'None provided'}
+                </Text>
+              </View>
+
+              <View style={styles.reviewRow}>
+                <Text style={[styles.reviewLabel, isDarkMode && { color: '#94A3B8' }]}>School:</Text>
+                <Text style={[styles.reviewValue, isDarkMode && { color: '#F8FAFC' }]}>
+                  {institutionName} {selectedPartnerSchool ? '(Partner School)' : ''}
+                </Text>
+              </View>
+
+              {courseProgram ? (
+                <View style={styles.reviewRow}>
+                  <Text style={[styles.reviewLabel, isDarkMode && { color: '#94A3B8' }]}>Course / Track:</Text>
+                  <Text style={[styles.reviewValue, isDarkMode && { color: '#F8FAFC' }]}>{courseProgram}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.reviewRow}>
+                <Text style={[styles.reviewLabel, isDarkMode && { color: '#94A3B8' }]}>Year Level:</Text>
+                <Text style={[styles.reviewValue, isDarkMode && { color: '#F8FAFC' }]}>{yearLevel}</Text>
+              </View>
+
+              <Text style={[styles.reviewNote, isDarkMode && { color: '#38BDF8' }]}>
+                {'Please review your details above before submitting. Tap "Edit Details" if anything needs adjusting.'}
+              </Text>
+            </View>
+
+            {/* 3. REQUIRED DOCUMENTS (BACKEND DRIVEN) */}
+            <View style={[styles.sectionCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <View style={styles.stepHeaderRow}>
+                <Text style={[styles.sectionTitle, isDarkMode && { color: '#F8FAFC' }, { marginBottom: 0 }]}>
+                  Required Documents Upload
+                </Text>
+                <View style={[styles.stepProgressBadge, isDarkMode && { backgroundColor: '#0369A1' }]}>
+                  <Text style={[styles.stepProgressBadgeText, isDarkMode && { color: '#BAE6FD' }]}>
+                    Step 3 of 3
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginBottom: 12 }}>
+                Maximum allowed file size: 5 MB per document (PDF, PNG, JPG accepted).
+              </Text>
 
             {requiredDocsList.map((doc) => {
               const key = doc.program_document_id
@@ -1759,21 +2619,37 @@ export function NewApplicantApplicationScreen() {
             })}
           </View>
 
-          {/* SUBMIT BUTTON */}
-          <TouchableOpacity
-            style={[styles.submitButton, (!isFormValid || isSubmitting) && styles.submitButtonDisabled]}
-            onPress={handleSubmitPress}
-            disabled={!isFormValid || isSubmitting}
-            activeOpacity={0.8}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.submitButtonText}>Submit Application</Text>
-            )}
-          </TouchableOpacity>
+          {/* STEP 3 NAVIGATION BUTTONS */}
+          <View style={[styles.wizardNavRow, { paddingBottom: Math.max(32, insets.bottom + 16) }]}>
+            <TouchableOpacity
+              style={[styles.wizardBackBtn, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}
+              onPress={handleBackToStep2}
+              activeOpacity={0.8}
+            >
+              <IconSymbol name="chevron.left" size={14} color={isDarkMode ? '#F8FAFC' : '#475569'} />
+              <Text style={[styles.wizardBackBtnText, isDarkMode && { color: '#F8FAFC' }]}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.wizardNextBtn,
+                (!isFormValid || isSubmitting) && styles.wizardNextBtnDisabled,
+              ]}
+              onPress={handleSubmitPress}
+              disabled={!isFormValid || isSubmitting}
+              activeOpacity={0.8}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.wizardNextBtnText}>Submit Application</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </>
       ) : null}
+    </>
+  ) : null}
 
       {/* CONFIRMATION MODAL */}
       <Modal
@@ -1873,6 +2749,355 @@ export function NewApplicantApplicationScreen() {
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      {/* PARTNER SCHOOL SELECTION MODAL */}
+      <Modal
+        visible={showSchoolModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSchoolModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowSchoolModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.schoolModalContainer, isDarkMode && { backgroundColor: '#0F172A' }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <View style={styles.schoolModalHeader}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.schoolModalTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                  Select Partner School
+                </Text>
+                <Text style={[styles.schoolModalSubtitle, isDarkMode && { color: '#94A3B8' }]}>
+                  Choose from accredited partner institutions
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.schoolModalCloseBtn}
+                onPress={() => setShowSchoolModal(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={22} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input */}
+            <View style={[styles.schoolSearchContainer, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <Ionicons name="search" size={16} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+              <TextInput
+                style={[styles.schoolSearchInput, isDarkMode && { color: '#F8FAFC' }]}
+                value={schoolSearchQuery}
+                onChangeText={setSchoolSearchQuery}
+                placeholder="Search school name or code..."
+                placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                autoCapitalize="none"
+                clearButtonMode="while-editing"
+              />
+              {schoolSearchQuery.length > 0 ? (
+                <TouchableOpacity onPress={() => setSchoolSearchQuery('')}>
+                  <Ionicons name="close-circle" size={16} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {/* "School not listed? Enter manually" banner */}
+            <TouchableOpacity
+              style={[styles.manualSchoolBanner, isDarkMode && { backgroundColor: '#082F49', borderColor: '#0369A1' }]}
+              onPress={() => {
+                setIsManualSchool(true);
+                setSelectedPartnerSchoolId(null);
+                setShowSchoolModal(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                <View style={styles.manualSchoolIconCircle}>
+                  <Ionicons name="pencil" size={14} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.manualSchoolTitle, isDarkMode && { color: '#38BDF8' }]}>
+                    School not listed? Enter manually
+                  </Text>
+                  <Text style={[styles.manualSchoolSubtitle, isDarkMode && { color: '#7DD3FC' }]}>
+                    Apply with any standard or non-partner school
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+            </TouchableOpacity>
+
+            {/* Partner Schools List */}
+            <ScrollView
+              style={{ maxHeight: 340 }}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              {modalFilteredPartnerSchools.length === 0 ? (
+                <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                  <Ionicons name="school-outline" size={40} color={isDarkMode ? '#475569' : '#CBD5E1'} />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 8 }}>
+                    No partner schools found
+                  </Text>
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#64748B' : '#94A3B8', marginTop: 2, textAlign: 'center' }}>
+                    Tap the option above to enter your school manually.
+                  </Text>
+                </View>
+              ) : (
+                modalFilteredPartnerSchools.map((school) => {
+                  const isSelected = selectedPartnerSchoolId === school.institution_id;
+                  return (
+                    <TouchableOpacity
+                      key={school.institution_id}
+                      style={[
+                        styles.schoolListItem,
+                        isSelected && [styles.schoolListItemActive, isDarkMode && { backgroundColor: '#1E293B' }],
+                        isDarkMode && { borderBottomColor: '#1E293B' },
+                      ]}
+                      onPress={() => {
+                        setInstitutionName(school.institution_name);
+                        setSelectedPartnerSchoolId(school.institution_id);
+                        setIsManualSchool(false);
+                        setShowSchoolModal(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text
+                          style={[
+                            styles.schoolItemName,
+                            isSelected && { color: '#0284C7' },
+                            isDarkMode && { color: isSelected ? '#38BDF8' : '#F8FAFC' },
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {school.institution_name}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: isDarkMode ? '#64748B' : '#94A3B8', marginTop: 2 }}>
+                          Registered Partner School
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={[styles.schoolCodeBadge, isDarkMode && { backgroundColor: '#1E293B' }]}>
+                          <Text style={[styles.schoolCodeText, isDarkMode && { color: '#38BDF8' }]}>
+                            {school.institution_code}
+                          </Text>
+                        </View>
+                        {isSelected ? (
+                          <Ionicons name="checkmark-circle" size={18} color="#0284C7" />
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* COURSE / STRAND SELECTION MODAL */}
+      <Modal
+        visible={showCourseModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCourseModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowCourseModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.schoolModalContainer, isDarkMode && { backgroundColor: '#0F172A' }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <View style={styles.schoolModalHeader}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.schoolModalTitle, isDarkMode && { color: '#F8FAFC' }]}>
+                  {isSeniorHighProgram ? 'Select Senior High Strand' : 'Select Academic Program'}
+                </Text>
+                <Text style={[styles.schoolModalSubtitle, isDarkMode && { color: '#94A3B8' }]}>
+                  {isSeniorHighProgram
+                    ? 'Accredited DepEd Senior High School Strands'
+                    : 'Recognized College Degree Programs'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.schoolModalCloseBtn}
+                onPress={() => setShowCourseModal(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={22} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input */}
+            <View style={[styles.schoolSearchContainer, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
+              <Ionicons name="search" size={16} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+              <TextInput
+                style={[styles.schoolSearchInput, isDarkMode && { color: '#F8FAFC' }]}
+                value={courseSearchQuery}
+                onChangeText={setCourseSearchQuery}
+                placeholder={isSeniorHighProgram ? 'Search strand name or code (e.g. STEM, ICT)...' : 'Search course name or code...'}
+                placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
+                autoCapitalize="none"
+                clearButtonMode="while-editing"
+              />
+              {courseSearchQuery.length > 0 ? (
+                <TouchableOpacity onPress={() => setCourseSearchQuery('')}>
+                  <Ionicons name="close-circle" size={16} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {/* "Other / Enter custom course" banner */}
+            <TouchableOpacity
+              style={[styles.manualSchoolBanner, isDarkMode && { backgroundColor: '#082F49', borderColor: '#0369A1' }]}
+              onPress={() => {
+                setIsManualCourse(true);
+                setShowCourseModal(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                <View style={styles.manualSchoolIconCircle}>
+                  <Ionicons name="pencil" size={14} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.manualSchoolTitle, isDarkMode && { color: '#38BDF8' }]}>
+                    Other / Enter custom course
+                  </Text>
+                  <Text style={[styles.manualSchoolSubtitle, isDarkMode && { color: '#7DD3FC' }]}>
+                    {"Can't find your specific strand or program? Enter manually"}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+            </TouchableOpacity>
+
+            {/* Course List */}
+            <ScrollView
+              style={{ maxHeight: 340 }}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              {modalFilteredCourses.length === 0 ? (
+                <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                  <Ionicons name="book-outline" size={40} color={isDarkMode ? '#475569' : '#CBD5E1'} />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 8 }}>
+                    No matching courses found
+                  </Text>
+                  <Text style={{ fontSize: 12, color: isDarkMode ? '#64748B' : '#94A3B8', marginTop: 2, textAlign: 'center' }}>
+                    Tap the option above to enter your course manually.
+                  </Text>
+                </View>
+              ) : (
+                modalFilteredCourses.map((course, idx) => {
+                  const selectedText = course.code ? `${course.name} (${course.code})` : course.name;
+                  const isSelected = courseProgram === selectedText || courseProgram === course.name;
+                  return (
+                    <TouchableOpacity
+                      key={`${course.name}_${course.code || idx}`}
+                      style={[
+                        styles.schoolListItem,
+                        isSelected && [styles.schoolListItemActive, isDarkMode && { backgroundColor: '#1E293B' }],
+                        isDarkMode && { borderBottomColor: '#1E293B' },
+                      ]}
+                      onPress={() => handleSelectCourse(course)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text
+                          style={[
+                            styles.schoolItemName,
+                            isSelected && { color: '#0284C7' },
+                            isDarkMode && { color: isSelected ? '#38BDF8' : '#F8FAFC' },
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {course.name}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: isDarkMode ? '#64748B' : '#94A3B8', marginTop: 2 }}>
+                          {course.category || (isSeniorHighProgram ? 'Senior High School' : 'Degree Program')}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {course.code ? (
+                          <View style={[styles.schoolCodeBadge, isDarkMode && { backgroundColor: '#1E293B' }]}>
+                            <Text style={[styles.schoolCodeText, isDarkMode && { color: '#38BDF8' }]}>
+                              {course.code}
+                            </Text>
+                          </View>
+                        ) : null}
+                        {isSelected ? (
+                          <Ionicons name="checkmark-circle" size={18} color="#0284C7" />
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* SUFFIX SELECTION MODAL */}
+      <Modal
+        visible={showSuffixModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSuffixModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.suffixModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSuffixModal(false)}
+        >
+          <View
+            style={[styles.suffixModalCard, isDarkMode && { backgroundColor: '#1E293B' }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <Text style={[styles.suffixModalTitle, isDarkMode && { color: '#F8FAFC' }]}>
+              Select Name Suffix
+            </Text>
+            {SUFFIX_OPTIONS.map((opt) => {
+              const isSelected = suffix === opt || (!suffix && opt === 'None');
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.suffixModalItem, isDarkMode && { borderBottomColor: '#334155' }]}
+                  onPress={() => {
+                    setSuffix(opt === 'None' ? '' : opt);
+                    setShowSuffixModal(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.suffixModalItemText,
+                      isDarkMode && { color: '#CBD5E1' },
+                      isSelected && styles.suffixModalItemTextActive,
+                      isSelected && isDarkMode && { color: '#38BDF8' },
+                    ]}
+                  >
+                    {opt}
+                  </Text>
+                  {isSelected ? (
+                    <IconSymbol name="checkmark" size={16} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </ScrollView>
   );
