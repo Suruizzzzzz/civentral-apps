@@ -540,7 +540,7 @@ export default function GrantClaimVoucherScreen() {
                 Present Official Photo Identification
               </Text>
               <Text style={[voucherStyles.checkItemDesc, isDarkMode && { color: '#94A3B8' }]}>
-                Bring your original, validated Student ID or a valid Government-issued ID (e.g. National ID, Passport, Driver's License) for visual verification.
+                Bring your original, validated Student ID or a valid Government-issued ID (e.g. National ID, Passport, Driver&apos;s License) for visual verification.
               </Text>
             </View>
           </View>

@@ -330,7 +330,7 @@ const SERVICES_CATALOG: ServiceCatalogItem[] = [
     iconColor: '#0284C7',
     badgeLabel: 'POPULAR',
     badgeVariant: 'info',
-    route: '/(tabs)/tracker',
+    route: '/(auth)/verify-citizen',
   },
   {
     id: 'SVC-BPLO',

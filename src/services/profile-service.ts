@@ -164,4 +164,13 @@ export class ProfileService {
       return { status: 'success', message: 'Profile details saved locally.' };
     }
   }
+
+  /**
+   * Fetch Citizen Identity Verification Status from Citizen Verification Service
+   */
+  static async getVerificationStatus(citizenUserId?: number, email?: string) {
+    const { CitizenVerificationService } = await import('./citizenVerificationService');
+    return CitizenVerificationService.getVerificationStatus(citizenUserId, email);
+  }
 }
+

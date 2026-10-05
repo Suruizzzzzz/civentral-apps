@@ -244,6 +244,12 @@ export function ProfileScreen() {
     useState(true);
   const [sosAlertsEnabled, setSosAlertsEnabled] = useState(true);
 
+  // Citizen Identity Verification State
+  const [verificationStatus, setVerificationStatus] = useState<
+    'Not_Submitted' | 'Pending' | 'Under_Review' | 'Returned_For_Correction' | 'Approved' | 'Rejected'
+  >('Not_Submitted');
+  const [verificationData, setVerificationData] = useState<any>(null);
+
   // Modals & Loading
   const [isQrModalVisible, setIsQrModalVisible] = useState(false);
   const [isEditProfileModalVisible, setIsEditProfileModalVisible] =
@@ -392,6 +398,17 @@ export function ProfileScreen() {
         setBiometricsEnabled(response.data.biometricEnabled);
       }
     }
+
+    try {
+      const vRes = await ProfileService.getVerificationStatus(
+        activeUserId || userProfile.citizen_user_id,
+        identifierToUse
+      );
+      if (vRes?.verification_status) {
+        setVerificationStatus(vRes.verification_status);
+        setVerificationData(vRes.data || vRes);
+      }
+    } catch {}
   };
 
   useEffect(() => {
@@ -584,6 +601,38 @@ export function ProfileScreen() {
               variant={isGuestMode ? "neutral" : "success"}
             />
             <View style={styles.badgeSpacer} />
+            {!isGuestMode && (
+              <>
+                <TouchableOpacity
+                  onPress={() => router.push("/(auth)/verify-citizen" as any)}
+                  activeOpacity={0.7}
+                >
+                  <Badge
+                    label={
+                      verificationStatus === 'Approved'
+                        ? 'CITIZEN VERIFIED'
+                        : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
+                        ? 'VERIFICATION PENDING'
+                        : verificationStatus === 'Returned_For_Correction'
+                        ? 'REWORK REQUIRED'
+                        : verificationStatus === 'Rejected'
+                        ? 'VERIFICATION REJECTED'
+                        : 'GET VERIFIED'
+                    }
+                    variant={
+                      verificationStatus === 'Approved'
+                        ? 'success'
+                        : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
+                        ? 'warning'
+                        : verificationStatus === 'Returned_For_Correction' || verificationStatus === 'Rejected'
+                        ? 'danger'
+                        : 'info'
+                    }
+                  />
+                </TouchableOpacity>
+                <View style={styles.badgeSpacer} />
+              </>
+            )}
             <Badge
               label={
                 isGuestMode
@@ -937,7 +986,7 @@ export function ProfileScreen() {
                     CITIZEN ID NO.
                   </Text>
                   <Text style={styles.idValueHighlight}>
-                    {userProfile.citizenId || "Pending Generation"}
+                    {verificationData?.citizen_id_number || userProfile.citizenId || "Pending Generation"}
                   </Text>
 
                   <Text style={[styles.idLabel, { marginTop: 4 }]}>
@@ -955,20 +1004,37 @@ export function ProfileScreen() {
               <View style={styles.idFooterBanner}>
                 <View style={styles.idFooterTextStack}>
                   <Text style={styles.idFooterNoticeTitle}>
-                    Need Complete Citizen ID Verification?
+                    {verificationStatus === 'Approved'
+                      ? 'Verified Citizen Resident Card'
+                      : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
+                      ? 'Identity Verification Under Review'
+                      : verificationStatus === 'Returned_For_Correction'
+                      ? 'Action Required: Rework Requested'
+                      : 'Need Complete Citizen ID Verification?'}
                   </Text>
                   <Text style={styles.idFooterNoticeSub}>
-                    To finish full details, submit documents & get your official
-                    ID, visit Citizen Services.
+                    {verificationStatus === 'Approved'
+                      ? 'Your citizen identity has been verified. Tap to view and print your official card.'
+                      : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
+                      ? 'City Civil Registry staff are verifying your documents. Tap to check status.'
+                      : verificationStatus === 'Returned_For_Correction'
+                      ? 'Admin requested document corrections. Tap to review notes & resubmit.'
+                      : 'To submit documents, complete selfie check & receive your official ID, get verified now.'}
                   </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.finishIdBtn}
-                  onPress={() => router.push("/(tabs)/services" as any)}
+                  onPress={() => router.push("/(auth)/verify-citizen" as any)}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.finishIdBtnText}>
-                    Complete Citizen ID in Services
+                    {verificationStatus === 'Approved'
+                      ? 'View Citizen ID Card'
+                      : verificationStatus === 'Pending' || verificationStatus === 'Under_Review'
+                      ? 'Check Status'
+                      : verificationStatus === 'Returned_For_Correction'
+                      ? 'Review & Resubmit'
+                      : 'Get Verified'}
                   </Text>
                   <IconSymbol name="chevron.right" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
