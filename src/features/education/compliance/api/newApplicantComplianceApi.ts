@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
 import { EDUCATION_API_BASE_URL } from '../../new-applicant/api/ScholarshipProgramApi';
 
@@ -90,18 +91,24 @@ export async function submitApplicationComplianceReplacement(
   file: { uri: string; name: string; type: string },
   targetDocumentId?: number | null
 ): Promise<ApplicationComplianceData> {
+  const sanitizedUri = Platform.OS === 'android'
+    ? file.uri
+    : file.uri.replace('file://', '');
+
   const formData = new FormData();
   formData.append('compliance_id', String(complianceId));
   if (targetDocumentId) {
     formData.append('target_document_id', String(targetDocumentId));
   }
   formData.append('replacement_file', {
-    uri: file.uri,
-    name: file.name,
+    uri: sanitizedUri,
+    name: file.name || `replacement_${Date.now()}.jpg`,
     type: file.type || 'application/octet-stream',
   } as any);
 
-  const headers = await getEducationAuthHeaders();
+  const headers = await getEducationAuthHeaders({
+    Accept: 'application/json',
+  });
 
   const res = await fetch(`${EDUCATION_API_BASE_URL}/education/citizen/application-compliance/submit`, {
     method: 'POST',

@@ -246,7 +246,7 @@ export function NewApplicantComplianceScreen() {
         {
           uri: picked.uri,
           name: picked.name,
-          type: picked.mimeType || 'application/octet-stream',
+          type: picked.mimeType || (isVideoRequirement(item) ? 'video/mp4' : 'application/pdf'),
         },
         targetDocId
       );
