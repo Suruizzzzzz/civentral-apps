@@ -6,6 +6,7 @@ import {
   DEFAULT_MAX_DOC_SIZE_MB,
   MAX_VIDEO_SIZE_MB,
 } from '@/src/utils/fileValidation';
+import { compressImageIfNeeded, isImageFile } from '@/src/utils/imageCompression';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -116,7 +117,7 @@ export function NewApplicantComplianceScreen() {
         hasHydratedRef.current = true;
       }
     } catch (err: any) {
-      console.error('[NewApplicantComplianceScreen] fetch error:', err);
+      console.warn('[NewApplicantComplianceScreen] fetch error:', err);
       setError(sanitizeErrorMessage(err?.message, 'Unable to load application compliance requests.'));
     } finally {
       setIsLoading(false);
@@ -176,8 +177,25 @@ export function NewApplicantComplianceScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
 
+        // Guard for non-image files (PDFs) that exceed 10 MB limit
+        if (!isVideo && !isImageFile(file)) {
+          if (typeof file.size === 'number' && file.size > maxLimitMb * 1024 * 1024) {
+            Alert.alert(
+              'File Too Large',
+              'Selected file exceeds the maximum 10MB limit. Please choose a smaller document.'
+            );
+            return;
+          }
+        }
+
+        // Auto-compress image if exceeding 1.5MB (or undefined size)
+        let processedFile = file;
+        if (!isVideo && isImageFile(file)) {
+          processedFile = await compressImageIfNeeded(file);
+        }
+
         // 10MB (docs) / 20MB (video) file size limit validation using shared utility
-        const validation = validateFileSize(file, maxLimitMb, docLabel);
+        const validation = validateFileSize(processedFile, maxLimitMb, docLabel);
         if (!validation.valid) {
           Alert.alert(
             'File Too Large',
@@ -190,15 +208,15 @@ export function NewApplicantComplianceScreen() {
         setSelectedFiles((prev) => ({
           ...prev,
           [item.compliance_id]: {
-            uri: file.uri,
-            name: file.name,
-            size: file.size,
-            mimeType: file.mimeType || (isVideo ? 'video/mp4' : 'application/octet-stream'),
+            uri: processedFile.uri,
+            name: processedFile.name,
+            size: processedFile.size,
+            mimeType: processedFile.mimeType || (isVideo ? 'video/mp4' : 'application/octet-stream'),
           },
         }));
       }
     } catch (err: any) {
-      console.error('[NewApplicantComplianceScreen] document picker error:', err);
+      console.warn('[NewApplicantComplianceScreen] document picker error:', err);
       Alert.alert('File Selection Failed', 'Unable to select file. Please try again.');
     }
   };
@@ -224,7 +242,7 @@ export function NewApplicantComplianceScreen() {
         return;
       }
     } catch (err: any) {
-      console.error('[handleOriginalDocAction] error:', err);
+      console.warn('[handleOriginalDocAction] error:', err);
       Alert.alert('Unable to Process Document', sanitizeErrorMessage(err?.message, 'Please check your connection and try again.'));
     } finally {
       setActionLoadingDocKey(null);
@@ -241,12 +259,16 @@ export function NewApplicantComplianceScreen() {
     setIsSubmittingCompId(item.compliance_id);
     try {
       const targetDocId = item.target_document?.application_document_id || null;
+      const fileToUpload = !isVideoRequirement(item) && isImageFile(picked)
+        ? await compressImageIfNeeded(picked)
+        : picked;
+
       const updatedData = await submitApplicationComplianceReplacement(
         item.compliance_id,
         {
-          uri: picked.uri,
-          name: picked.name,
-          type: picked.mimeType || (isVideoRequirement(item) ? 'video/mp4' : 'application/pdf'),
+          uri: fileToUpload.uri,
+          name: fileToUpload.name,
+          type: fileToUpload.mimeType || (isVideoRequirement(item) ? 'video/mp4' : 'application/pdf'),
         },
         targetDocId
       );
@@ -263,8 +285,20 @@ export function NewApplicantComplianceScreen() {
         'Your replacement document has been submitted and is awaiting review.'
       );
     } catch (err: any) {
-      console.error('[handleSubmitReplacement] error:', err);
-      Alert.alert('Submission Failed', sanitizeErrorMessage(err?.message, 'Unable to submit replacement document. Please try again.'));
+      console.warn('[handleSubmitReplacement] error:', err);
+      const isRateLimited =
+        err?.status === 429 ||
+        err?.statusCode === 429 ||
+        /429|too many requests|rate limit/i.test(err?.message || '');
+
+      if (isRateLimited) {
+        Alert.alert(
+          'Submission Rate Limit',
+          "You've made multiple submission attempts. Please wait 60 seconds before trying again."
+        );
+      } else {
+        Alert.alert('Submission Failed', sanitizeErrorMessage(err?.message, 'Unable to submit replacement document. Please try again.'));
+      }
     } finally {
       setIsSubmittingCompId(null);
     }

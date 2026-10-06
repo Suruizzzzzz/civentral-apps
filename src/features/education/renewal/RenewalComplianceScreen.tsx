@@ -1,9 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { validateFileSize } from '@/src/utils/fileValidation';
+import { compressImageIfNeeded, isImageFile } from '@/src/utils/imageCompression';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
@@ -171,25 +172,45 @@ export function RenewalComplianceScreen() {
       if (!res.canceled && res.assets && res.assets.length > 0) {
         const asset = res.assets[0];
 
+        // Guard for non-image files (PDFs) that exceed 10 MB limit
+        if (!isImageFile(asset)) {
+          if (typeof asset.size === 'number' && asset.size > 10 * 1024 * 1024) {
+            Alert.alert(
+              'File Too Large',
+              'Selected file exceeds the maximum 10MB limit. Please choose a smaller document.'
+            );
+            return;
+          }
+        }
+
+        // Auto-compress image if exceeding 1.5MB (or undefined size)
+        let processedAsset = asset;
+        if (isImageFile(asset)) {
+          processedAsset = await compressImageIfNeeded(asset);
+        }
+
         // 10MB file size limit validation using shared utility (LOW-03)
-        const validation = validateFileSize(asset, 10, docType.toUpperCase());
+        const validation = validateFileSize(processedAsset, 10, docType.toUpperCase());
         if (!validation.valid) {
-          Alert.alert('File Too Large', validation.errorMessage || `The selected ${docType.toUpperCase()} file exceeds the maximum limit of 10MB.`);
+          Alert.alert(
+            'File Too Large',
+            validation.errorMessage || `The selected ${docType.toUpperCase()} file exceeds the maximum limit of 10MB. Please choose a smaller document.`
+          );
           return;
         }
 
         setFiles((prev) => ({
           ...prev,
           [docType]: {
-            name: asset.name,
-            size: asset.size,
-            uri: asset.uri,
-            mimeType: asset.mimeType,
+            name: processedAsset.name,
+            size: processedAsset.size,
+            uri: processedAsset.uri,
+            mimeType: processedAsset.mimeType,
           },
         }));
       }
     } catch (err) {
-      console.error('[RenewalComplianceScreen] document picker error:', err);
+      console.warn('[RenewalComplianceScreen] document picker error:', err);
       Alert.alert('Error', 'Unable to pick replacement document.');
     }
   };
@@ -226,11 +247,33 @@ export function RenewalComplianceScreen() {
     (!isClarificationRequired || clarificationText.trim().length > 0)
   );
 
+  const sanitizeUri = (uri: string) => {
+    return Platform.OS === 'android' ? uri : uri.replace('file://', '');
+  };
+
   const handleSubmitPress = () => {
-    if (!isFormValid) {
-      Alert.alert('Incomplete Response', 'Please complete all requested replacement documents and response text before submitting.');
+    const missingDocs: string[] = [];
+    if (isCorRequested && !files.cor) {
+      missingDocs.push('Certificate of Registration (COR)');
+    }
+    if (isCogRequested && !files.cog) {
+      missingDocs.push('Certificate of Grades (COG)');
+    }
+    if (isSoaRequested && !files.soa) {
+      missingDocs.push('Statement of Account (SOA)');
+    }
+    if (isClarificationRequired && clarificationText.trim().length === 0) {
+      missingDocs.push('Response / Clarification text');
+    }
+
+    if (missingDocs.length > 0) {
+      Alert.alert(
+        'All Required Documents Needed',
+        `Please attach all requested replacement documents before submitting your compliance package.\n\nMissing:\n• ${missingDocs.join('\n• ')}`
+      );
       return;
     }
+
     setSubmitError(null);
     setShowConfirmModal(true);
   };
@@ -248,36 +291,39 @@ export function RenewalComplianceScreen() {
       }
 
       if (files.cor) {
-        formData.append('enrollment_proof', {
-          uri: files.cor.uri,
-          name: files.cor.name || 'cor.pdf',
-          type: files.cor.mimeType || 'application/pdf',
-        } as any);
-        formData.append('cor', {
-          uri: files.cor.uri,
-          name: files.cor.name || 'cor.pdf',
-          type: files.cor.mimeType || 'application/pdf',
-        } as any);
+        const corCompressed = await compressImageIfNeeded(files.cor);
+        const corName = corCompressed.name || `enrollment_proof_${Date.now()}.pdf`;
+        const corType = corCompressed.mimeType || (corCompressed as any).type || 'application/pdf';
+        const corPayload = {
+          uri: sanitizeUri(corCompressed.uri),
+          name: corName,
+          type: corType,
+        } as any;
+        formData.append('enrollment_proof', corPayload);
+        formData.append('cor', corPayload);
       }
 
       if (files.cog) {
-        formData.append('academic_record', {
-          uri: files.cog.uri,
-          name: files.cog.name || 'cog.pdf',
-          type: files.cog.mimeType || 'application/pdf',
-        } as any);
-        formData.append('cog', {
-          uri: files.cog.uri,
-          name: files.cog.name || 'cog.pdf',
-          type: files.cog.mimeType || 'application/pdf',
-        } as any);
+        const cogCompressed = await compressImageIfNeeded(files.cog);
+        const cogName = cogCompressed.name || `academic_record_${Date.now()}.pdf`;
+        const cogType = cogCompressed.mimeType || (cogCompressed as any).type || 'application/pdf';
+        const cogPayload = {
+          uri: sanitizeUri(cogCompressed.uri),
+          name: cogName,
+          type: cogType,
+        } as any;
+        formData.append('academic_record', cogPayload);
+        formData.append('cog', cogPayload);
       }
 
       if (files.soa) {
+        const soaCompressed = await compressImageIfNeeded(files.soa);
+        const soaName = soaCompressed.name || `soa_${Date.now()}.pdf`;
+        const soaType = soaCompressed.mimeType || (soaCompressed as any).type || 'application/pdf';
         formData.append('soa', {
-          uri: files.soa.uri,
-          name: files.soa.name || 'soa.pdf',
-          type: files.soa.mimeType || 'application/pdf',
+          uri: sanitizeUri(soaCompressed.uri),
+          name: soaName,
+          type: soaType,
         } as any);
       }
 
@@ -292,8 +338,23 @@ export function RenewalComplianceScreen() {
 
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error('[RenewalComplianceScreen] submit error:', err);
-      setSubmitError(err?.message || 'Failed to submit compliance response. Please try again.');
+      console.warn('[RenewalComplianceScreen] submit error:', err);
+      const isRateLimited =
+        err?.status === 429 ||
+        err?.statusCode === 429 ||
+        /429|too many requests|rate limit/i.test(err?.message || '');
+
+      if (isRateLimited) {
+        Alert.alert(
+          'Submission Rate Limit',
+          "You've made multiple submission attempts. Please wait 60 seconds before trying again."
+        );
+        setSubmitError("You've made multiple submission attempts. Please wait 60 seconds before trying again.");
+      } else {
+        const message = err?.message || 'Failed to submit compliance response. Please try again.';
+        Alert.alert('Submission Failed', message);
+        setSubmitError(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -546,6 +607,19 @@ export function RenewalComplianceScreen() {
                 Requested Document Replacements
               </Text>
 
+              <View style={[
+                styles.instructionCard,
+                { borderColor: '#F59E0B', backgroundColor: '#FFFBEB' },
+                isDarkMode && { backgroundColor: '#451A03', borderColor: '#B45309' },
+              ]}>
+                <View style={[styles.reqTypeBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <Text style={[styles.reqTypeText, { color: '#B45309' }]}>Compliance Package Notice</Text>
+                </View>
+                <Text style={[styles.instructionText, { color: '#92400E' }, isDarkMode && { color: '#FDE68A' }]}>
+                  Please attach all requested replacement documents before submitting. All defective requirements must be complied with together as a package.
+                </Text>
+              </View>
+
               {/* COR REPLACEMENT CARD */}
               {isCorRequested && (
                 <View style={[styles.docCard, isDarkMode && { backgroundColor: '#1E293B', borderColor: '#334155' }]}>
@@ -745,7 +819,7 @@ export function RenewalComplianceScreen() {
               (!isFormValid || submitting) && styles.submitBtnDisabled,
             ]}
             onPress={handleSubmitPress}
-            disabled={!isFormValid || submitting}
+            disabled={submitting}
             activeOpacity={0.8}
           >
             {submitting ? (

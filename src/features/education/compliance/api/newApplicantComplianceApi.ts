@@ -120,14 +120,32 @@ export async function submitApplicationComplianceReplacement(
     await handleEducationResponse(res);
   }
 
+  if (res.status === 429) {
+    const errText = await res.text().catch(() => '');
+    let parsedMsg = 'You have submitted too many times in a short period. Please wait a minute before trying again.';
+    try {
+      if (errText) {
+        const errJson = JSON.parse(errText);
+        if (errJson.message) parsedMsg = errJson.message;
+      }
+    } catch {}
+    const err = new Error(parsedMsg) as any;
+    err.status = 429;
+    throw err;
+  }
+
   if (!res.ok) {
-    const errText = await res.text();
+    const errText = await res.text().catch(() => '');
     let parsedMsg = `Unable to submit replacement document (HTTP ${res.status}).`;
     try {
-      const errJson = JSON.parse(errText);
-      if (errJson.message) parsedMsg = errJson.message;
+      if (errText) {
+        const errJson = JSON.parse(errText);
+        if (errJson.message) parsedMsg = errJson.message;
+      }
     } catch {}
-    throw new Error(parsedMsg);
+    const err = new Error(parsedMsg) as any;
+    err.status = res.status;
+    throw err;
   }
 
   const json: ApplicationComplianceResponse = await res.json();

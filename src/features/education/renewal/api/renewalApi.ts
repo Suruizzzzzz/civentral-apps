@@ -263,7 +263,9 @@ export async function fetchCitizenRenewalCompliance(): Promise<CitizenCompliance
 export async function submitCitizenComplianceResponse(
   formData: FormData,
 ): Promise<SubmitComplianceResponseResult> {
-  const headers = await getEducationAuthHeaders();
+  const headers = await getEducationAuthHeaders({
+    Accept: "application/json",
+  });
 
   const res = await fetch(
     `${EDUCATION_API_BASE_URL}/scholarship-renewals/citizen/compliance-response`,
@@ -278,7 +280,16 @@ export async function submitCitizenComplianceResponse(
     await handleEducationResponse(res);
   }
 
-  const json = await res.json();
+  const json = await res.json().catch(() => ({}));
+
+  if (res.status === 429) {
+    const errorMsg =
+      json.message ||
+      "You have submitted too many times in a short period. Please wait a minute before trying again.";
+    const err = new Error(errorMsg) as any;
+    err.status = 429;
+    throw err;
+  }
 
   if (!res.ok || json.status === "error") {
     const errorMsg = sanitizeErrorMessage(

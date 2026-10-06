@@ -2,3 +2,4 @@
 export * from './dateUtils';
 export * from './fileValidation';
 export * from './errorUtils';
+export * from './imageCompression';
