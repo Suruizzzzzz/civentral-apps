@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "civentral-apps",
+    "name": "Civentral",
     "slug": "civentral-apps",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -56,6 +56,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ec547baa-709f-4510-ba6b-cf42140132c2"
+      }
     }
   }
 }
