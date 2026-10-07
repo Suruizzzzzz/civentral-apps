@@ -15,7 +15,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/logo.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.jpg"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -38,9 +38,9 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/logo.png",
-          "imageWidth": 200,
+          "imageWidth": 150,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#FFFFFF",
           "dark": {
             "backgroundColor": "#0F172A"
           }

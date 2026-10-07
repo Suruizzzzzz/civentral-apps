@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { styles } from "./styles/HomeScreen.styles";
 import { UnderDevelopmentModal } from "@/src/components/common/UnderDevelopmentModal";
+import { AuthGateModal } from "@/src/components/common/AuthGateModal";
 
 import { HomeScreenSkeleton } from "./HomeScreenSkeleton";
 
@@ -190,6 +191,34 @@ export function HomeScreen() {
     visible: false,
     serviceName: '',
   });
+  const [isAuthGateVisible, setIsAuthGateVisible] = useState(false);
+  const [authGateContent, setAuthGateContent] = useState<{ title?: string; message?: string }>({});
+
+  const handleVerifyPress = () => {
+    if (isGuestMode) {
+      setAuthGateContent({
+        title: 'Sign In Required',
+        message:
+          'You must be signed in with a registered Civentral account to verify your citizenship and obtain an official Digital Resident ID.',
+      });
+      setIsAuthGateVisible(true);
+      return;
+    }
+    router.push('/(auth)/verify-citizen');
+  };
+
+  const handleEducationPress = () => {
+    if (isGuestMode) {
+      setAuthGateContent({
+        title: 'Sign In Required',
+        message:
+          'Education assistance and scholarship programs are only accessible to registered Caloocan City citizens. Please sign in to continue.',
+      });
+      setIsAuthGateVisible(true);
+      return;
+    }
+    router.push('/education' as any);
+  };
 
   const [summaryCounts, setSummaryCounts] = useState<SummaryCounts | null>(null);
   const [isSummaryError, setIsSummaryError] = useState(false);
@@ -521,7 +550,7 @@ export function HomeScreen() {
                       styles.pillarCard,
                       { backgroundColor: dm ? '#210C36' : '#FAF5FF' },
                     ]}
-                    onPress={() => router.push('/(auth)/verify-citizen')}
+                    onPress={handleVerifyPress}
                     activeOpacity={0.8}
                     accessibilityRole="button"
                     accessibilityLabel={`Digital Resident ID: ${pillarStatusLabel}`}
@@ -604,7 +633,7 @@ export function HomeScreen() {
                   styles.registerNowBanner,
                   { backgroundColor: bannerBg },
                 ]}
-                onPress={() => router.push('/(auth)/verify-citizen')}
+                onPress={handleVerifyPress}
                 activeOpacity={0.85}
                 accessibilityRole="button"
                 accessibilityLabel={bannerTitle}
@@ -803,7 +832,7 @@ export function HomeScreen() {
                 styles.serviceItem,
                 { backgroundColor: C.surface, borderColor: C.border },
               ]}
-              onPress={() => router.push("/education" as any)}
+              onPress={handleEducationPress}
               activeOpacity={0.8}
             >
               <View
@@ -1226,6 +1255,14 @@ export function HomeScreen() {
         visible={underDevModal.visible}
         serviceName={underDevModal.serviceName}
         onClose={() => setUnderDevModal({ visible: false, serviceName: "" })}
+      />
+
+      {/* Reusable Auth Gate Modal for Guests */}
+      <AuthGateModal
+        visible={isAuthGateVisible}
+        title={authGateContent.title}
+        message={authGateContent.message}
+        onClose={() => setIsAuthGateVisible(false)}
       />
     </View>
   );

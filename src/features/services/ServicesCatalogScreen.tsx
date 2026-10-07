@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ImageBackground,
-  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -14,6 +13,7 @@ import { Badge } from '@/src/components/ui/Badge';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 import { UnderDevelopmentModal } from '@/src/components/common/UnderDevelopmentModal';
+import { AuthGateModal } from '@/src/components/common/AuthGateModal';
 import { styles } from './styles/ServicesCatalogScreen.styles';
 
 export interface ServiceCatalogItem {
@@ -579,60 +579,10 @@ export function ServicesCatalogScreen() {
       </ScrollView>
 
       {/* AUTH GATE MODAL */}
-      <Modal
+      <AuthGateModal
         visible={isAuthGateVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsAuthGateVisible(false)}>
-        <View style={styles.authGateOverlay}>
-          <View style={[styles.authGateCard, isDarkMode && { backgroundColor: '#1C2541', borderColor: '#3A506B', borderWidth: 1 }]}>
-            {/* Icon Ring */}
-            <View style={[styles.authGateIconRing, isDarkMode && { backgroundColor: '#0F2942' }]}>
-              <IconSymbol name="lock.shield.fill" size={34} color={isDarkMode ? '#38BDF8' : '#165B7E'} />
-            </View>
-
-            {/* Title */}
-            <Text style={[styles.authGateTitle, isDarkMode && { color: '#F8FAFC' }]}>Sign In Required</Text>
-            <Text style={[styles.authGateSub, isDarkMode && { color: '#CBD5E1' }]}>
-              This municipal e-service is only accessible to registered Caloocan City citizens. Please sign in to continue.
-            </Text>
-
-            {/* Divider with city branding */}
-            <View style={styles.authGateBrandRow}>
-              <View style={[styles.authGateBrandLine, isDarkMode && { backgroundColor: '#3A506B' }]} />
-              <Text style={[styles.authGateBrandText, isDarkMode && { color: '#94A3B8' }]}>CALOOCAN CITY GOVERNMENT</Text>
-              <View style={[styles.authGateBrandLine, isDarkMode && { backgroundColor: '#3A506B' }]} />
-            </View>
-
-            {/* Buttons */}
-            <View style={styles.authGateActions}>
-              <TouchableOpacity
-                style={styles.authGateLoginBtn}
-                onPress={() => {
-                  setIsAuthGateVisible(false);
-                  router.replace('/(auth)/login' as any);
-                }}
-                activeOpacity={0.88}>
-                <IconSymbol name="person.fill" size={16} color="#FFFFFF" />
-                <Text style={styles.authGateLoginText}>Sign In to My Account</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.authGateCancelBtn, isDarkMode && { backgroundColor: '#334155', borderColor: '#475569' }]}
-                onPress={() => setIsAuthGateVisible(false)}
-                activeOpacity={0.7}>
-                <Text style={[styles.authGateCancelText, isDarkMode && { color: '#F8FAFC' }]}>Continue Browsing as Guest</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Footer */}
-            <View style={styles.authGateFooter}>
-              <IconSymbol name="shield.fill" size={11} color="#94A3B8" />
-              <Text style={[styles.authGateFooterText, isDarkMode && { color: '#94A3B8' }]}>  Protected by Caloocan City E-Governance Portal</Text>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setIsAuthGateVisible(false)}
+      />
 
       {/* Reusable Under Development Modal */}
       <UnderDevelopmentModal

@@ -264,6 +264,9 @@ export function VerifyCitizenScreen() {
   const { isDarkMode } = useTheme();
   const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 24 : 20) + 12;
 
+  const currentUser = AuthService.getCurrentUser();
+  const isGuest = AuthService.isGuestMode() || !currentUser.citizen_user_id;
+
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -333,6 +336,10 @@ export function VerifyCitizenScreen() {
   // Auto-fetch Citizen basic info and verify existing application status
   useEffect(() => {
     async function loadCitizenData() {
+      if (isGuest) {
+        setIsLoadingStatus(false);
+        return;
+      }
       try {
         setIsLoadingStatus(true);
         const currentUser = AuthService.getCurrentUser();
@@ -445,7 +452,7 @@ export function VerifyCitizenScreen() {
     }
 
     loadCitizenData();
-  }, []);
+  }, [isGuest]);
 
   const handleOpenPhotoPicker = (target: 'id' | 'selfie' | 'photo1x1' | 'signature') => {
     setPhotoPickerTarget(target);
@@ -714,6 +721,13 @@ export function VerifyCitizenScreen() {
 
   const handleSubmitVerification = async () => {
     setErrorMessage(null);
+
+    const activeUser = AuthService.getCurrentUser();
+    if (AuthService.isGuestMode() || !activeUser.citizen_user_id) {
+      setErrorMessage('You must be signed in with an active account to submit citizen verification.');
+      return;
+    }
+
     if (!idNumber.trim()) {
       setErrorMessage('Government ID number is required.');
       return;
@@ -933,7 +947,101 @@ export function VerifyCitizenScreen() {
             <View style={styles.headerRightPlaceholder} />
           </View>
 
-          {isLoadingStatus ? (
+          {isGuest ? (
+            /* GUEST GUARD VIEW */
+            <View style={[styles.card, styles.guardCard, { backgroundColor: dmCard, borderColor: dmBorder }]}>
+              <View
+                style={[
+                  styles.guardIconBox,
+                  {
+                    backgroundColor: isDarkMode ? '#0F2942' : '#EFF6FF',
+                    borderWidth: 2,
+                    borderColor: isDarkMode ? '#1E3A8A' : '#BFDBFE',
+                  },
+                ]}
+              >
+                <IconSymbol
+                  name="lock.shield.fill"
+                  size={32}
+                  color={isDarkMode ? '#38BDF8' : '#165B7E'}
+                />
+              </View>
+              <Text style={[styles.guardTitle, { color: dmText }]}>Account Required</Text>
+              <Text
+                style={[
+                  styles.guardSubtitle,
+                  { color: isDarkMode ? '#CBD5E1' : '#64748B', marginBottom: 24, paddingHorizontal: 8 },
+                ]}
+              >
+                You must be signed in to an active Civentral account to submit citizen verification and receive an official Digital ID.
+              </Text>
+
+              <View style={{ width: '100%', gap: 10 }}>
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: '#165B7E', flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }]}
+                  onPress={() => router.push('/(auth)/login' as any)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sign in to your account"
+                >
+                  <IconSymbol name="person.fill" size={16} color="#FFFFFF" />
+                  <Text style={styles.primaryButtonText}>Sign In</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    {
+                      backgroundColor: isDarkMode ? '#0F2942' : '#EFF6FF',
+                      borderWidth: 1.5,
+                      borderColor: isDarkMode ? '#1E40AF' : '#BFDBFE',
+                      flexDirection: 'row',
+                      gap: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                  ]}
+                  onPress={() => router.push('/(auth)/register' as any)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Create a citizen account"
+                >
+                  <IconSymbol
+                    name="person.2.fill"
+                    size={16}
+                    color={isDarkMode ? '#38BDF8' : '#165B7E'}
+                  />
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: isDarkMode ? '#38BDF8' : '#165B7E' },
+                    ]}
+                  >
+                    Create Account
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ paddingVertical: 12, alignItems: 'center' }}
+                  onPress={() => router.replace('/(tabs)' as any)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Return to Home"
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: isDarkMode ? '#94A3B8' : '#64748B',
+                      textDecorationLine: 'underline',
+                    }}
+                  >
+                    Return to Home
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : isLoadingStatus ? (
             <View style={[styles.card, styles.guardCard, { backgroundColor: dmCard, borderColor: dmBorder }]}>
               <ActivityIndicator size="large" color="#0284C7" style={{ marginBottom: 16 }} />
               <Text style={[styles.guardTitle, { color: dmText, fontSize: 17 }]}>Checking Verification Status...</Text>
