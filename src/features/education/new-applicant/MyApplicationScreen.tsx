@@ -124,6 +124,32 @@ export function MyApplicationScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+
+      // Lightweight real-time synchronization:
+      // Periodically check application status while the screen is focused (every 4 seconds)
+      const syncInterval = setInterval(async () => {
+        try {
+          const dash = await fetchCitizenDashboard();
+          if (dash?.application) {
+            setDashboardData((prev) => {
+              if (
+                !prev ||
+                prev.application?.application_status !== dash.application?.application_status ||
+                prev.latest_update?.timestamp !== dash.latest_update?.timestamp
+              ) {
+                return dash;
+              }
+              return prev;
+            });
+          }
+        } catch {
+          // Silent polling failure - preserve existing dashboard state without interrupting user
+        }
+      }, 4000);
+
+      return () => {
+        clearInterval(syncInterval);
+      };
     }, [loadData])
   );
 
