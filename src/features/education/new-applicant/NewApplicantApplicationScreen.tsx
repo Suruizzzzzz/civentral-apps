@@ -794,9 +794,6 @@ export function NewApplicantApplicationScreen() {
     const key = doc.program_document_id
       ? `doc_${doc.program_document_id}`
       : `doc_${doc.document_requirement_id}`;
-    if (isVerifiedCitizen && isResidencyProofDoc(doc)) {
-      return false; // Exempt residency proof if verified citizen
-    }
     return !files[key];
   });
 
@@ -2418,7 +2415,6 @@ export function NewApplicantApplicationScreen() {
               const isVideoDoc =
                 doc.document_code?.toUpperCase().includes('VIDEO') ||
                 doc.document_name?.toUpperCase().includes('VIDEO');
-              const isPreClearedResidency = isVerifiedCitizen && isResidencyProofDoc(doc);
 
               return (
                 <View key={key} style={[styles.docItemCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155' }]}>
@@ -2427,8 +2423,8 @@ export function NewApplicantApplicationScreen() {
                       {doc.document_name}
                     </Text>
                     <Badge
-                      variant={selectedFile ? 'success' : isPreClearedResidency ? 'success' : 'warning'}
-                      label={selectedFile ? 'Attached' : isPreClearedResidency ? 'Pre-Cleared' : 'Required'}
+                      variant={selectedFile ? 'success' : 'warning'}
+                      label={selectedFile ? 'Attached' : 'Required'}
                     />
                   </View>
 
@@ -2442,14 +2438,6 @@ export function NewApplicantApplicationScreen() {
                     </Text>
                   ) : null}
 
-                  {isPreClearedResidency ? (
-                    <View style={[styles.preClearedCallout, isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' }]}>
-                      <IconSymbol name="checkmark.seal.fill" size={16} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
-                      <Text style={[styles.preClearedCalloutText, isDarkMode && { color: '#86EFAC' }]}>
-                        Residency pre-verified via your Citizen ID (Barangay residency is pre-cleared). Physical upload is optional.
-                      </Text>
-                    </View>
-                  ) : null}
 
                   {isVideoDoc ? (
                     <View style={[styles.videoGuideCard, isDarkMode && { backgroundColor: '#0F172A', borderColor: '#0369A1' }]}>
@@ -2489,8 +2477,8 @@ export function NewApplicantApplicationScreen() {
                   <TouchableOpacity
                     style={[
                       styles.uploadBox,
-                      (selectedFile || isPreClearedResidency) && styles.uploadBoxSuccess,
-                      isDarkMode && !selectedFile && !isPreClearedResidency && { backgroundColor: '#1E293B', borderColor: '#0284C7' },
+                      selectedFile && styles.uploadBoxSuccess,
+                      isDarkMode && !selectedFile && { backgroundColor: '#1E293B', borderColor: '#0284C7' },
                     ]}
                     onPress={() => handlePickDocument(doc)}
                     activeOpacity={0.75}
@@ -2499,20 +2487,16 @@ export function NewApplicantApplicationScreen() {
                       name={
                         selectedFile
                           ? 'checkmark.circle.fill'
-                          : isPreClearedResidency
-                            ? 'checkmark.seal.fill'
                             : isVideoDoc
                               ? 'video.fill'
                               : 'doc.badge.plus'
                       }
                       size={18}
-                      color={selectedFile || isPreClearedResidency ? '#16A34A' : '#0284C7'}
+                      color={selectedFile ? '#16A34A' : '#0284C7'}
                     />
-                    <Text style={[styles.uploadText, (selectedFile || isPreClearedResidency) && styles.fileNameText]}>
+                    <Text style={[styles.uploadText, selectedFile && styles.fileNameText]}>
                       {selectedFile
                         ? selectedFile.name
-                        : isPreClearedResidency
-                          ? 'Optional: Tap to attach physical proof of residency'
                           : (doc.document_code?.toUpperCase().includes('VIDEO') || doc.document_name?.toUpperCase().includes('VIDEO'))
                             ? `Select ${doc.document_name} (MP4, MOV, WEBM up to 20MB)`
                             : `Select ${doc.document_name} (PDF, PNG, JPG up to 5MB)`}
@@ -2683,7 +2667,7 @@ export function NewApplicantApplicationScreen() {
                     Fast-Track Verified Citizen
                   </Text>
                   <Text style={{ fontSize: 11, color: isDarkMode ? '#BBF7D0' : '#166534', marginTop: 2 }}>
-                    Citizen ID: {citizenVerificationData?.citizen_id_number || 'Approved'} · Residency Pre-Cleared
+                    Citizen ID: {citizenVerificationData?.citizen_id_number || 'Approved'} •• Verified Profile
                   </Text>
                 </View>
               </View>
