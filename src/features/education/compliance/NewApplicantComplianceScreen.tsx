@@ -564,7 +564,7 @@ export function NewApplicantComplianceScreen() {
                   </Text>
                   <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginBottom: 8, marginTop: 2 }}>
                     {isVideoRequirement(item)
-                      ? 'MP4, MOV, WEBM up to 20MB'
+                      ? 'MP4, MOV, WEBM up to 60MB'
                       : 'PDF, PNG, JPG up to 10MB'}
                   </Text>
 
@@ -591,7 +591,7 @@ export function NewApplicantComplianceScreen() {
                       {pickedFile
                         ? 'Change Selected File'
                         : isVideoRequirement(item)
-                        ? 'Select Replacement Video (MP4, MOV, WEBM up to 20MB)'
+                        ? 'Select Replacement Video (MP4, MOV, WEBM up to 60MB)'
                         : 'Select Replacement File (PDF, PNG, JPG up to 10MB)'}
                     </Text>
                   </TouchableOpacity>

@@ -3,11 +3,11 @@
  *
  * Enforces client-side file size boundaries across Citizen Mobile App document uploads.
  * Standard documents: 10 MB maximum limit (10 * 1024 * 1024 bytes).
- * Video declaration documents: 20 MB maximum limit (20 * 1024 * 1024 bytes).
+ * Video declaration documents: 60 MB maximum limit (60 * 1024 * 1024 bytes).
  */
 
 export const DEFAULT_MAX_DOC_SIZE_MB = 10;
-export const MAX_VIDEO_SIZE_MB = 20;
+export const MAX_VIDEO_SIZE_MB = 60;
 
 export interface FileSizeValidationResult {
   valid: boolean;

@@ -619,7 +619,7 @@ export function NewApplicantApplicationScreen() {
       ? ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/*']
       : ['application/pdf', 'image/jpeg', 'image/png'];
 
-    const maxLimitMb = isVideo ? 20 : 10;
+    const maxLimitMb = isVideo ? 60 : 10;
 
     try {
       const res = await DocumentPicker.getDocumentAsync({
@@ -641,10 +641,10 @@ export function NewApplicantApplicationScreen() {
           uriScheme: asset.uri ? asset.uri.split(':')[0] : null,
         });
 
-        // 10MB/20MB file size limit validation using shared utility (LOW-03)
+        // 10MB/60MB file size limit validation using shared utility (LOW-03)
         const validation = validateFileSize(asset, maxLimitMb, doc.document_name);
         if (!validation.valid) {
-          Alert.alert('File Too Large', validation.errorMessage || `The selected ${doc.document_name} file exceeds the maximum limit of ${maxLimitMb}MB.`);
+          Alert.alert('File Too Large', validation.errorMessage || `The selected ${doc.document_name} file exceeds the maximum limit of ${maxLimitMb}MB. Please choose a smaller file.`);
           return;
         }
 
@@ -2498,7 +2498,7 @@ export function NewApplicantApplicationScreen() {
                       {selectedFile
                         ? selectedFile.name
                           : (doc.document_code?.toUpperCase().includes('VIDEO') || doc.document_name?.toUpperCase().includes('VIDEO'))
-                            ? `Select ${doc.document_name} (MP4, MOV, WEBM up to 20MB)`
+                            ? `Select ${doc.document_name} (MP4, MOV, WEBM up to 60MB)`
                             : `Select ${doc.document_name} (PDF, PNG, JPG up to 5MB)`}
                     </Text>
                   </TouchableOpacity>
