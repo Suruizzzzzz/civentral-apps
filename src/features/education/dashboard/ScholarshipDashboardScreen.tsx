@@ -505,10 +505,25 @@ export function ScholarshipDashboardScreen() {
     const stage4Date = formatDate(approvedItem?.date || scholar?.admitted_at);
 
     // Stage 5: Grant
-    const hasGrantDisbursed = grantReleases.some(
+    const activeGrantApp =
+      (grantOverview?.has_existing_application && grantOverview.application)
+        ? grantOverview.application
+        : dashboardData?.grant
+        ? (dashboardData.grant as any)
+        : null;
+
+    const activeGrantStatus = (activeGrantApp?.grant_status || activeGrantApp?.status || '') as string;
+    const isGrantActive = Boolean(
+      activeGrantApp &&
+        ['Draft', 'Submitted', 'For Review', 'Under Review', 'For Compliance', 'Approved for Payroll'].includes(
+          activeGrantStatus
+        )
+    );
+
+    const hasGrantDisbursed = !isGrantActive && grantReleases.some(
       (r) => r.release_status === 'Completed' || r.release_status === 'Released'
     );
-    const hasGrantProcessing = grantReleases.some((r) =>
+    const hasGrantProcessing = !isGrantActive && grantReleases.some((r) =>
       ['Scheduled', 'Processing', 'Active', 'Pending'].includes(r.release_status)
     );
 
@@ -517,7 +532,24 @@ export function ScholarshipDashboardScreen() {
     let grantDate: string | null = null;
     let grantDesc = 'Educational financial assistance and stipend release processing.';
 
-    if (hasGrantDisbursed) {
+    if (isGrantActive) {
+      grantState = 'current';
+      grantSubLabel = activeGrantStatus || 'Under Review';
+      grantDate = formatDate(activeGrantApp?.submitted_at || (activeGrantApp as any)?.created_at) || 'In Progress';
+      if (activeGrantStatus === 'Approved for Payroll') {
+        grantDesc = 'Grant application validated and approved for municipal payroll processing.';
+      } else if (activeGrantStatus === 'For Compliance') {
+        grantDesc = 'Additional documentation required for grant compliance verification.';
+      } else if (activeGrantStatus === 'Under Review' || activeGrantStatus === 'For Review') {
+        grantDesc = 'Grant verification in progress by scholarship administrator.';
+      } else if (activeGrantStatus === 'Submitted') {
+        grantDesc = 'Grant application submitted and awaiting initial review.';
+      } else if (activeGrantStatus === 'Draft') {
+        grantDesc = 'Grant application drafted and awaiting final submission.';
+      } else {
+        grantDesc = `Grant status: ${activeGrantStatus}.`;
+      }
+    } else if (hasGrantDisbursed) {
       grantSubLabel = 'Disbursed';
       grantState = 'completed';
       grantDesc = 'Scholarship grant successfully disbursed to scholar account.';
@@ -529,28 +561,6 @@ export function ScholarshipDashboardScreen() {
       grantSubLabel = 'Processing';
       grantState = 'current';
       grantDesc = 'Grant disbursement release is currently being scheduled and processed.';
-    } else if (grantOverview?.has_existing_application && grantOverview.application) {
-      const gStatus = grantOverview.application.grant_status;
-      grantState = 'current';
-      if (gStatus === 'Approved for Payroll') {
-        grantSubLabel = 'Approved for Payroll';
-        grantDesc = 'Grant application validated and approved for municipal payroll processing.';
-      } else if (gStatus === 'For Compliance') {
-        grantSubLabel = 'For Compliance';
-        grantDesc = 'Additional documentation required for grant compliance verification.';
-      } else if (gStatus === 'Under Review' || gStatus === 'For Review') {
-        grantSubLabel = 'Under Review';
-        grantDesc = 'Grant verification in progress by scholarship administrator.';
-      } else if (gStatus === 'Submitted') {
-        grantSubLabel = 'Submitted';
-        grantDesc = 'Grant application submitted and awaiting initial review.';
-      } else if (gStatus === 'Draft') {
-        grantSubLabel = 'Draft';
-        grantDesc = 'Grant application drafted and awaiting final submission.';
-      } else {
-        grantSubLabel = gStatus || 'In Progress';
-        grantDesc = `Grant status: ${gStatus}.`;
-      }
     } else {
       if (scholar?.scholar_status === 'Active') {
         grantSubLabel = 'No Application';
@@ -741,6 +751,22 @@ export function ScholarshipDashboardScreen() {
         };
       }
 
+      if (
+        stages[4].state === 'current' &&
+        stages[4].subLabel &&
+        stages[4].subLabel !== 'No Application' &&
+        stages[4].subLabel !== 'Pending'
+      ) {
+        return {
+          label: stages[4].subLabel,
+          description: stages[4].description || 'Scholarship grant verification in progress.',
+          dotColor: '#7E22CE',
+          textColor: isDarkMode ? '#C084FC' : '#7E22CE',
+          badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
+          badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
+        };
+      }
+
       if (stages[4].state === 'completed') {
         return {
           label: 'Grant Disbursed',
@@ -749,16 +775,6 @@ export function ScholarshipDashboardScreen() {
           textColor: isDarkMode ? '#4ADE80' : '#16A34A',
           badgeBg: isDarkMode ? '#064E3B' : '#DCFCE7',
           badgeBorder: isDarkMode ? '#059669' : '#86EFAC',
-        };
-      }
-      if (stages[4].subLabel && stages[4].subLabel !== 'No Application' && stages[4].subLabel !== 'Pending') {
-        return {
-          label: stages[4].subLabel,
-          description: 'Scholarship grant application in progress.',
-          dotColor: '#7E22CE',
-          textColor: isDarkMode ? '#C084FC' : '#7E22CE',
-          badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
-          badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
         };
       }
       return {

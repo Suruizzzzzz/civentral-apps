@@ -68,9 +68,15 @@ export interface TimelineItem {
 }
 
 export interface DashboardGrant {
+  grant_application_id?: number | null;
+  grant_application_code?: string | null;
+  grant_status?: string | null;
+  status?: string | null;
+  submitted_at?: string | null;
+  academic_year?: string | null;
+  term?: string | null;
   amount?: number | null;
   amount_formatted?: string | null;
-  status?: string | null;
   expected_release_date?: string | null;
 }
 
