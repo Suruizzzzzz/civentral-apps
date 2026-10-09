@@ -1,20 +1,24 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 import { Badge } from "@/src/components/ui/Badge";
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { useTheme } from "@/src/context/ThemeContext";
+import { AuthService } from "@/src/services/auth-service";
+import { ScholarshipConsentModal } from "./new-applicant/components/ScholarshipConsentModal";
 import { styles } from "./EducationScreen.styles";
 
 export function EducationScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
-  const isNavigatingRef = React.useRef(false);
+  const isNavigatingRef = useRef(false);
+  const [isConsentModalVisible, setIsConsentModalVisible] = useState(false);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       isNavigatingRef.current = false;
     }, [])
   );
@@ -26,6 +30,36 @@ export function EducationScreen() {
     setTimeout(() => {
       isNavigatingRef.current = false;
     }, 600);
+  };
+
+  const handleNewApplicantPress = async () => {
+    try {
+      const currentUser = AuthService.getCurrentUser();
+      const citizenUserId = currentUser?.citizen_user_id || "guest";
+      const consented = await AsyncStorage.getItem(`@scholarship_consent_${citizenUserId}`);
+
+      if (consented === "true") {
+        safeNavigate("/education/new-applicant");
+      } else {
+        setIsConsentModalVisible(true);
+      }
+    } catch (err) {
+      console.warn("[EducationScreen] Error checking scholarship consent:", err);
+      safeNavigate("/education/new-applicant");
+    }
+  };
+
+  const handleAcceptConsent = async () => {
+    try {
+      const currentUser = AuthService.getCurrentUser();
+      const citizenUserId = currentUser?.citizen_user_id || "guest";
+      await AsyncStorage.setItem(`@scholarship_consent_${citizenUserId}`, "true");
+    } catch (err) {
+      console.warn("[EducationScreen] Error storing scholarship consent:", err);
+    } finally {
+      setIsConsentModalVisible(false);
+      safeNavigate("/education/new-applicant");
+    }
   };
 
   const handleBack = () => {
@@ -159,7 +193,7 @@ export function EducationScreen() {
                   borderColor: "#3A506B",
                 },
               ]}
-              onPress={() => safeNavigate("/education/new-applicant")}
+              onPress={handleNewApplicantPress}
               activeOpacity={0.85}
             >
               <View style={styles.hubCardHeader}>
@@ -349,6 +383,12 @@ export function EducationScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <ScholarshipConsentModal
+        visible={isConsentModalVisible}
+        onClose={() => setIsConsentModalVisible(false)}
+        onAccept={handleAcceptConsent}
+      />
     </View>
   );
 }
