@@ -217,7 +217,7 @@ export function ProfileScreen() {
     suffix: "",
     fullName: isGuestMode ? "Guest Resident" : "",
     initials: isGuestMode ? "GR" : "",
-    email: activeEmail || (isGuestMode ? "guest@caloocan.gov.ph" : ""),
+    email: activeEmail || (isGuestMode ? "guest@civentral.gov.ph" : ""),
     phone: "",
     address: "",
     city: "Caloocan City",
@@ -286,7 +286,7 @@ export function ProfileScreen() {
             : `Barangay ${verificationData.barangay}`
           : '',
         verificationData.district ? `District ${verificationData.district}` : '',
-        verificationData.city || process.env.EXPO_PUBLIC_CITY_NAME || 'Caloocan City',
+        verificationData.city || process.env.EXPO_PUBLIC_CITY_NAME || 'Civentral City',
       ].filter(Boolean);
       if (parts.length > 0) return parts.join(', ');
       if (verificationData.address) return verificationData.address;
@@ -465,7 +465,7 @@ export function ProfileScreen() {
                 : `Barangay ${combinedVData.barangay}`
               : '',
             combinedVData.district ? `District ${combinedVData.district}` : '',
-            combinedVData.city || process.env.EXPO_PUBLIC_CITY_NAME || 'Caloocan City',
+            combinedVData.city || process.env.EXPO_PUBLIC_CITY_NAME || 'Civentral City',
           ].filter(Boolean);
           const resolvedVerifiedAddr = parts.length > 0 ? parts.join(', ') : (combinedVData.address || '');
 
@@ -651,8 +651,8 @@ export function ProfileScreen() {
                   ]}
                 >
                   {userProfile.barangay
-                    ? `${userProfile.barangay}, Caloocan City`
-                    : "Caloocan City Resident"}
+                    ? `${userProfile.barangay}, Civentral City`
+                    : "Civentral City Resident"}
                 </Text>
               </View>
             </View>
@@ -1263,7 +1263,7 @@ export function ProfileScreen() {
                       Get Official Citizen ID Card
                     </Text>
                     <Text style={{ fontSize: 12, color: isDarkMode ? '#94A3B8' : '#64748B', marginTop: 2, lineHeight: 17 }}>
-                      Submit your valid ID and selfie to receive your certified Caloocan Digital Resident Card with cryptographic QR pass.
+                      Submit your valid ID and selfie to receive your certified Civentral Digital Resident Card with cryptographic QR pass.
                     </Text>
                   </View>
                 </View>
@@ -1574,7 +1574,7 @@ export function ProfileScreen() {
                 onPress={() =>
                   Alert.alert(
                     "City Hall Support Hotline",
-                    "Connecting to Caloocan City Citizen Desk: (02) 8888-CALOOCAN",
+                    "Connecting to Civentral City Citizen Desk: (02) 8888-CIVENTRAL",
                   )
                 }
                 activeOpacity={0.7}
@@ -1760,10 +1760,10 @@ export function ProfileScreen() {
               <Badge
                 label={
                   isCitizenApproved
-                    ? "VERIFIED CITIZEN • CALOOCAN CITY"
+                    ? "VERIFIED CITIZEN • CIVENTRAL CITY"
                     : isGuestMode
-                    ? "GUEST PASS • CALOOCAN CITY"
-                    : "ACTIVE RESIDENT • CALOOCAN CITY"
+                    ? "GUEST PASS • CIVENTRAL CITY"
+                    : "ACTIVE RESIDENT • CIVENTRAL CITY"
                 }
                 variant={isCitizenApproved ? "success" : isGuestMode ? "neutral" : "info"}
                 style={{
@@ -1871,7 +1871,7 @@ export function ProfileScreen() {
                     isDarkMode && { color: "#94A3B8" },
                   ]}
                 >
-                  {userProfile.citizenId || "CALOOCAN CITY RESIDENT"}
+                  {userProfile.citizenId || "CIVENTRAL CITY RESIDENT"}
                 </Text>
               </View>
               <View style={styles.logoutActiveBadge}>
@@ -1940,7 +1940,7 @@ export function ProfileScreen() {
                 ]}
               >
                 {" "}
-                Secured by Caloocan City E-Governance Portal
+                Secured by Civentral City E-Governance Portal
               </Text>
             </View>
           </View>

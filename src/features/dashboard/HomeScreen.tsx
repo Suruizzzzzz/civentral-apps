@@ -52,10 +52,10 @@ const INITIAL_ANNOUNCEMENTS: AnnouncementItem[] = [
     title: "Typhoon Weather Advisory #2 - DRRM Command Center",
     date: "July 27, 2026 - 10 mins ago",
     summary:
-      "Caloocan DRRM Command Center issued heavy rainfall alert for Barangay Central. Emergency response teams deployed.",
+      "Civentral DRRM Command Center issued heavy rainfall alert for Barangay Central. Emergency response teams deployed.",
     fullBody:
-      "The Caloocan Disaster Risk Reduction and Management (DRRM) Office has raised Alert Level 2 due to heavy monsoon rains. Emergency evacuation shelters at Barangay Covered Courts are open. For emergency rescue, tap the SOS button or call hotline (02) 8888-CALOOCAN.",
-    department: "Caloocan DRRM Command Center",
+      "The Civentral Disaster Risk Reduction and Management (DRRM) Office has raised Alert Level 2 due to heavy monsoon rains. Emergency evacuation shelters at Barangay Covered Courts are open. For emergency rescue, tap the SOS button or call hotline (02) 8888-CIVENTRAL.",
+    department: "Civentral DRRM Command Center",
   },
   {
     id: "ANC-102",
@@ -76,7 +76,7 @@ const INITIAL_ANNOUNCEMENTS: AnnouncementItem[] = [
     title: "Online Business Permit Renewal Fast-Track Portal Open",
     date: "July 25, 2026 - 2 days ago",
     summary:
-      "Caloocan City Treasury launches instant digital clearance processing for Q3 business permit renewals.",
+      "Civentral City Treasury launches instant digital clearance processing for Q3 business permit renewals.",
     fullBody:
       "Business owners can now apply for, renew, and pay Q3 business permits completely online via Civentral. Approved e-permits with official QR verification will be issued within 24 hours of payment clearance.",
     department: "Business Permits and Licensing Office (BPLO)",
@@ -151,7 +151,7 @@ export function HomeScreen() {
     suffix: "",
     fullName: isGuestMode ? "Guest Resident" : "Active Citizen",
     initials: isGuestMode ? "GR" : "AC",
-    email: activeEmail || (isGuestMode ? "guest@caloocan.gov.ph" : ""),
+    email: activeEmail || (isGuestMode ? "guest@civentral.gov.ph" : ""),
     phone: "",
     address: "",
     city: "Caloocan City",
@@ -212,7 +212,7 @@ export function HomeScreen() {
       setAuthGateContent({
         title: 'Sign In Required',
         message:
-          'Education assistance and scholarship programs are only accessible to registered Caloocan City citizens. Please sign in to continue.',
+          'Education assistance and scholarship programs are only accessible to registered Civentral City citizens. Please sign in to continue.',
       });
       setIsAuthGateVisible(true);
       return;
@@ -368,8 +368,8 @@ export function HomeScreen() {
     (userProfile.fullName ? userProfile.fullName.split(" ")[0] : "Citizen");
 
   const locationLabel = userProfile.barangay
-    ? `${userProfile.barangay}, Caloocan City`
-    : "Caloocan City Resident";
+    ? `${userProfile.barangay}, Civentral City`
+    : "Civentral City Resident";
 
   const dm = isDarkMode;
   const C = {
@@ -1139,10 +1139,10 @@ export function HomeScreen() {
               <Badge
                 label={
                   userProfile.isVerified || verificationData.status === 'Approved'
-                    ? "VERIFIED CITIZEN • CALOOCAN CITY"
+                    ? "VERIFIED CITIZEN • CIVENTRAL CITY"
                     : isGuestMode
-                    ? "GUEST PASS • CALOOCAN CITY"
-                    : "ACTIVE RESIDENT • CALOOCAN CITY"
+                    ? "GUEST PASS • CIVENTRAL CITY"
+                    : "ACTIVE RESIDENT • CIVENTRAL CITY"
                 }
                 variant={
                   userProfile.isVerified || verificationData.status === 'Approved'

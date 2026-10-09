@@ -163,7 +163,7 @@ const SERVICES_CATALOG: ServiceCatalogItem[] = [
     id: 'SVC-HOU-AST',
     title: 'Housing Assistance & Beneficiary Application',
     category: 'HOUSING',
-    description: 'Caloocan socialized housing program, informal settler relocation & housing beneficiary application.',
+    description: 'Civentral socialized housing program, informal settler relocation & housing beneficiary application.',
     iconName: 'house.fill',
     iconBg: '#DCFCE7',
     iconColor: '#15803D',
@@ -287,7 +287,7 @@ const SERVICES_CATALOG: ServiceCatalogItem[] = [
     id: 'SVC-FAC-PRK',
     title: 'Parks & Recreation Scheduling',
     category: 'FACILITIES',
-    description: 'Book public parks, Caloocan Sports Complex courts, amphitheaters & municipal recreation grounds.',
+    description: 'Book public parks, Civentral Sports Complex courts, amphitheaters & municipal recreation grounds.',
     iconName: 'heart.text.square.fill',
     iconBg: '#DCFCE7',
     iconColor: '#16A34A',
@@ -325,7 +325,7 @@ const SERVICES_CATALOG: ServiceCatalogItem[] = [
     id: 'SVC-BRG',
     title: 'Barangay Clearance & Citizen ID',
     category: 'BARANGAY',
-    description: 'Apply for Barangay Clearance, Residency Certification & Official Caloocan Digital Citizen Pass.',
+    description: 'Apply for Barangay Clearance, Residency Certification & Official Civentral Digital Citizen Pass.',
     iconName: 'person.text.rectangle.fill',
     iconBg: '#E0F2FE',
     iconColor: '#0284C7',
@@ -442,7 +442,7 @@ export function ServicesCatalogScreen() {
         <View style={styles.headerContainer}>
           <Text style={[styles.headerTitle, isDarkMode && { color: '#F8FAFC' }]}>Municipal Services Directory</Text>
           <Text style={[styles.headerSubtitle, isDarkMode && { color: '#94A3B8' }]}>
-            Access official Caloocan City government e-services, permits, education grants & digital clearance.
+            Access official Civentral City government e-services, permits, education grants & digital clearance.
           </Text>
         </View>
 

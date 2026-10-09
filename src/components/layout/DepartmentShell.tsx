@@ -23,7 +23,7 @@ export function DepartmentShell() {
   return (
     <View style={[styles.shell, isDarkMode && { backgroundColor: '#0B132B' }]}>
       <HeaderBar
-        subtitle="Caloocan Government Services"
+        subtitle="Civentral Government Services"
         onNotificationPress={() => router.push('/(tabs)/notifications' as any)}
       />
       <View style={styles.content}>

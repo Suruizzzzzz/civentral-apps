@@ -15,7 +15,7 @@ const FACILITIES_SERVICES = [
   {
     id: 'PARK',
     title: 'Parks & Recreation Scheduling',
-    desc: 'Book public parks, Caloocan Sports Complex courts, amphitheaters & municipal recreation grounds.',
+    desc: 'Book public parks, Civentral Sports Complex courts, amphitheaters & municipal recreation grounds.',
     icon: 'heart.text.square.fill',
     badge: 'PARK RESERVATION',
   },

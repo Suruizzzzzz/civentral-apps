@@ -581,7 +581,7 @@ export function OfficialCitizenCard({
   </style>
 </head>
 <body>
-  <div class="page-title">City of Caloocan Official Resident Credential</div>
+  <div class="page-title">City of Civentral Official Resident Credential</div>
   <div class="page-subtitle">Printed via CIVentral Municipal Digital Identity Portal</div>
 
   <!-- FRONT CARD -->
@@ -610,7 +610,7 @@ export function OfficialCitizenCard({
         <img src="${resolvedLogoUri}" class="seal-img" alt="Logo" />
         <div class="brand-text-col">
           <div class="brand-title">CIVENTRAL CITIZEN CARD</div>
-          <div class="brand-sub">KASAMA KA SA PAG-UNLAD • CITY OF CALOOCAN</div>
+          <div class="brand-sub">KASAMA KA SA PAG-UNLAD • CITY OF CIVENTRAL</div>
         </div>
       </div>
     </div>
@@ -667,7 +667,7 @@ export function OfficialCitizenCard({
 
           <div class="addr-box">
             <div class="addr-text">${fullAddress}</div>
-            <div class="addr-text">CALOOCAN CITY</div>
+            <div class="addr-text">CIVENTRAL CITY</div>
           </div>
         </div>
 
@@ -697,7 +697,7 @@ export function OfficialCitizenCard({
     </div>
     <div class="back-body">
       <p style="margin-bottom:6px;">
-        <strong>CONDITIONS OF ISSUANCE:</strong> This official digital card certifies that the named bearer is a duly verified citizen resident of Caloocan City. This card remains the property of the City Government of Caloocan.
+        <strong>CONDITIONS OF ISSUANCE:</strong> This official digital card certifies that the named bearer is a duly verified citizen resident of Civentral City. This card remains the property of the City Government of Civentral.
       </p>
       <p style="margin-bottom:6px;">
         <strong>VERIFICATION:</strong> The authentic digital credential can be validated using the CIVentral Officer Scanner or the municipal portal by scanning the cryptographic QR credential on the front side.
@@ -709,7 +709,7 @@ export function OfficialCitizenCard({
         </div>
         <div style="text-align:right;">
           <div style="font-size:5.5px;color:#64748B;">HOTLINE INQUIRIES</div>
-          <div style="font-size:7.5px;font-weight:800;">(02) 8888-CALOOCAN</div>
+          <div style="font-size:7.5px;font-weight:800;">(02) 8888-CIVENTRAL</div>
         </div>
       </div>
     </div>
@@ -805,7 +805,7 @@ export function OfficialCitizenCard({
             Official Resident ID Issued
           </Text>
           <Text style={{ fontSize: 11, color: isDarkMode ? '#D1FAE5' : '#047857', marginTop: 1 }}>
-            Certified by City Government of Caloocan
+            Certified by City Government of Civentral
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
@@ -974,7 +974,7 @@ export function OfficialCitizenCard({
                     textAlign: 'center',
                   }}
                 >
-                  KASAMA KA SA PAG-UNLAD • CITY OF CALOOCAN
+                  KASAMA KA SA PAG-UNLAD • CITY OF CIVENTRAL
                 </Text>
               </View>
             </View>
@@ -1160,7 +1160,7 @@ export function OfficialCitizenCard({
                       lineHeight: 10,
                     }}
                   >
-                    CALOOCAN CITY
+                    CIVENTRAL CITY
                   </Text>
                 </View>
               </View>

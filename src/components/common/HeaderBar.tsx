@@ -11,7 +11,7 @@ export interface HeaderBarProps {
 }
 
 export function HeaderBar({
-  subtitle = "Caloocan Government Services",
+  subtitle = "Civentral Government Services",
   onNotificationPress,
   hasUnreadNotifications = true,
 }: HeaderBarProps) {

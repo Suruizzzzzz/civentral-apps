@@ -57,7 +57,7 @@ export default function TransportIndexRoute() {
           <View style={styles.bannerIconBadge}>
             <IconSymbol name="car.fill" size={28} color="#FFFFFF" />
           </View>
-          <Text style={styles.bannerTitle}>Caloocan Transport & Mobility Office</Text>
+          <Text style={styles.bannerTitle}>Civentral Transport & Mobility Office</Text>
           <Text style={styles.bannerSub}>
             CPTMD e-Services for PUV franchises, route management, traffic violation settlements & vehicle inspections.
           </Text>

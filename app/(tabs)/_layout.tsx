@@ -12,7 +12,7 @@ export default function TabLayout() {
       screenOptions={{
         header: () => (
           <HeaderBar
-            subtitle="Caloocan Government Services"
+            subtitle="Civentral Government Services"
             onNotificationPress={() => router.push('/(tabs)/notifications')}
           />
         ),

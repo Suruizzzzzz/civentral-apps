@@ -22,7 +22,7 @@ export interface AuthGateModalProps {
 export function AuthGateModal({
   visible,
   title = 'Sign In Required',
-  message = 'This municipal e-service is only accessible to registered Caloocan City citizens. Please sign in to continue.',
+  message = 'This municipal e-service is only accessible to registered Civentral City citizens. Please sign in to continue.',
   onClose,
   onSignIn,
   onRegister,
@@ -102,7 +102,7 @@ export function AuthGateModal({
                 isDarkMode && { color: '#94A3B8' },
               ]}
             >
-              CALOOCAN CITY GOVERNMENT
+              CIVENTRAL CITY GOVERNMENT
             </Text>
             <View
               style={[
@@ -183,7 +183,7 @@ export function AuthGateModal({
                 isDarkMode && { color: '#94A3B8' },
               ]}
             >
-              {'  '}Protected by Caloocan City E-Governance Portal
+              {'  '}Protected by Civentral City E-Governance Portal
             </Text>
           </View>
         </View>

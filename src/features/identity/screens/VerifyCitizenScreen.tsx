@@ -1046,7 +1046,7 @@ export function VerifyCitizenScreen() {
               <ActivityIndicator size="large" color="#0284C7" style={{ marginBottom: 16 }} />
               <Text style={[styles.guardTitle, { color: dmText, fontSize: 17 }]}>Checking Verification Status...</Text>
               <Text style={[styles.guardSubtitle, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>
-                Connecting to Caloocan Civil & Barangay Registry database
+                Connecting to Civentral Civil & Barangay Registry database
               </Text>
             </View>
           ) : ((appStatus === 'Pending' || appStatus === 'Under_Review') && appData) ? (
@@ -1169,7 +1169,7 @@ export function VerifyCitizenScreen() {
                   </View>
                   <View>
                     <Text style={{ fontSize: 14, fontWeight: '800', color: dmText }}>
-                      Caloocan Civic & Emergency Directory
+                      Civentral Civic & Emergency Directory
                     </Text>
                     <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>
                       24/7 Priority Emergency & Resident Hotlines
@@ -1191,7 +1191,7 @@ export function VerifyCitizenScreen() {
                   >
                     <View>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: dmText }}>CDRRMO Rescue (Disaster)</Text>
-                      <Text style={{ fontSize: 10, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Caloocan Disaster Command</Text>
+                      <Text style={{ fontSize: 10, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Civentral Disaster Command</Text>
                     </View>
                     <Text style={{ fontSize: 12, fontWeight: '800', color: '#DC2626' }}>(02) 888-ALERTO</Text>
                   </View>
@@ -1208,7 +1208,7 @@ export function VerifyCitizenScreen() {
                   >
                     <View>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: dmText }}>PNP Police Headquarters</Text>
-                      <Text style={{ fontSize: 10, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Caloocan Police Station</Text>
+                      <Text style={{ fontSize: 10, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Civentral Police Station</Text>
                     </View>
                     <Text style={{ fontSize: 12, fontWeight: '800', color: '#0284C7' }}>(02) 8287-2270</Text>
                   </View>
@@ -1274,7 +1274,7 @@ export function VerifyCitizenScreen() {
                     • Civentral Cloud: <Text style={{ color: '#0284C7', fontWeight: '700' }}>civentral.tech</Text>
                   </Text>
                   <Text style={{ fontSize: 9.5, color: isDarkMode ? '#64748B' : '#94A3B8', marginTop: 4, fontStyle: 'italic', lineHeight: 14 }}>
-                    Notice: This digital resident card is issued pursuant to City Ordinance No. 0824 as an authentic, scannable proof of residency in the City of Caloocan.
+                    Notice: This digital resident card is issued pursuant to City Ordinance No. 0824 as an authentic, scannable proof of residency in the City of Civentral.
                   </Text>
                 </View>
               </View>
@@ -1369,7 +1369,7 @@ export function VerifyCitizenScreen() {
                   <View style={styles.bannerTextWrapper}>
                     <Text style={styles.bannerTitle}>Official Citizen Verification</Text>
                     <Text style={styles.bannerSubtitle}>
-                      Verify your Caloocan City citizen account to access civic services and clearances.
+                      Verify your Civentral City citizen account to access civic services and clearances.
                     </Text>
                   </View>
                 </View>
@@ -1589,7 +1589,7 @@ export function VerifyCitizenScreen() {
                 </Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: dmInputBg, color: dmInputText, borderColor: dmBorder }]}
-                  placeholder="e.g. Caloocan City / Manila"
+                  placeholder="e.g. Civentral City / Manila"
                   placeholderTextColor="#94A3B8"
                   value={placeOfBirth}
                   onChangeText={setPlaceOfBirth}
@@ -2185,12 +2185,12 @@ export function VerifyCitizenScreen() {
                 { backgroundColor: dmCard, borderColor: dmBorder },
               ]}
             >
-              <Text style={[styles.cardTitle, { color: dmText }]}>Caloocan Residency & District</Text>
+              <Text style={[styles.cardTitle, { color: dmText }]}>Civentral Residency & District</Text>
 
               {/* Caloocan District Selector */}
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: isDarkMode ? '#CBD5E1' : '#334155' }]}>
-                  Select Caloocan Legislative District
+                  Select Civentral Legislative District
                 </Text>
                 <View style={styles.districtCardGrid}>
                   {CALOOCAN_DISTRICTS.map((district) => {
@@ -2291,7 +2291,7 @@ export function VerifyCitizenScreen() {
               {/* Years of Residency */}
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: isDarkMode ? '#CBD5E1' : '#334155' }]}>
-                  Years of Residency in Caloocan City
+                  Years of Residency in Civentral City
                 </Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: dmInputBg, color: dmInputText, borderColor: dmBorder }]}
@@ -2690,7 +2690,7 @@ export function VerifyCitizenScreen() {
                 Verification Submitted!
               </Text>
               <Text style={[styles.successMessage, isDarkMode && { color: '#CBD5E1' }]}>
-                Your citizen credentials for <Text style={{ fontWeight: '700' }}>{firstName} {lastName}</Text> have been securely submitted to the Caloocan City Civil & Barangay Registry.
+                Your citizen credentials for <Text style={{ fontWeight: '700' }}>{firstName} {lastName}</Text> have been securely submitted to the Civentral City Civil & Barangay Registry.
               </Text>
 
               <View

@@ -201,7 +201,7 @@ export function LoginScreen() {
 
               {/* Capitalized Title */}
               <Text style={styles.simpleGovTitle}>Civentral</Text>
-              <Text style={styles.simpleGovSubtitle}>CITY OF CALOOCAN</Text>
+              <Text style={styles.simpleGovSubtitle}>CITY OF CIVENTRAL</Text>
 
               {/* Loading Spinner at the Bottom */}
               <View style={styles.simpleGovSpinnerBox}>
