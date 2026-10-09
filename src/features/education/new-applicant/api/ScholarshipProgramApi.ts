@@ -303,13 +303,52 @@ export async function submitPreScreen(
 }
 
 export async function submitNewScholarshipApplication(
-  formData: FormData
+  formData: FormData,
+  programId?: number | string
 ): Promise<SubmitApplicationResult> {
-  const postUrl = `${EDUCATION_API_BASE_URL}/scholarship-applications/citizen/submit`;
+  // 1. Resolve numeric ID across all sources
+  let finalId: number | null = null;
+
+  if (programId && !isNaN(Number(programId)) && Number(programId) > 0) {
+    finalId = Number(programId);
+  }
+
+  // 2. Check _parts if not found in arg
+  if (!finalId && (formData as any)?._parts) {
+    const parts = (formData as any)._parts;
+    for (const part of parts) {
+      if (part[0] === 'program_id' && part[1] && !isNaN(Number(part[1])) && Number(part[1]) > 0) {
+        finalId = Number(part[1]);
+        break;
+      }
+    }
+  }
+
+  // 3. Validation: Require a valid program ID
+  if (!finalId || isNaN(finalId) || finalId <= 0) {
+    throw new Error('A valid scholarship program ID is required to complete submission.');
+  }
+
+  // 4. Force ensure it is in FormData as a clean string
+  if ((formData as any)?._parts) {
+    // Remove any dirty or null entries
+    (formData as any)._parts = (formData as any)._parts.filter((p: any) => p[0] !== 'program_id');
+    (formData as any)._parts.push(['program_id', String(finalId)]);
+  } else {
+    formData.append('program_id', String(finalId));
+  }
+
+  console.log('[ScholarshipApi] Submitting application for program:', finalId);
+
+  // Append program_id to URL query string as a secondary defense safety net
+  const postUrl = `${EDUCATION_API_BASE_URL}/scholarship-applications/citizen/submit?program_id=${finalId}`;
 
   const headers = await getEducationAuthHeaders({
     Accept: 'application/json',
   });
+  // Ensure Content-Type is NEVER manually set so fetch generates the multipart boundary automatically
+  delete (headers as any)['Content-Type'];
+  delete (headers as any)['content-type'];
 
   try {
     const fetchFn = typeof fetch !== 'undefined' ? fetch : expoFetch;
@@ -323,36 +362,24 @@ export async function submitNewScholarshipApplication(
       await handleEducationResponse(res);
     }
 
-    const rawText = await res.text();
-    let json: any = null;
-
-    if (rawText && rawText.trim().length > 0) {
-      try {
-        json = JSON.parse(rawText);
-      } catch {
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            json = JSON.parse(jsonMatch[0]);
-          } catch {}
-        }
-      }
+    const responseText = await res.text();
+    let data: any = null;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`Server returned non-JSON response (${res.status}).`);
     }
 
-    if (!res.ok || (json && json.status === 'error')) {
-      const errorMsg =
-        json?.message ||
-        `Submission failed with HTTP ${res.status}. Please try again later.`;
-      const err = new Error(errorMsg) as any;
-      err.status = res.status;
-      throw err;
+    if (!res.ok) {
+      console.error('[ScholarshipApi] Backend submission error:', data?.message || res.status);
+      throw new Error(`[Backend ${res.status}] ${data?.message || 'Submission failed'}`);
     }
 
-    if (!json || !json.data) {
+    if (!data || !data.data) {
       throw new Error('Server returned an unexpected response format.');
     }
 
-    return json.data;
+    return data.data;
   } catch (err: any) {
     throw err;
   }

@@ -5,7 +5,7 @@ export const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "flex-start",
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 120,
   },
 
   backButton: {

@@ -145,8 +145,12 @@ export function BrowseScholarshipsScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
+      contentContainerStyle={[
+        styles.container,
+        { paddingBottom: 120 }, // Clear the floating bottom navigation bar
+      ]}
+      showsVerticalScrollIndicator={true}
+      keyboardShouldPersistTaps="handled"
       style={{
         backgroundColor: isDarkMode ? '#0B132B' : '#F8FAFC',
       }}

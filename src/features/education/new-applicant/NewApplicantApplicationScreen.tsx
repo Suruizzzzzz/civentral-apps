@@ -68,15 +68,64 @@ export interface DocumentValidationState {
 
 export function NewApplicantApplicationScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ program_id?: string }>();
-  const programId = params.program_id ? parseInt(params.program_id, 10) : null;
+  const params = useLocalSearchParams<{
+    program_id?: string | string[];
+    programId?: string | string[];
+    id?: string | string[];
+    selectedProgramId?: string | string[];
+    program?: any;
+    program_name?: string;
+    programName?: string;
+    [key: string]: any;
+  }>();
+
+  const parseCandidateId = (val: any): number | null => {
+    if (val === null || val === undefined || val === '') return null;
+    if (typeof val === 'number') return !isNaN(val) && val > 0 ? val : null;
+    if (Array.isArray(val)) return parseCandidateId(val[0]);
+    if (typeof val === 'string') {
+      const parsed = parseInt(val, 10);
+      return !isNaN(parsed) && parsed > 0 ? parsed : null;
+    }
+    if (typeof val === 'object') {
+      return parseCandidateId(val.program_id ?? val.id ?? val.programId);
+    }
+    return null;
+  };
+
+  const initialParamProgramId = useMemo(() => {
+    return (
+      parseCandidateId(params.program_id) ||
+      parseCandidateId(params.programId) ||
+      parseCandidateId(params.id) ||
+      parseCandidateId(params.selectedProgramId) ||
+      parseCandidateId(params.program)
+    );
+  }, [params]);
+
+  const [selectedProgramId, setSelectedProgramId] = useState<number | null>(initialParamProgramId);
+  const [program, setProgram] = useState<ScholarshipProgram | null>(null);
+  const [applicationDraft, setApplicationDraft] = useState<any>(null);
+
+  useEffect(() => {
+    if (initialParamProgramId && initialParamProgramId !== selectedProgramId) {
+      setSelectedProgramId(initialParamProgramId);
+    }
+  }, [initialParamProgramId]);
+
+  const programId =
+    selectedProgramId ||
+    program?.program_id ||
+    (program as any)?.id ||
+    initialParamProgramId ||
+    applicationDraft?.program_id ||
+    null;
   const { isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  const [program, setProgram] = useState<ScholarshipProgram | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -228,7 +277,13 @@ export function NewApplicantApplicationScreen() {
   }, []);
 
   const loadData = useCallback(async () => {
-    if (!programId) {
+    const targetProgramId =
+      selectedProgramId ||
+      initialParamProgramId ||
+      program?.program_id ||
+      applicationDraft?.program_id;
+
+    if (!targetProgramId) {
       setFetchError('No scholarship program selected.');
       setIsLoading(false);
       return;
@@ -237,15 +292,19 @@ export function NewApplicantApplicationScreen() {
     try {
       setFetchError(null);
       const [data, schools, vResult] = await Promise.all([
-        getScholarshipProgramDetails(programId),
-        getPartnerSchoolsLookup(programId),
+        getScholarshipProgramDetails(targetProgramId),
+        getPartnerSchoolsLookup(targetProgramId),
         loadVerificationStatus(),
       ]);
       setPartnerSchools(schools);
       if (!data) {
         setFetchError('Scholarship program not found.');
       } else {
-        setProgram(sanitizeScholarshipProgramContent(data));
+        const sanitized = sanitizeScholarshipProgramContent(data);
+        setProgram(sanitized);
+        if (sanitized?.program_id) {
+          setSelectedProgramId(Number(sanitized.program_id));
+        }
         console.log('[NewApplicantApplicationScreen] Program loaded:', {
           program_id: data.program_id,
           program_name: data.program_name,
@@ -262,7 +321,7 @@ export function NewApplicantApplicationScreen() {
 
         // Re-hydrate draft if available for this citizen & program
         const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
-        if (activeUserId && programId && !hasHydratedRef.current) {
+        if (activeUserId && targetProgramId && !hasHydratedRef.current) {
           try {
             const draft = await FormDraftService.loadDraft<{
               currentStep?: 1 | 2 | 3;
@@ -281,9 +340,10 @@ export function NewApplicantApplicationScreen() {
               residentialAddress: string;
               files: Record<string, SelectedFileState>;
               docValidations: Record<string, DocumentValidationState>;
-            }>('new_applicant', activeUserId, programId);
+            }>('new_applicant', activeUserId, targetProgramId);
 
             if (draft) {
+              setApplicationDraft(draft);
               if (draft.currentStep && [1, 2, 3].includes(draft.currentStep)) {
                 setCurrentStep(draft.currentStep as 1 | 2 | 3);
               }
@@ -353,7 +413,7 @@ export function NewApplicantApplicationScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [programId, loadVerificationStatus]);
+  }, [selectedProgramId, initialParamProgramId, loadVerificationStatus]);
 
   useEffect(() => {
     loadData();
@@ -534,7 +594,15 @@ export function NewApplicantApplicationScreen() {
 
   // Auto-save form draft to local storage (debounced by 500ms)
   useEffect(() => {
-    if (!hasHydratedRef.current || !programId) return;
+    const activeProgramId =
+      selectedProgramId ||
+      program?.program_id ||
+      (program as any)?.id ||
+      initialParamProgramId ||
+      applicationDraft?.program_id ||
+      programId;
+
+    if (!hasHydratedRef.current || !activeProgramId) return;
     const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
     if (!activeUserId) return;
 
@@ -553,7 +621,8 @@ export function NewApplicantApplicationScreen() {
     if (!hasData) return;
 
     const timer = setTimeout(() => {
-      FormDraftService.saveDraft('new_applicant', activeUserId, programId, {
+      FormDraftService.saveDraft('new_applicant', activeUserId, activeProgramId, {
+        program_id: activeProgramId,
         currentStep,
         email,
         phoneDigits,
@@ -1003,24 +1072,60 @@ export function NewApplicantApplicationScreen() {
       return;
     }
 
+    const checkProgramId =
+      selectedProgramId ||
+      program?.program_id ||
+      (program as any)?.id ||
+      initialParamProgramId ||
+      applicationDraft?.program_id;
+
+    if (!checkProgramId || isNaN(Number(checkProgramId)) || Number(checkProgramId) <= 0) {
+      Alert.alert('Missing Program', 'No valid scholarship program was detected. Please select a program to continue.');
+      return;
+    }
+
     setSubmitError(null);
     setShowConfirmModal(true);
   };
 
   const handleConfirmSubmit = async () => {
-    if (!programId) return;
+    // Robust program ID resolution across all potential state locations
+    const selectedProgram = program;
+    const resolvedProgramId =
+      selectedProgramId ||
+      selectedProgram?.program_id ||
+      (selectedProgram as any)?.id ||
+      parseCandidateId(params?.programId) ||
+      parseCandidateId(params?.program_id) ||
+      parseCandidateId(params?.id) ||
+      parseCandidateId(params?.selectedProgramId) ||
+      parseCandidateId(params?.program?.program_id) ||
+      parseCandidateId(params?.program?.id) ||
+      parseCandidateId(params?.program) ||
+      applicationDraft?.program_id ||
+      programId;
+
+    if (!resolvedProgramId || isNaN(Number(resolvedProgramId)) || Number(resolvedProgramId) <= 0) {
+      console.error('[Submit] Aborted: Invalid or missing scholarship program ID.', {
+        resolvedProgramId,
+        selectedProgramId,
+        program_id: program?.program_id,
+        params,
+        applicationDraft_program_id: applicationDraft?.program_id,
+      });
+      setShowConfirmModal(false);
+      setSubmitError('Invalid or missing scholarship program ID.');
+      return;
+    }
 
     try {
-      console.log('[Submit] 1. confirm pressed');
-      console.log('[Submit] 2. before setIsSubmitting(true)');
       setIsSubmitting(true);
-      console.log('[Submit] 3. after setIsSubmitting(true)');
       setShowConfirmModal(false);
       setSubmitError(null);
 
-      console.log('[Submit] 4. constructing FormData for programId:', programId);
+      console.log('[NewApplicantApplicationScreen] Initiating submission for program:', resolvedProgramId);
       const formData = new FormData();
-      formData.append('program_id', String(programId));
+      formData.append('program_id', String(resolvedProgramId));
       formData.append('institution_name', institutionName.trim());
       if (selectedPartnerSchoolId !== null) {
         formData.append('institution_id', String(selectedPartnerSchoolId));
@@ -1060,16 +1165,6 @@ export function NewApplicantApplicationScreen() {
         const fileState = files[key];
 
         if (fileState) {
-          console.log(`[Submit] 5. appending ${key} (${doc.document_name})`, {
-            program_document_id: doc.program_document_id,
-            document_requirement_id: doc.document_requirement_id,
-            document_code: doc.document_code,
-            filename: fileState.name,
-            size: fileState.size,
-            mime: fileState.mimeType,
-            uriScheme: fileState.uri ? fileState.uri.split(':')[0] : null,
-          });
-
           const fileUri = fileState.uri || fileState.asset?.uri;
           const mimeType = fileState.mimeType || fileState.asset?.mimeType || 'application/pdf';
           const isPng = mimeType.toLowerCase().includes('png');
@@ -1085,28 +1180,23 @@ export function NewApplicantApplicationScreen() {
             name: safeName,
             type: mimeType,
           } as any);
-          console.log(`[Submit] 5. appended ${key} successfully using canonical multipart object`);
-        } else {
-          console.log(`[Submit] 5. NO FILE selected for key ${key} (${doc.document_name})`);
         }
       });
 
-      console.log('[Submit] 6. before API call submitNewScholarshipApplication');
       const startTime = Date.now();
-      const result = await submitNewScholarshipApplication(formData);
+      const result = await submitNewScholarshipApplication(formData, resolvedProgramId);
       const duration = Date.now() - startTime;
-      console.log(`[Submit] 7. after API call resolved in ${duration}ms`, result);
+      console.log(`[NewApplicantApplicationScreen] Submission resolved in ${duration}ms`);
 
       // Clear draft on successful submission
       const activeUserId = AuthService.getCurrentUser()?.citizen_user_id;
-      if (activeUserId && programId) {
-        await FormDraftService.clearDraft('new_applicant', activeUserId, programId).catch(() => {});
+      if (activeUserId && resolvedProgramId) {
+        await FormDraftService.clearDraft('new_applicant', activeUserId, Number(resolvedProgramId)).catch(() => {});
       }
 
       setSubmitResult(result);
-      console.log('[Submit] 8. setSubmitResult executed');
     } catch (err: any) {
-      console.error('[Submit] CATCH entered with error:', err);
+      console.error('[NewApplicantApplicationScreen] Submission error:', err);
       const errMsg = err?.message || 'Failed to submit scholarship application.';
       if (
         errMsg.includes('ACTIVE_APPLICATION_EXISTS') ||
@@ -1127,9 +1217,7 @@ export function NewApplicantApplicationScreen() {
         setSubmitError(errMsg);
       }
     } finally {
-      console.log('[Submit] FINALLY entered');
       setIsSubmitting(false);
-      console.log('[Submit] after setIsSubmitting(false)');
     }
   };
 
