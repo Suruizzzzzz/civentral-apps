@@ -49,7 +49,9 @@ function getStatusBadgeConfig(
     case 'Returned':
       return { label: 'RETURNED', variant: 'warning' };
     case 'Approved':
-      return { label: 'APPROVED', variant: 'success' };
+    case 'Post-Approval':
+    case 'Completed':
+      return { label: status === 'Completed' ? 'COMPLETED' : 'APPROVED', variant: 'success' };
     case 'Disapproved':
     case 'Rejected':
       return { label: 'DISAPPROVED', variant: 'danger' };
@@ -224,10 +226,15 @@ export function MyApplicationScreen() {
     return [...priorCompletedSteps, terminalStep];
   }, [processTimeline, isDisapproved, application, dashboardData?.latest_update?.timestamp]);
 
-  const isAppApproved = application?.application_status === 'Approved';
+  const isAppApproved = Boolean(
+    application?.application_status &&
+      ['Approved', 'Post-Approval', 'Completed'].includes(application.application_status)
+  );
   const hasExistingGrantApp = Boolean(grantOverview?.has_existing_application && grantOverview?.application);
   const isGrantEligible = Boolean(grantOverview?.eligible);
-  const showGrantContinuation = Boolean(isAppApproved || hasExistingGrantApp || (grantReleases && grantReleases.length > 0));
+  const showGrantContinuation = Boolean(
+    isAppApproved || isGrantEligible || hasExistingGrantApp || (grantReleases && grantReleases.length > 0)
+  );
 
   const allowedWithdrawStatuses = [
     'Submitted',

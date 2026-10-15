@@ -483,7 +483,9 @@ function getApplicationBadgeConfig(status?: string): {
       return { label: "Evaluating", variant: "info" };
     case "Approved":
     case "Active":
-      return { label: "Approved", variant: "success" };
+    case "Post-Approval":
+    case "Completed":
+      return { label: status === "Completed" ? "Completed" : "Approved", variant: "success" };
     case "Withdrawn":
       return { label: "Withdrawn", variant: "danger" };
     case "Disapproved":
@@ -843,7 +845,7 @@ export function CitizenScholarshipDetailScreen() {
     const stage2Completed = Boolean(
       scholar ||
       reviewItem?.is_completed ||
-      ["Ready for SSC", "For Evaluation", "Approved"].includes(
+      ["Ready for SSC", "For Evaluation", "Approved", "Post-Approval", "Completed"].includes(
         application?.application_status || "",
       ),
     );
@@ -873,7 +875,9 @@ export function CitizenScholarshipDetailScreen() {
     const stage3Completed = Boolean(
       scholar ||
       sscItem?.is_completed ||
-      application?.application_status === "Approved",
+      ["Approved", "Post-Approval", "Completed"].includes(
+        application?.application_status || "",
+      ),
     );
     const stage3Current =
       !stage3Completed &&
@@ -898,7 +902,9 @@ export function CitizenScholarshipDetailScreen() {
     );
     const stage4Completed = Boolean(
       scholar?.scholar_status === "Active" ||
-      application?.application_status === "Approved" ||
+      ["Approved", "Post-Approval", "Completed"].includes(
+        application?.application_status || "",
+      ) ||
       approvedItem?.is_completed,
     );
     const stage4Date = formatDate(approvedItem?.date || scholar?.admitted_at);

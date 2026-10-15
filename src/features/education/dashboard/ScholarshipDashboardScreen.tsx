@@ -449,7 +449,7 @@ export function ScholarshipDashboardScreen() {
     const stage2Completed = Boolean(
       scholar ||
         reviewItem?.is_completed ||
-        ['Ready for SSC', 'For Evaluation', 'Approved'].includes(
+        ['Ready for SSC', 'For Evaluation', 'Approved', 'Post-Approval', 'Completed'].includes(
           application?.application_status || ''
         )
     );
@@ -475,7 +475,9 @@ export function ScholarshipDashboardScreen() {
     const stage3Completed = Boolean(
       scholar ||
         sscItem?.is_completed ||
-        application?.application_status === 'Approved'
+        ['Approved', 'Post-Approval', 'Completed'].includes(
+          application?.application_status || ''
+        )
     );
     const stage3Current =
       !stage3Completed &&
@@ -499,7 +501,9 @@ export function ScholarshipDashboardScreen() {
     );
     const stage4Completed = Boolean(
       scholar?.scholar_status === 'Active' ||
-        application?.application_status === 'Approved' ||
+        ['Approved', 'Post-Approval', 'Completed'].includes(
+          application?.application_status || ''
+        ) ||
         approvedItem?.is_completed
     );
     const stage4Date = formatDate(approvedItem?.date || scholar?.admitted_at);
@@ -788,9 +792,9 @@ export function ScholarshipDashboardScreen() {
     }
     if (application) {
       const s = application.application_status;
-      if (s === 'Approved') {
+      if (s === 'Approved' || s === 'Post-Approval' || s === 'Completed') {
         return {
-          label: 'Approved',
+          label: s === 'Completed' ? 'Completed' : 'Approved',
           description: 'Application approved for municipal scholarship admission.',
           dotColor: '#16A34A',
           textColor: isDarkMode ? '#4ADE80' : '#16A34A',
