@@ -13,6 +13,12 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { validateFileSize } from '@/src/utils/fileValidation';
+import {
+  compressImageIfNeeded,
+  isImageFile,
+  validateDocumentClarity,
+  ClarityResult,
+} from '@/src/utils/imageCompression';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { formatDate } from '@/src/utils/dateUtils';
 import { useFocusEffect } from '@react-navigation/native';
@@ -113,6 +119,7 @@ interface DocumentOcrValidation {
   detectedCode?: string | null;
   expectedCode?: string;
   message?: string;
+  clarity?: ClarityResult;
 }
 
 export function GrantApplicationScreen() {
@@ -244,12 +251,38 @@ export function GrantApplicationScreen() {
           return;
         }
 
+        // Auto-compress image (downscale to max 1600px width, 0.75 quality) & assess document clarity
+        let processedAsset = asset;
+        let clarityResult: ClarityResult | undefined;
+
+        if (isImageFile(asset)) {
+          const compressed = await compressImageIfNeeded(asset);
+          processedAsset = {
+            ...asset,
+            uri: compressed.uri,
+            name: compressed.name,
+            size: compressed.size,
+            mimeType: compressed.mimeType,
+          };
+
+          // Assess document clarity via edge-contrast & entropy gradient variance
+          clarityResult = await validateDocumentClarity(processedAsset.uri);
+          if (clarityResult.isBlurry) {
+            Alert.alert(
+              'Document May Be Blurry',
+              `${clarityResult.recommendation}\n\nClarity Score: ${clarityResult.score}% (${clarityResult.rating}). Clear documents ensure faster automatic verification.`,
+              [{ text: 'Proceed Anyway', style: 'default' }]
+            );
+          }
+        }
+
         // Reset OCR state to 'checking' immediately
         setDocValidations((prev) => ({
           ...prev,
           [docType]: {
             status: 'checking',
             expectedCode: docType,
+            clarity: clarityResult,
           },
         }));
 
@@ -260,22 +293,22 @@ export function GrantApplicationScreen() {
           const updatedApp = await uploadGrantDocument(
             application.grant_application_id,
             docType,
-            asset.uri,
-            asset.name,
-            asset.mimeType || 'application/octet-stream'
+            processedAsset.uri,
+            processedAsset.name,
+            processedAsset.mimeType || 'application/octet-stream'
           );
           setApplication(updatedApp);
         } catch (uploadErr: any) {
           setDocValidations((prev) => ({
             ...prev,
-            [docType]: { status: 'error', message: uploadErr.message || 'Upload failed' },
+            [docType]: { status: 'error', message: uploadErr.message || 'Upload failed', clarity: clarityResult },
           }));
           throw uploadErr;
         }
 
         // 2. OCR validation pipeline
         try {
-          const validationResult = await validateCitizenGrantDocument(asset, docType);
+          const validationResult = await validateCitizenGrantDocument(processedAsset, docType);
           if (validationResult) {
             setDocValidations((prev) => ({
               ...prev,
@@ -285,6 +318,7 @@ export function GrantApplicationScreen() {
                 detectedCode: validationResult.detected_document_code,
                 expectedCode: validationResult.expected_document_code,
                 message: validationResult.message,
+                clarity: clarityResult,
               },
             }));
           } else {
@@ -294,6 +328,7 @@ export function GrantApplicationScreen() {
                 status: 'INCONCLUSIVE',
                 result: 'INCONCLUSIVE',
                 message: 'Automatic document check is unavailable. Manual review will apply.',
+                clarity: clarityResult,
               },
             }));
           }
@@ -304,6 +339,7 @@ export function GrantApplicationScreen() {
               status: 'INCONCLUSIVE',
               result: 'INCONCLUSIVE',
               message: ocrErr.message || 'Automatic document check is unavailable. Manual review will apply.',
+              clarity: clarityResult,
             },
           }));
         }

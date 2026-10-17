@@ -1,5 +1,11 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { validateFileSize } from '@/src/utils/fileValidation';
+import {
+  compressImageIfNeeded,
+  isImageFile,
+  validateDocumentClarity,
+  ClarityResult,
+} from '@/src/utils/imageCompression';
 import { formatDate, formatDateTime } from '@/src/utils/dateUtils';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -64,6 +70,7 @@ export interface DocumentValidationState {
   expectedCode?: string;
   detectedCode?: string | null;
   confidence?: number;
+  clarity?: ClarityResult;
 }
 
 export function NewApplicantApplicationScreen() {
@@ -717,6 +724,31 @@ export function NewApplicantApplicationScreen() {
           return;
         }
 
+        // Auto-compress image (downscale to max 1600px width, 0.75 quality) & assess document clarity
+        let processedAsset = asset;
+        let clarityResult: ClarityResult | undefined;
+
+        if (!isVideo && isImageFile(asset)) {
+          const compressed = await compressImageIfNeeded(asset);
+          processedAsset = {
+            ...asset,
+            uri: compressed.uri,
+            name: compressed.name,
+            size: compressed.size,
+            mimeType: compressed.mimeType,
+          };
+
+          // Assess document clarity via edge-contrast & entropy gradient variance
+          clarityResult = await validateDocumentClarity(processedAsset.uri);
+          if (clarityResult.isBlurry) {
+            Alert.alert(
+              'Document May Be Blurry',
+              `${clarityResult.recommendation}\n\nClarity Score: ${clarityResult.score}% (${clarityResult.rating}). Clear documents ensure faster automatic verification.`,
+              [{ text: 'Proceed Anyway', style: 'default' }]
+            );
+          }
+        }
+
         // Replacing a document must clear its previous validation state before running validation again
         setDocValidations((prev) => {
           const next = { ...prev };
@@ -724,15 +756,15 @@ export function NewApplicantApplicationScreen() {
           return next;
         });
 
-        // 1. Save/set the selected file using the existing state logic.
+        // 1. Save/set the selected file using the normalized/compressed asset.
         setFiles((prev) => ({
           ...prev,
           [docKey]: {
-            name: asset.name,
-            size: asset.size,
-            uri: asset.uri,
-            mimeType: asset.mimeType,
-            asset,
+            name: processedAsset.name,
+            size: processedAsset.size,
+            uri: processedAsset.uri,
+            mimeType: processedAsset.mimeType,
+            asset: processedAsset,
           },
         }));
 
@@ -750,6 +782,7 @@ export function NewApplicantApplicationScreen() {
           ...prev,
           [docKey]: {
             status: 'validating',
+            clarity: clarityResult,
           },
         }));
 
@@ -768,6 +801,7 @@ export function NewApplicantApplicationScreen() {
               status: 'validated',
               result: 'INCONCLUSIVE',
               message: 'Automatic verification is unavailable. Your document can still be reviewed manually.',
+              clarity: clarityResult,
             },
           }));
           return;
@@ -775,7 +809,7 @@ export function NewApplicantApplicationScreen() {
 
         try {
           const validationResult = await validateCitizenDocument(
-            asset,
+            processedAsset,
             programDocId,
             currentProgramId
           );
@@ -791,6 +825,7 @@ export function NewApplicantApplicationScreen() {
                 expectedCode: validationResult.expected_document_code,
                 detectedCode: validationResult.detected_document_code,
                 confidence: validationResult.confidence,
+                clarity: clarityResult,
               },
             }));
           } else {
@@ -801,6 +836,7 @@ export function NewApplicantApplicationScreen() {
                 status: 'validated',
                 result: 'INCONCLUSIVE',
                 message: 'Automatic verification is unavailable. Your document can still be reviewed manually.',
+                clarity: clarityResult,
               },
             }));
           }
@@ -812,6 +848,7 @@ export function NewApplicantApplicationScreen() {
               status: 'validated',
               result: 'INCONCLUSIVE',
               message: 'Automatic verification is unavailable. Your document can still be reviewed manually.',
+              clarity: clarityResult,
             },
           }));
         }

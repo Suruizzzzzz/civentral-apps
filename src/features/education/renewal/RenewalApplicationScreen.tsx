@@ -1,6 +1,12 @@
 import { formatDate } from '@/utils/dateUtils';
 import * as DocumentPicker from 'expo-document-picker';
 import { validateFileSize } from '@/src/utils/fileValidation';
+import {
+  compressImageIfNeeded,
+  isImageFile,
+  validateDocumentClarity,
+  ClarityResult,
+} from '@/src/utils/imageCompression';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -78,6 +84,7 @@ interface DocumentValidationState {
   detectedCode?: string | null;
   expectedCode?: string;
   message?: string;
+  clarity?: ClarityResult;
 }
 
 function getDocumentLabel(code?: string | null): string {
@@ -309,11 +316,36 @@ export function RenewalApplicationScreen() {
         return;
       }
 
+      // Auto-compress image (downscale to max 1600px width, 0.75 quality) & assess document clarity
+      let processedAsset = asset;
+      let clarityResult: ClarityResult | undefined;
+
+      if (isImageFile(asset)) {
+        const compressed = await compressImageIfNeeded(asset);
+        processedAsset = {
+          ...asset,
+          uri: compressed.uri,
+          name: compressed.name,
+          size: compressed.size,
+          mimeType: compressed.mimeType,
+        };
+
+        // Assess document clarity via edge-contrast & entropy gradient variance
+        clarityResult = await validateDocumentClarity(processedAsset.uri);
+        if (clarityResult.isBlurry) {
+          Alert.alert(
+            'Document May Be Blurry',
+            `${clarityResult.recommendation}\n\nClarity Score: ${clarityResult.score}% (${clarityResult.rating}). Clear documents ensure faster automatic verification.`,
+            [{ text: 'Proceed Anyway', style: 'default' }]
+          );
+        }
+      }
+
       const selectedFile: SelectedFileState = {
-        name: asset.name,
-        size: asset.size,
-        uri: asset.uri,
-        mimeType: asset.mimeType || undefined,
+        name: processedAsset.name,
+        size: processedAsset.size,
+        uri: processedAsset.uri,
+        mimeType: processedAsset.mimeType || undefined,
       };
 
       setFiles((prev) => ({
@@ -322,14 +354,18 @@ export function RenewalApplicationScreen() {
       }));
 
       // Trigger OCR Pre-Validation
-      runDocumentPreValidation(docType, asset);
+      runDocumentPreValidation(docType, processedAsset, clarityResult);
     } catch (err: any) {
       console.error('[RenewalApplicationScreen] File pick error:', err);
       Alert.alert('File Selection Failed', sanitizeErrorMessage(err?.message, 'Could not select the specified file.'));
     }
   };
 
-  const runDocumentPreValidation = async (docType: 'cor' | 'cog' | 'soa', asset: DocumentPicker.DocumentPickerAsset) => {
+  const runDocumentPreValidation = async (
+    docType: 'cor' | 'cog' | 'soa',
+    asset: DocumentPicker.DocumentPickerAsset,
+    clarity?: ClarityResult
+  ) => {
     const expectedCodeMap: Record<string, string> = {
       cor: 'COR',
       cog: 'COG',
@@ -342,6 +378,7 @@ export function RenewalApplicationScreen() {
       [docType]: {
         status: 'checking',
         expectedCode,
+        clarity,
       },
     }));
 
@@ -357,6 +394,7 @@ export function RenewalApplicationScreen() {
             detectedCode: validationResponse.detected_document_code,
             expectedCode: validationResponse.expected_document_code,
             message: validationResponse.message,
+            clarity,
           },
         }));
       } else {
@@ -366,6 +404,7 @@ export function RenewalApplicationScreen() {
             status: 'INCONCLUSIVE',
             result: 'INCONCLUSIVE',
             expectedCode,
+            clarity,
           },
         }));
       }
@@ -377,6 +416,7 @@ export function RenewalApplicationScreen() {
           status: 'error',
           expectedCode,
           message: ocrErr?.message || 'Automatic document check unavailable.',
+          clarity,
         },
       }));
     }

@@ -6,7 +6,12 @@ import {
   DEFAULT_MAX_DOC_SIZE_MB,
   MAX_VIDEO_SIZE_MB,
 } from '@/src/utils/fileValidation';
-import { compressImageIfNeeded, isImageFile } from '@/src/utils/imageCompression';
+import {
+  compressImageIfNeeded,
+  isImageFile,
+  validateDocumentClarity,
+  ClarityResult,
+} from '@/src/utils/imageCompression';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -192,6 +197,16 @@ export function NewApplicantComplianceScreen() {
         let processedFile = file;
         if (!isVideo && isImageFile(file)) {
           processedFile = await compressImageIfNeeded(file);
+
+          // Assess document clarity via edge-contrast & entropy gradient variance
+          const clarityResult = await validateDocumentClarity(processedFile.uri);
+          if (clarityResult.isBlurry) {
+            Alert.alert(
+              'Document May Be Blurry',
+              `${clarityResult.recommendation}\n\nClarity Score: ${clarityResult.score}% (${clarityResult.rating}). Clear documents ensure faster automatic verification.`,
+              [{ text: 'Proceed Anyway', style: 'default' }]
+            );
+          }
         }
 
         // 10MB (docs) / 20MB (video) file size limit validation using shared utility
