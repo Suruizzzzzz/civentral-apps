@@ -15,9 +15,10 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
 
 ## Priority 1: Backend Contract Alignment & Network Hardening
 
-- [ ] **[P1-NET-01] Implement Unified `ApiClient` & Standardized Error Envelope Parser**
+- [x] **[P1-NET-01] Implement Unified `ApiClient` & Standardized Error Envelope Parser**
   - **Location:** `src/services/api-client.ts` & `src/services/education-auth-helper.ts`
   - **Commit Tag:** `refactor(api): implement unified ApiClient with standard envelope unpacking`
+  - **Status:** **Completed.** Created centralized `ApiClient` in `src/services/api-client.ts` supporting subsystem base URL resolution (`education`, `citizen`, `core`), automatic bearer token injection from memory/SecureStore, request timeouts, and multipart support. Standardized `unpackApiResponse` for `BaseController` envelopes (`status === 'success' || status === 200`). Implemented `ApiValidationError` for HTTP 422 errors and updated `handleEducationResponse()` in `src/services/education-auth-helper.ts` to parse `json.errors` without breaking existing screen flows.
   - **Scope:**
     - Replace 41 repetitive `fetch()` / `expoFetch()` calls with a centralized, typed HTTP client.
     - Unify response unpacking to handle standard `BaseController` envelopes (`status === 'success' || status === 200`, `data`).
