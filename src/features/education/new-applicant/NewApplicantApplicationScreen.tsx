@@ -35,6 +35,7 @@ import {
 import { fetchCitizenDashboard } from '../dashboard/api/scholarshipDashboardApi';
 import { COMMON_COURSE_SUGGESTIONS, CourseSuggestion } from './constants/courseSuggestions';
 import { getAvailableYearLevels, resolveEducationLevelCategory } from './constants/yearLevelOptions';
+import { isApiValidationError } from '@/src/services/api-client';
 import { styles } from './styles/NewApplicantApplication.styles';
 
 const videoDeclarationGuideImg = require('@/assets/images/video-inter.png');
@@ -216,6 +217,16 @@ export function NewApplicantApplicationScreen() {
   const [showFullGuideModal, setShowFullGuideModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  const clearFieldError = useCallback((key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
   const [submitResult, setSubmitResult] = useState<SubmitApplicationResult | null>(null);
   const hasHydratedRef = useRef<boolean>(false);
 
@@ -1121,7 +1132,7 @@ export function NewApplicantApplicationScreen() {
       return;
     }
 
-    setSubmitError(null);
+    setSubmitError(null); setFieldErrors({});
     setShowConfirmModal(true);
   };
 
@@ -1158,7 +1169,7 @@ export function NewApplicantApplicationScreen() {
     try {
       setIsSubmitting(true);
       setShowConfirmModal(false);
-      setSubmitError(null);
+      setSubmitError(null); setFieldErrors({});
 
       console.log('[NewApplicantApplicationScreen] Initiating submission for program:', resolvedProgramId);
       const formData = new FormData();
@@ -1234,24 +1245,30 @@ export function NewApplicantApplicationScreen() {
       setSubmitResult(result);
     } catch (err: any) {
       console.error('[NewApplicantApplicationScreen] Submission error:', err);
-      const errMsg = err?.message || 'Failed to submit scholarship application.';
-      if (
-        errMsg.includes('ACTIVE_APPLICATION_EXISTS') ||
-        errMsg.includes('already have an active application') ||
-        errMsg.includes('Citizens may only have one active application')
-      ) {
-        Alert.alert(
-          'Active Application Exists',
-          'You already have an active scholarship application. Citizens may only have one active application at a time.',
-          [
-            {
-              text: 'Go to Dashboard',
-              onPress: () => router.replace('/education/dashboard' as any),
-            },
-          ]
-        );
+      if (isApiValidationError(err)) {
+        setFieldErrors(err.errors || {});
+        const topErrors = err.getAllErrors().slice(0, 2).join(', ');
+        setSubmitError(`Please check the highlighted fields: ${topErrors}`);
       } else {
-        setSubmitError(errMsg);
+        const errMsg = err?.message || 'Failed to submit scholarship application.';
+        if (
+          errMsg.includes('ACTIVE_APPLICATION_EXISTS') ||
+          errMsg.includes('already have an active application') ||
+          errMsg.includes('Citizens may only have one active application')
+        ) {
+          Alert.alert(
+            'Active Application Exists',
+            'You already have an active scholarship application. Citizens may only have one active application at a time.',
+            [
+              {
+                text: 'Go to Dashboard',
+                onPress: () => router.replace('/education/dashboard' as any),
+              },
+            ]
+          );
+        } else {
+          setSubmitError(errMsg);
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -2206,7 +2223,7 @@ export function NewApplicantApplicationScreen() {
                       isDarkMode && { backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' },
                     ]}
                     value={courseProgram}
-                    onChangeText={setCourseProgram}
+                    onChangeText={(text) => { setCourseProgram(text); clearFieldError('course_program'); clearFieldError('courseProgram'); }}
                     placeholder={
                       isSeniorHighProgram
                         ? 'Enter Senior High strand / track...'

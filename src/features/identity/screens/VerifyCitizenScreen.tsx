@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -21,6 +21,7 @@ import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 import { ProfileService } from '@/src/services/profile-service';
 import { getCandidateVerificationEndpoints } from '@/src/services/citizenVerificationService';
+import { isApiValidationError, ApiValidationError } from '@/src/services/api-client';
 import { styles } from '../styles/VerifyCitizenScreen.styles';
 import { OfficialCitizenCard } from '../components/OfficialCitizenCard';
 
@@ -268,6 +269,16 @@ export function VerifyCitizenScreen() {
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  const clearFieldError = useCallback((key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // STEP 1: Personal Details State
@@ -860,6 +871,14 @@ export function VerifyCitizenScreen() {
 
           const data = await res.json().catch(() => null);
 
+          if (res.status === 422 || (data && data.errors && res.status >= 400)) {
+            throw new ApiValidationError(
+              data?.message || 'Verification validation failed.',
+              data?.errors || {},
+              422
+            );
+          }
+
           if (res.ok && data && (data.status === 'success' || data.success === true)) {
             console.log('Successfully saved to citizen_verification database:', data);
             isSuccess = true;
@@ -891,7 +910,13 @@ export function VerifyCitizenScreen() {
       }
     } catch (err: any) {
       console.warn('Citizen Registry verification error:', err);
-      setErrorMessage(err?.message || 'An unexpected error occurred during submission.');
+      if (isApiValidationError(err)) {
+        setFieldErrors(err.errors || {});
+        const topErrors = err.getAllErrors().slice(0, 2).join(', ');
+        setErrorMessage(`Please check the highlighted fields: ${topErrors}`);
+      } else {
+        setErrorMessage(err?.message || 'An unexpected error occurred during submission.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -1481,7 +1506,7 @@ export function VerifyCitizenScreen() {
                   placeholder="e.g. Juan"
                   placeholderTextColor="#94A3B8"
                   value={firstName}
-                  onChangeText={setFirstName}
+                  onChangeText={(text) => { setFirstName(text); clearFieldError('first_name'); }}
                 />
               </View>
 
@@ -1523,7 +1548,7 @@ export function VerifyCitizenScreen() {
                   placeholder="e.g. Dela Cruz"
                   placeholderTextColor="#94A3B8"
                   value={lastName}
-                  onChangeText={setLastName}
+                  onChangeText={(text) => { setLastName(text); clearFieldError('last_name'); }}
                 />
               </View>
 
@@ -2388,7 +2413,7 @@ export function VerifyCitizenScreen() {
                   placeholder={`Enter ${selectedIdType} number`}
                   placeholderTextColor="#94A3B8"
                   value={idNumber}
-                  onChangeText={setIdNumber}
+                  onChangeText={(text) => { setIdNumber(text); clearFieldError('valid_id_number'); clearFieldError('id_number'); }}
                 />
               </View>
 

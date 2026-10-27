@@ -263,7 +263,7 @@ export async function fetchMatchingEducationLevels(): Promise<string[]> {
   return ['Senior High School', 'Tertiary', 'Continuing Education/Vocational', 'Postgraduate'];
 }
 
-import { getEducationAuthHeaders, handleEducationResponse } from '@/src/services/education-auth-helper';
+import { getEducationAuthHeaders, handleEducationResponse, ApiValidationError } from '@/src/services/education-auth-helper';
 
 
 export interface DocumentValidationResult {
@@ -368,6 +368,11 @@ export async function submitNewScholarshipApplication(
       data = JSON.parse(responseText);
     } catch (e) {
       throw new Error(`Server returned non-JSON response (${res.status}).`);
+    }
+    if (res.status === 422 || (data && data.errors && res.status >= 400)) {
+      const message = data?.message || 'The submitted application has validation errors.';
+      const errors = data?.errors || {};
+      throw new ApiValidationError(message, errors, 422);
     }
 
     if (!res.ok) {

@@ -26,6 +26,7 @@ import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { isApiValidationError } from '@/src/services/api-client';
 import { AuthService } from '@/src/services/auth-service';
 import { FormDraftService } from '@/src/services/form-draft-service';
 import {
@@ -190,6 +191,16 @@ export function RenewalApplicationScreen() {
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  const clearFieldError = useCallback((key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const hasHydratedRef = useRef<boolean>(false);
 
@@ -500,7 +511,13 @@ export function RenewalApplicationScreen() {
       setSubmitSuccess(true);
     } catch (err: any) {
       console.error('[RenewalApplicationScreen] submit error:', err);
-      setSubmitError(sanitizeErrorMessage(err?.message, 'Failed to submit scholarship renewal. Please check your network and try again.'));
+      if (isApiValidationError(err)) {
+        setFieldErrors(err.errors || {});
+        const topErrors = err.getAllErrors().slice(0, 2).join(', ');
+        setSubmitError(`Please check the highlighted fields: ${topErrors}`);
+      } else {
+        setSubmitError(sanitizeErrorMessage(err?.message, 'Failed to submit scholarship renewal. Please check your network and try again.'));
+      }
     } finally {
       setSubmitting(false);
     }

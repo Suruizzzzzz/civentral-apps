@@ -1,7 +1,7 @@
 import type * as DocumentPicker from "expo-document-picker";
 import { fetch as expoFetch } from "expo/fetch";
 import { Platform } from "react-native";
-import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
+import { getEducationAuthHeaders, handleEducationResponse, ApiValidationError } from "@/src/services/education-auth-helper";
 import { DocumentValidationResult, EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
 import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
 
@@ -217,10 +217,10 @@ export async function submitCitizenRenewal(
   const json = await res.json();
 
   if (!res.ok || json.status === "error") {
-    const errorMsg = sanitizeErrorMessage(
-      json.message,
-      `Submission failed with HTTP ${res.status}`
-    );
+    if (res.status === 422 || json.errors) {
+      throw new ApiValidationError(json.message || 'Validation failed', json.errors || {}, 422);
+    }
+    const errorMsg = sanitizeErrorMessage(json.message, `Submission failed with HTTP ${res.status}`);
     const err = new Error(errorMsg) as any;
     err.status = res.status;
     throw err;

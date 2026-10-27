@@ -24,9 +24,10 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     - Unify response unpacking to handle standard `BaseController` envelopes (`status === 'success' || status === 200`, `data`).
     - Normalize HTTP 422 responses: Extract `json.errors` (`Record<string, string[]>`) alongside `json.message` and throw a structured `ApiValidationError`.
 
-- [ ] **[P1-VAL-02] Integrate Field-Level 422 Error Handling Across Form Screens**
+- [x] **[P1-VAL-02] Integrate Field-Level 422 Error Handling Across Form Screens**
   - **Location:** `NewApplicantApplicationScreen.tsx`, `GrantApplicationScreen.tsx`, `RenewalApplicationScreen.tsx`, `VerifyCitizenScreen.tsx`
-  - **Commit Tag:** `fix(scholarship): map backend 422 field validation errors to form inputs`
+  - **Commit Tag:** `P1-VAL-02: map 422 field errors`
+  - **Status:** **Completed.** Wired `ApiValidationError` into all 4 major application and verification screens (`NewApplicantApplicationScreen`, `GrantApplicationScreen`, `RenewalApplicationScreen`, `VerifyCitizenScreen`). Form catch blocks now extract and store `fieldErrors` (`Record<string, string[]>`), render contextual field-level error messages directly below affected inputs (`course_program`, `valid_id_number`, document slots `cor`, `cog`, `soa`), and display concise top-level banners (`Please check the highlighted fields: ...`) instead of generic alerts. Input change events dynamically clear active field error states.
   - **Scope:**
     - Catch `ApiValidationError` and bind field-level errors directly to UI input components (`errors.general_weighted_average`, `errors.course_program`, `errors.id_number`).
     - Prevent generic `[Backend 422] Validation failed` alerts from blocking submission recovery.

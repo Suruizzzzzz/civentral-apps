@@ -1,5 +1,5 @@
 ﻿import type * as DocumentPicker from "expo-document-picker";
-import { getEducationAuthHeaders, handleEducationResponse } from "@/src/services/education-auth-helper";
+import { getEducationAuthHeaders, handleEducationResponse, ApiValidationError } from "@/src/services/education-auth-helper";
 import { EDUCATION_API_BASE_URL } from "../../new-applicant/api/ScholarshipProgramApi";
 import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
 
@@ -180,6 +180,9 @@ export async function createGrantApplication(
 
   const json = await res.json();
   if (!res.ok || json.status === "error") {
+    if (res.status === 422 || json.errors) {
+      throw new ApiValidationError(json.message || 'Validation failed', json.errors || {}, 422);
+    }
     throw new Error(sanitizeErrorMessage(json.message, `Application creation failed (HTTP ${res.status})`));
   }
 
@@ -274,6 +277,9 @@ export async function submitGrantApplication(
 
   const json = await res.json();
   if (!res.ok || json.status === "error") {
+    if (res.status === 422 || json.errors) {
+      throw new ApiValidationError(json.message || 'Validation failed', json.errors || {}, 422);
+    }
     throw new Error(sanitizeErrorMessage(json.message, `Grant submission failed (HTTP ${res.status})`));
   }
 

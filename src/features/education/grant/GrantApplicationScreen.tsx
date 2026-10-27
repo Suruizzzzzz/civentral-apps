@@ -27,6 +27,7 @@ import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { isApiValidationError } from '@/src/services/api-client';
 import {
   CitizenGrantOverviewData,
   createGrantApplication,
@@ -143,6 +144,16 @@ export function GrantApplicationScreen() {
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [submittedResult, setSubmittedResult] = useState<GrantApplicationDetail | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  const clearFieldError = useCallback((key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
   const [previewQrData, setPreviewQrData] = useState<{
     qrValue: string;
     claimRef: string;
@@ -222,7 +233,13 @@ export function GrantApplicationScreen() {
       setApplication(app);
       Alert.alert('Application Started', 'Your grant application draft has been initiated. Please upload the required document(s).');
     } catch (err: any) {
-      Alert.alert('Error', sanitizeErrorMessage(err?.message, 'Failed to create grant application draft.'));
+      if (isApiValidationError(err)) {
+        setFieldErrors(err.errors || {});
+        const topErrors = err.getAllErrors().slice(0, 2).join(', ');
+        Alert.alert('Draft Creation Incomplete', `Please check the highlighted fields: ${topErrors}`);
+      } else {
+        Alert.alert('Error', sanitizeErrorMessage(err?.message, 'Failed to create grant application draft.'));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -392,7 +409,13 @@ export function GrantApplicationScreen() {
       setSuccessModalVisible(true);
     } catch (err: any) {
       console.error('[GrantApplicationScreen] Submit error:', err);
-      Alert.alert('Submission Failed', sanitizeErrorMessage(err?.message, 'Failed to submit grant application.'));
+      if (isApiValidationError(err)) {
+        setFieldErrors(err.errors || {});
+        const topErrors = err.getAllErrors().slice(0, 2).join(', ');
+        Alert.alert('Submission Incomplete', `Please check the highlighted fields: ${topErrors}`);
+      } else {
+        Alert.alert('Submission Failed', sanitizeErrorMessage(err?.message, 'Failed to submit grant application.'));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -1086,6 +1109,11 @@ export function GrantApplicationScreen() {
                   </TouchableOpacity>
                 )}
                 {renderOcrFeedback('COR', 'Certificate of Registration (COR)')}
+                {(fieldErrors.cor || fieldErrors.cor_document) ? (
+                  <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>
+                    {(fieldErrors.cor || fieldErrors.cor_document)?.[0]}
+                  </Text>
+                ) : null}
               </View>
 
               {/* SOA Document (Private) */}
@@ -1139,6 +1167,11 @@ export function GrantApplicationScreen() {
                     </TouchableOpacity>
                   )}
                   {renderOcrFeedback('SOA', 'Statement of Account (SOA)')}
+                {(fieldErrors.soa || fieldErrors.soa_document) ? (
+                  <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>
+                    {(fieldErrors.soa || fieldErrors.soa_document)?.[0]}
+                  </Text>
+                ) : null}
                 </View>
               )}
 
