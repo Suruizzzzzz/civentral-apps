@@ -20,7 +20,6 @@ import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { useTheme } from '@/src/context/ThemeContext';
 import { AuthService } from '@/src/services/auth-service';
 import { ProfileService } from '@/src/services/profile-service';
-import { LocalCitizenTable } from '@/src/services/local-citizen-table';
 import { getCandidateVerificationEndpoints } from '@/src/services/citizenVerificationService';
 import { styles } from '../styles/VerifyCitizenScreen.styles';
 import { OfficialCitizenCard } from '../components/OfficialCitizenCard';
@@ -749,29 +748,6 @@ export function VerifyCitizenScreen() {
     try {
       const currentUser = AuthService.getCurrentUser();
       const userId = currentUser.citizen_user_id || undefined;
-
-      // 1. Update citizen verification details in local store & active session if userId exists
-      if (userId) {
-        LocalCitizenTable.update(userId, {
-          first_name: firstName.trim(),
-          middle_name: middleName.trim() || null,
-          last_name: lastName.trim(),
-          suffix: suffix.trim() || null,
-          registry_completed: 1,
-          birth_date: birthDate,
-          place_of_birth: placeOfBirth.trim(),
-          civil_status: civilStatus,
-          district: activeDistrict.shortName,
-          barangay,
-          street_address: streetAddress.trim(),
-          years_resident: yearsResident.trim(),
-          employment_status: employmentStatus,
-          occupation,
-          educational_attainment: educationalAttainment,
-          valid_id_type: selectedIdType,
-          valid_id_number: idNumber.trim(),
-        });
-      }
 
       // Ensure photo URIs are full base64 Data URIs rather than local browser memory blobs
       let finalIdPhoto = idImageUri;

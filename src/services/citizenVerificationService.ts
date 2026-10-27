@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 
 export const CITIZEN_API_BASE_URL =
   process.env.EXPO_PUBLIC_CITIZEN_API_URL ||
@@ -66,57 +65,27 @@ export interface CitizenVerificationStatusResult {
  * Returns candidate verification submission endpoints ordered by environment priority
  */
 export function getCandidateVerificationEndpoints(): string[] {
-  const isWebLocal =
-    Platform.OS === 'web' &&
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const baseUrl = (
+    process.env.EXPO_PUBLIC_CITIZEN_API_URL ||
+    CITIZEN_API_BASE_URL ||
+    'https://api-citizen.civentral.tech/api/citizen'
+  ).replace(/\/+$/, '');
 
-  const isAndroid = Platform.OS === 'android';
-
-  const endpoints: string[] = [`${CITIZEN_API_BASE_URL}/verify-citizen.php`];
-
-  if (isAndroid) {
-    endpoints.push('http://10.0.2.2/citizen-backend/api/citizen/verify-citizen.php');
-  }
-
-  if (isWebLocal) {
-    endpoints.push('http://localhost/citizen-backend/api/citizen/verify-citizen.php');
-    endpoints.push('http://127.0.0.1/citizen-backend/api/citizen/verify-citizen.php');
-  }
-
-  endpoints.push('http://192.168.1.5/citizen-backend/api/citizen/verify-citizen.php');
-
-  // De-duplicate in case base URL matched any of the candidates
-  return Array.from(new Set(endpoints));
+  return [`${baseUrl}/verify-citizen.php`];
 }
 
 /**
  * Returns candidate verification status endpoints
  */
 export function getCandidateStatusEndpoints(queryParams: string): string[] {
-  const isWebLocal =
-    Platform.OS === 'web' &&
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const baseUrl = (
+    process.env.EXPO_PUBLIC_CITIZEN_API_URL ||
+    CITIZEN_API_BASE_URL ||
+    'https://api-citizen.civentral.tech/api/citizen'
+  ).replace(/\/+$/, '');
 
-  const isAndroid = Platform.OS === 'android';
-
-  const endpoints: string[] = [
-    `${CITIZEN_API_BASE_URL}/verification-status.php?${queryParams}`,
-  ];
-
-  if (isAndroid) {
-    endpoints.push(`http://10.0.2.2/citizen-backend/api/citizen/verification-status.php?${queryParams}`);
-  }
-
-  if (isWebLocal) {
-    endpoints.push(`http://localhost/citizen-backend/api/citizen/verification-status.php?${queryParams}`);
-    endpoints.push(`http://127.0.0.1/citizen-backend/api/citizen/verification-status.php?${queryParams}`);
-  }
-
-  endpoints.push(`http://192.168.1.5/citizen-backend/api/citizen/verification-status.php?${queryParams}`);
-
-  return Array.from(new Set(endpoints));
+  const q = queryParams ? (queryParams.startsWith('?') ? queryParams : `?${queryParams}`) : '';
+  return [`${baseUrl}/verification-status.php${q}`];
 }
 
 export class CitizenVerificationService {
