@@ -1,5 +1,7 @@
 # Civentral Mobile Application Modernization Roadmap
 
+> **ROADMAP STATUS: 100% COMPLETE — All Priorities (P1 - P4) Executed, Verified, and Modernized.**
+
 ## Overview
 This roadmap establishes a prioritized refactoring and contract alignment plan for the Civentral citizen mobile application (`civentral-apps`). It resolves contract drift against the modernized `civentral-education-backend`, addresses monolithic screen bottlenecks, eliminates orphan shims, and establishes a unified network and state architecture.
 
@@ -100,9 +102,10 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     - Support optional `period_id` parameter in `fetchScholarshipPrograms()` and `fetchMatchingEducationLevels()` to align with backend `AcademicPeriodScope`.
     - Provide active period selector header on the mobile scholarship catalog screen.
 
-- [ ] **[P3-STA-02] Introduce Lightweight Global State Store (Zustand)**
+- [x] **[P3-STA-02] Introduce Lightweight Global State Store (Zustand)**
   - **Location:** `src/store/`
-  - **Commit Tag:** `feat(store): introduce Zustand stores for auth, citizen profile, and active scholarship cycle`
+  - **Commit Tag:** `P3-STA-02: global zustand store`
+  - **Status:** **Completed.** Created Zustand stores `useAuthStore` and `useScholarshipStore` under `src/store/`. Implemented 60-second TTL caching, manual cache invalidation (`invalidate()`), optimistic local updates (`updateLocalStatus()`), and synchronized authentication state with `AuthService` and SecureStore. Connected `ScholarshipDashboardScreen`, `useScholarshipDetailData` (CitizenScholarshipDetailScreen), and `ScholarshipHistoryScreen` to consume cached `dashboardData` and trigger live backend synchronization on pull-to-refresh (`fetchDashboard(true)`).
   - **Scope:**
     - Create `useAuthStore` to replace scattered static `AuthService` state.
     - Create `useScholarshipStore` to eliminate duplicate fetches of `/education/citizen/scholarship-dashboard` between `ScholarshipDashboardScreen`, `CitizenScholarshipDetailScreen`, and `ScholarshipHistoryScreen`.

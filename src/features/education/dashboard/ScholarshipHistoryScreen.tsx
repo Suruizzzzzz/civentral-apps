@@ -1,7 +1,7 @@
 import { formatDate as formatAppDate } from '@/utils/dateUtils';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -15,9 +15,9 @@ import {
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useScholarshipStore } from '@/src/store';
 import {
   CitizenDashboardData,
-  fetchCitizenDashboard,
   fetchCitizenTrackedItems,
   TrackedItem,
   withdrawCitizenApplication,
@@ -133,11 +133,19 @@ export function ScholarshipHistoryScreen() {
   // Filter state: 'all' | 'application' | 'renewal' | 'grant'
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'Application' | 'Renewal' | 'Grant'>('all');
 
-  // Authoritative data states
-  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(null);
+  // Authoritative data states from Zustand store & local hooks
+  const { dashboardData: storeDashboardData, fetchDashboard } = useScholarshipStore();
+  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(storeDashboardData);
   const [grantOverview, setGrantOverview] = useState<CitizenGrantOverviewData | null>(null);
   const [grantReleases, setGrantReleases] = useState<CitizenGrantReleaseItem[]>([]);
   const [trackedItems, setTrackedItems] = useState<TrackedItem[]>([]);
+
+  // Sync state when store updates
+  useEffect(() => {
+    if (storeDashboardData) {
+      setDashboardData(storeDashboardData);
+    }
+  }, [storeDashboardData]);
 
   // Withdrawal modal state
   const [isWithdrawModalVisible, setIsWithdrawModalVisible] = useState(false);
@@ -176,7 +184,7 @@ export function ScholarshipHistoryScreen() {
       Alert.alert(
         'Application Withdrawn',
         'Your scholarship application has been withdrawn successfully.',
-        [{ text: 'OK', onPress: () => loadData() }]
+        [{ text: 'OK', onPress: () => loadData(true) }]
       );
     } catch (err: any) {
       Alert.alert(
@@ -188,12 +196,12 @@ export function ScholarshipHistoryScreen() {
     }
   };
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (force = false) => {
     try {
       setError(null);
       const [dashRes, grantOverRes, grantRelRes, trackedRes] =
         await Promise.all([
-          fetchCitizenDashboard().catch((err) => {
+          fetchDashboard(force).catch((err) => {
             console.warn('[ScholarshipHistory] dashboard fetch failed:', err);
             return null;
           }),
@@ -211,10 +219,14 @@ export function ScholarshipHistoryScreen() {
           }),
         ]);
 
-      if (!dashRes && !grantOverRes) {
+      const effectiveDashboard = dashRes || storeDashboardData;
+
+      if (!effectiveDashboard && !grantOverRes) {
         setError('Unable to load scholarship history. Please check your connection.');
       } else {
-        setDashboardData(dashRes);
+        if (effectiveDashboard) {
+          setDashboardData(effectiveDashboard);
+        }
         setGrantOverview(grantOverRes);
         setGrantReleases(grantRelRes);
         setTrackedItems(trackedRes);
@@ -226,17 +238,17 @@ export function ScholarshipHistoryScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchDashboard, storeDashboardData]);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      loadData(false);
     }, [loadData])
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadData();
+    loadData(true);
   }, [loadData]);
 
   const scholar = dashboardData?.scholar;
@@ -578,7 +590,7 @@ export function ScholarshipHistoryScreen() {
               {error}
             </Text>
             <TouchableOpacity
-              onPress={loadData}
+              onPress={() => loadData(true)}
               style={{
                 alignSelf: 'flex-start',
                 backgroundColor: '#7E22CE',

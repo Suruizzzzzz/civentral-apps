@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
+import { useScholarshipStore } from "@/src/store";
 import {
   CitizenGrantOverviewData,
   fetchCitizenGrantOverview,
@@ -23,21 +24,27 @@ import {
   fetchCitizenOfficialDocuments,
   fetchCitizenScholarshipDocuments,
 } from "../api/citizenDocumentApi";
-import {
-  CitizenDashboardData,
-  fetchCitizenDashboard,
-} from "../api/scholarshipDashboardApi";
+import { CitizenDashboardData } from "../api/scholarshipDashboardApi";
 
 export function useScholarshipDetailData() {
+  const { dashboardData: storeDashboardData, fetchDashboard } = useScholarshipStore();
+
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(null);
+  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(storeDashboardData);
   const [programData, setProgramData] = useState<ScholarshipProgram | null>(null);
   const [renewalOverview, setRenewalOverview] = useState<CitizenRenewalOverviewData | null>(null);
   const [documentRecords, setDocumentRecords] = useState<CitizenScholarshipDocumentsData | null>(null);
   const [officialDocuments, setOfficialDocuments] = useState<CitizenOfficialDocumentsData | null>(null);
+
+  // Sync state if store updates
+  useEffect(() => {
+    if (storeDashboardData) {
+      setDashboardData(storeDashboardData);
+    }
+  }, [storeDashboardData]);
 
   // Grant Overview & Releases State
   const [grantOverview, setGrantOverview] = useState<CitizenGrantOverviewData | null>(null);
@@ -62,18 +69,23 @@ export function useScholarshipDetailData() {
     }
   }, []);
 
-  const loadAllData = useCallback(async () => {
+  const loadAllData = useCallback(async (force = false) => {
     try {
       setError(null);
       const [dashRes, relsRes] = await Promise.allSettled([
-        fetchCitizenDashboard(),
+        fetchDashboard(force),
         fetchCitizenGrantReleases(),
       ]);
 
-      if (dashRes.status === "fulfilled") {
-        setDashboardData(dashRes.value);
-        if (dashRes.value.scholarship?.program_id) {
-          getScholarshipProgramDetails(dashRes.value.scholarship.program_id)
+      const effectiveDashboard =
+        dashRes.status === "fulfilled" && dashRes.value
+          ? dashRes.value
+          : storeDashboardData;
+
+      if (effectiveDashboard) {
+        setDashboardData(effectiveDashboard);
+        if (effectiveDashboard.scholarship?.program_id) {
+          getScholarshipProgramDetails(effectiveDashboard.scholarship.program_id)
             .then((prog) => setProgramData(prog))
             .catch((progErr) =>
               console.warn("[useScholarshipDetailData] program fetch error:", progErr)
@@ -111,17 +123,17 @@ export function useScholarshipDetailData() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [loadGrantOverview]);
+  }, [fetchDashboard, loadGrantOverview, storeDashboardData]);
 
   useFocusEffect(
     useCallback(() => {
-      loadAllData();
+      loadAllData(false);
     }, [loadAllData])
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadAllData();
+    loadAllData(true);
   }, [loadAllData]);
 
   return {

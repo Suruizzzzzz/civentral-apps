@@ -2,7 +2,7 @@ import { formatDate as formatAppDate } from '@/utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,9 +20,9 @@ import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { InAppDocumentViewerModal } from '@/src/components/document-viewer/InAppDocumentViewerModal';
 import { useTheme } from '@/src/context/ThemeContext';
+import { useScholarshipStore } from '@/src/store';
 import {
   CitizenDashboardData,
-  fetchCitizenDashboard,
   fetchCitizenTrackedItems,
   TrackedItem,
 } from './api/scholarshipDashboardApi';
@@ -185,13 +185,21 @@ export function ScholarshipDashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Authoritative data states
-  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(null);
+  // Authoritative data states from Zustand store & local hooks
+  const { dashboardData: storeDashboardData, fetchDashboard } = useScholarshipStore();
+  const [dashboardData, setDashboardData] = useState<CitizenDashboardData | null>(storeDashboardData);
   const [grantOverview, setGrantOverview] = useState<CitizenGrantOverviewData | null>(null);
   const [grantReleases, setGrantReleases] = useState<CitizenGrantReleaseItem[]>([]);
   const [trackedItems, setTrackedItems] = useState<TrackedItem[]>([]);
   const [officialDocsData, setOfficialDocsData] = useState<CitizenOfficialDocumentsData | null>(null);
   const [renewalOverview, setRenewalOverview] = useState<CitizenRenewalOverviewData | null>(null);
+
+  // Sync state when store updates
+  useEffect(() => {
+    if (storeDashboardData) {
+      setDashboardData(storeDashboardData);
+    }
+  }, [storeDashboardData]);
 
   // Per-record official documents modal state
   const [selectedRecordForDocs] = useState<HistoryItem | null>(null);
@@ -215,12 +223,12 @@ export function ScholarshipDashboardScreen() {
   const [feedbackBody, setFeedbackBody] = useState('');
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (force = false) => {
     try {
       setError(null);
       const [dashRes, grantOverRes, grantRelRes, trackedRes, officialDocsRes, renewalOverRes] =
         await Promise.all([
-          fetchCitizenDashboard().catch((err) => {
+          fetchDashboard(force).catch((err) => {
             console.warn('[ScholarshipDashboard] dashboard fetch failed:', err);
             return null;
           }),
@@ -246,10 +254,14 @@ export function ScholarshipDashboardScreen() {
           }),
         ]);
 
-      if (!dashRes && !grantOverRes) {
+      const effectiveDashboard = dashRes || storeDashboardData;
+
+      if (!effectiveDashboard && !grantOverRes) {
         setError('Unable to load scholarship information. Please check your connection.');
       } else {
-        setDashboardData(dashRes);
+        if (effectiveDashboard) {
+          setDashboardData(effectiveDashboard);
+        }
         setGrantOverview(grantOverRes);
         setGrantReleases(grantRelRes);
         setTrackedItems(trackedRes);
@@ -263,17 +275,17 @@ export function ScholarshipDashboardScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [fetchDashboard, storeDashboardData]);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      loadData(false);
     }, [loadData])
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadData();
+    loadData(true);
   }, [loadData]);
 
   const scholar = dashboardData?.scholar;
