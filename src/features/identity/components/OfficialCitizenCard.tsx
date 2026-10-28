@@ -582,7 +582,7 @@ export function OfficialCitizenCard({
 </head>
 <body>
   <div class="page-title">City of Civentral Official Resident Credential</div>
-  <div class="page-subtitle">Printed via CIVentral Municipal Digital Identity Portal</div>
+  <div class="page-subtitle">Printed via Civentral Municipal Digital Identity Portal</div>
 
   <!-- FRONT CARD -->
   <div class="card-frame" id="printableCitizenCard">
@@ -700,7 +700,7 @@ export function OfficialCitizenCard({
         <strong>CONDITIONS OF ISSUANCE:</strong> This official digital card certifies that the named bearer is a duly verified citizen resident of Civentral City. This card remains the property of the City Government of Civentral.
       </p>
       <p style="margin-bottom:6px;">
-        <strong>VERIFICATION:</strong> The authentic digital credential can be validated using the CIVentral Officer Scanner or the municipal portal by scanning the cryptographic QR credential on the front side.
+        <strong>VERIFICATION:</strong> The authentic digital credential can be validated using the Civentral Officer Scanner or the municipal portal by scanning the cryptographic QR credential on the front side.
       </p>
       <div style="margin-top:12px;border-top:1px solid #CBD5E1;padding-top:6px;display:flex;justify-content:space-between;align-items:flex-end;">
         <div>

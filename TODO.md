@@ -150,7 +150,7 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     - Extract 230 lines from `InAppDocumentViewerModal.tsx` and 261 lines from `useScholarshipDocumentViewer.tsx` into dedicated style sheets.
     - Reduce screen orchestrators by up to 50% lines of code while maintaining 100% style fidelity.
 
-- [ ] **[P5-MOD-03] Decompose ProfileScreen Embedded Modals & Tangled Form State**
+- [x] **[P5-MOD-03] Decompose ProfileScreen Embedded Modals & Tangled Form State**
   - **Location:** `src/features/identity/ProfileScreen.tsx`, `src/features/identity/profile/`
   - **Commit Tag:** `P5-MOD-03: decompose profile screen modals and form state`
   - **Scope:**
