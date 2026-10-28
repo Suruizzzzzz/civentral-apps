@@ -72,14 +72,21 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     8. `WizardStepperHeader.tsx` & `ApplicationSuccessView.tsx`
     9. Orchestrator reduced to 328 lines (< 450 limit).
 
-- [ ] **[P2-MOD-03] Decompose `VerifyCitizenScreen.tsx` (2,943 LOC)**
+- [x] **[P2-MOD-03] Decompose `VerifyCitizenScreen.tsx` (2,943 LOC)**
   - **Location:** `src/features/identity/verification/`
-  - **Commit Tag:** `refactor(identity): modularize VerifyCitizenScreen wizard steps and camera handlers`
-  - **Target Modules:**
-    1. `VerificationDocStep.tsx`
-    2. `LivenessSelfieStep.tsx`
-    3. `SignaturePadModal.tsx`
-    4. `VerificationReviewStep.tsx`
+  - **Commit Tag:** `P2-MOD-03: decompose verify citizen screen`
+  - **Status:** **Completed.** Deconstructed the 2,943 LOC god screen into 13 modular sub-components, types, modals, and hooks under `src/features/identity/verification/`. Orchestrator reduced to 398 lines (< 400 LOC limit).
+  - **Delivered Modules:**
+    1. `VerificationDocStep.tsx` (ID card selector, front/back camera triggers, PhilSys QR barcode scanner)
+    2. `LivenessSelfieStep.tsx` (Selfie camera guide, face alignment oval, blink/smile liveness check, 1x1 photo)
+    3. `SignaturePadModal.tsx` (Interactive touch signature canvas with SVG path renderer & photo fallback)
+    4. `VerificationReviewStep.tsx` (Summary dossier, extracted citizen attributes, data privacy consent)
+    5. `VerificationPersonalStep.tsx` (Personal info, sex selector, place of birth, calendar picker)
+    6. `VerificationResidencyStep.tsx` (District cards, barangay picker, street address, years of residency)
+    7. `VerificationStatusGuards.tsx` & `VerificationSuccessStep.tsx` (Guest guard, in-review guard, official citizen card with Civic directory)
+    8. `BarangayPickerModal.tsx` & `PhotoSourcePickerModal.tsx` (Barangay search and photo source selection)
+    9. `useCitizenVerificationWizard.ts` (State machine, multi-step flow, candidate endpoints, 422 error binding)
+    10. `index.ts` (Barrel export)
 
 ---
 
