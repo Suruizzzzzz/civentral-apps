@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -24,20 +24,24 @@ const BASE_CATEGORY_PILLS: CategoryPill[] = [
 
 export function BrowseScholarshipsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ period_id?: string; category_id?: string; [key: string]: any }>();
+  const routePeriodId = params.period_id ? String(params.period_id).trim() : undefined;
   const { isDarkMode } = useTheme();
 
   const [categories, setCategories] = useState<ScholarshipCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | undefined>(routePeriodId);
   const [programs, setPrograms] = useState<ScholarshipProgram[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = async () => {
+  const loadData = React.useCallback(async (activePeriodId?: string) => {
     try {
       setIsLoading(true);
+      const effectivePeriodId = activePeriodId !== undefined ? activePeriodId : selectedPeriodId;
       const [catList, progList] = await Promise.all([
         fetchScholarshipCategories(),
-        fetchScholarshipPrograms(),
+        fetchScholarshipPrograms(effectivePeriodId ? { period_id: effectivePeriodId } : undefined),
       ]);
       setCategories(catList);
       setPrograms(progList);
@@ -47,21 +51,64 @@ export function BrowseScholarshipsScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [selectedPeriodId]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (routePeriodId !== undefined) {
+      setSelectedPeriodId(routePeriodId);
+      loadData(routePeriodId);
+    } else {
+      loadData();
+    }
+  }, [routePeriodId, loadData]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     loadData();
-  }, []);
+  }, [loadData]);
+
+  const handleSelectPeriod = (periodId?: string) => {
+    Haptics.selectionAsync();
+    setSelectedPeriodId(periodId);
+    loadData(periodId);
+  };
 
   const handleSelectCategory = (catId: string) => {
     Haptics.selectionAsync();
     setSelectedCategory(catId);
   };
+
+  const availablePeriods = useMemo(() => {
+    const periodMap = new Map<string, { id: string; label: string; status?: string }>();
+    programs.forEach((prog) => {
+      if (prog.application_period && prog.application_period.application_period_id) {
+        const p = prog.application_period;
+        const id = String(p.application_period_id);
+        if (!periodMap.has(id)) {
+          periodMap.set(id, {
+            id,
+            label: `AY ${p.academic_year || ''} • ${p.term || ''}`.trim(),
+            status: p.status,
+          });
+        }
+      }
+      if (Array.isArray(prog.application_periods)) {
+        prog.application_periods.forEach((p) => {
+          if (p && p.application_period_id) {
+            const id = String(p.application_period_id);
+            if (!periodMap.has(id)) {
+              periodMap.set(id, {
+                id,
+                label: `AY ${p.academic_year || ''} • ${p.term || ''}`.trim(),
+                status: p.status,
+              });
+            }
+          }
+        });
+      }
+    });
+    return Array.from(periodMap.values());
+  }, [programs]);
 
   const filterPills = useMemo<CategoryPill[]>(() => {
     const pills: CategoryPill[] = [...BASE_CATEGORY_PILLS];
@@ -196,6 +243,81 @@ export function BrowseScholarshipsScreen() {
         </Text>
       </View>
 
+      {/* ACTIVE ACADEMIC PERIOD SELECTOR HEADER */}
+      {availablePeriods.length > 0 && (
+        <View style={{ marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, paddingHorizontal: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <IconSymbol name="calendar" size={14} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: isDarkMode ? '#94A3B8' : '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Academic Period Scope
+              </Text>
+            </View>
+            {selectedPeriodId ? (
+              <TouchableOpacity onPress={() => handleSelectPeriod(undefined)} activeOpacity={0.7}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: isDarkMode ? '#38BDF8' : '#0284C7' }}>
+                  Show All / Active
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
+          >
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                !selectedPeriodId ? styles.filterPillActive : styles.filterPillInactive,
+                isDarkMode && !selectedPeriodId ? {} : isDarkMode && styles.filterPillInactiveDark,
+                { paddingHorizontal: 12, paddingVertical: 6, height: 32 }
+              ]}
+              onPress={() => handleSelectPeriod(undefined)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.filterPillText,
+                  !selectedPeriodId ? styles.filterPillTextActive : styles.filterPillTextInactive,
+                  isDarkMode && !selectedPeriodId ? {} : isDarkMode && styles.filterPillTextInactiveDark,
+                  { fontSize: 12 }
+                ]}
+              >
+                Active Academic Period
+              </Text>
+            </TouchableOpacity>
+            {availablePeriods.map((period) => {
+              const isSelected = selectedPeriodId === period.id;
+              return (
+                <TouchableOpacity
+                  key={period.id}
+                  style={[
+                    styles.filterPill,
+                    isSelected ? styles.filterPillActive : styles.filterPillInactive,
+                    isDarkMode && !isSelected && styles.filterPillInactiveDark,
+                    { paddingHorizontal: 12, paddingVertical: 6, height: 32 }
+                  ]}
+                  onPress={() => handleSelectPeriod(period.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      isSelected ? styles.filterPillTextActive : styles.filterPillTextInactive,
+                      isDarkMode && !isSelected && styles.filterPillTextInactiveDark,
+                      { fontSize: 12 }
+                    ]}
+                  >
+                    {period.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {/* HORIZONTAL CATEGORY PILL FILTER */}
       <ScrollView
         horizontal
@@ -278,6 +400,15 @@ export function BrowseScholarshipsScreen() {
                   </View>
                 </View>
 
+                {period && (period.academic_year || period.term) ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <IconSymbol name="calendar" size={12} color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: isDarkMode ? '#94A3B8' : '#64748B' }}>
+                      AY {period.academic_year || ''} • {period.term || ''}
+                    </Text>
+                  </View>
+                ) : null}
+
                 {program.description ? (
                   <Text
                     style={[styles.description, isDarkMode && { color: '#94A3B8' }]}
@@ -291,7 +422,10 @@ export function BrowseScholarshipsScreen() {
                   style={[styles.actionButton, styles.applyButton]}
                   onPress={() => router.push({
                     pathname: '/education/new-applicant/scholarship-details' as any,
-                    params: { program_id: String(program.program_id) }
+                    params: {
+                      program_id: String(program.program_id),
+                      ...(selectedPeriodId ? { period_id: selectedPeriodId } : {}),
+                    }
                   })}
                   activeOpacity={0.7}
                 >

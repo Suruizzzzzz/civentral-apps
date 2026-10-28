@@ -190,9 +190,11 @@ export function ScholarshipDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     program_id?: string;
+    period_id?: string;
     source?: string;
   }>();
   const programId = params.program_id ? parseInt(params.program_id, 10) : null;
+  const periodId = params.period_id ? String(params.period_id).trim() : undefined;
   const isDashboardSource = params.source === "dashboard";
 
   const { isDarkMode } = useTheme();
@@ -216,7 +218,10 @@ export function ScholarshipDetailsScreen() {
 
     try {
       setError(null);
-      const data = await getScholarshipProgramDetails(programId);
+      const data = await getScholarshipProgramDetails(
+        programId,
+        periodId ? { period_id: periodId } : undefined
+      );
       if (!data) {
         setError("Scholarship program not found.");
       } else {
@@ -267,7 +272,10 @@ export function ScholarshipDetailsScreen() {
     if (!programId) return;
     router.push({
       pathname: "/education/new-applicant/application" as any,
-      params: { program_id: String(programId) },
+      params: {
+        program_id: String(programId),
+        ...(periodId ? { period_id: periodId } : {}),
+      },
     });
   };
 

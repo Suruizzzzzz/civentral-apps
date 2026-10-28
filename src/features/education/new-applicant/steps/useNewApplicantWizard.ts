@@ -253,7 +253,10 @@ export function useNewApplicantWizard(params: any, router: Router) {
     try {
       setFetchError(null);
       const [data, schools, vResult] = await Promise.all([
-        getScholarshipProgramDetails(targetProgramId),
+        getScholarshipProgramDetails(
+          targetProgramId,
+          params?.period_id ? { period_id: params.period_id } : undefined
+        ),
         getPartnerSchoolsLookup(targetProgramId),
         loadVerificationStatus(),
       ]);
@@ -358,7 +361,7 @@ export function useNewApplicantWizard(params: any, router: Router) {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [selectedProgramId, initialParamProgramId, loadVerificationStatus, program?.program_id, applicationDraft?.program_id]);
+  }, [selectedProgramId, initialParamProgramId, loadVerificationStatus, program?.program_id, applicationDraft?.program_id, params?.period_id]);
 
   useEffect(() => {
     loadData();

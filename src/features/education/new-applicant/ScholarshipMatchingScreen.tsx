@@ -1,16 +1,16 @@
-﻿import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
-import { fetchMatchingEducationLevels, fetchPublicMatchingQuestions, submitPreScreen, ApplicantProfile, EvaluatedProgram, MatchingQuestion, PreScreenResponse } from './api/ScholarshipProgramApi';
+import { fetchMatchingEducationLevels, fetchPublicMatchingQuestions, submitPreScreen, EvaluatedProgram, MatchingQuestion, PreScreenResponse } from './api/ScholarshipProgramApi';
 import { styles } from './styles/ScholarshipMatching.styles';
 
 /**
  * Parent -> Child Conditional Rules Map
- * Aligned with CIVENTRAL web portal (scholarship-matching-config.php / scholarship-matching-modals.js)
+ * Aligned with Civentral web portal (scholarship-matching-config.php / scholarship-matching-modals.js)
  */
 export const PS_CONDITIONAL_RULES: Record<string, string[]> = {
   specialized_public_shs: ['school_outside_district'],
@@ -81,6 +81,8 @@ export const CRITERIA_PREDEFINED_OPTIONS: Record<string, { option_value: string;
 
 export function ScholarshipMatchingScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ period_id?: string; [key: string]: any }>();
+  const periodId = params.period_id ? String(params.period_id).trim() : undefined;
   const { isDarkMode } = useTheme();
 
   const [educationLevels, setEducationLevels] = useState<string[]>([
@@ -99,12 +101,12 @@ export function ScholarshipMatchingScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMatchingEducationLevels().then((levels) => {
+    fetchMatchingEducationLevels(periodId ? { period_id: periodId } : undefined).then((levels) => {
       if (levels && levels.length > 0) {
         setEducationLevels(levels);
       }
     });
-  }, []);
+  }, [periodId]);
 
   const handleSelectLevel = async (level: string) => {
     setSelectedLevel(level);
@@ -114,7 +116,7 @@ export function ScholarshipMatchingScreen() {
     setIsLoadingQuestions(true);
 
     try {
-      const qList = await fetchPublicMatchingQuestions(level);
+      const qList = await fetchPublicMatchingQuestions(level, periodId ? { period_id: periodId } : undefined);
       setQuestions(qList);
     } catch (err) {
       console.error('[ScholarshipMatchingScreen] fetch questions error:', err);
@@ -255,7 +257,11 @@ export function ScholarshipMatchingScreen() {
     });
 
     try {
-      const result = await submitPreScreen(selectedLevel, payloadAnswers);
+      const result = await submitPreScreen(
+        selectedLevel,
+        payloadAnswers,
+        periodId ? { period_id: periodId } : undefined
+      );
       setPreScreenResult(result);
     } catch (err) {
       console.error('[ScholarshipMatchingScreen] pre-screen submit error:', err);
@@ -1185,7 +1191,10 @@ export function ScholarshipMatchingScreen() {
                           onPress={() =>
                             router.push({
                               pathname: "/education/new-applicant/scholarship-details" as any,
-                              params: { program_id: String(program.program_id) },
+                              params: {
+                                program_id: String(program.program_id),
+                                ...(periodId ? { period_id: periodId } : {}),
+                              },
                             })
                           }
                           activeOpacity={0.75}
@@ -1215,6 +1224,7 @@ export function ScholarshipMatchingScreen() {
                                 params: {
                                   program_id: String(program.program_id),
                                   program_name: program.program_name,
+                                  ...(periodId ? { period_id: periodId } : {}),
                                 },
                               })
                             }

@@ -2,6 +2,12 @@ import type * as DocumentPicker from 'expo-document-picker';
 import { fetch as expoFetch } from 'expo/fetch';
 import { Platform } from 'react-native';
 
+import {
+  getEducationAuthHeaders,
+  handleEducationResponse,
+  ApiValidationError,
+} from '@/src/services/education-auth-helper';
+
 export const EDUCATION_API_BASE_URL =
   process.env.EXPO_PUBLIC_EDUCATION_API_BASE_URL ||
   'https://api.civentral.tech/api/v1';
@@ -199,42 +205,169 @@ export function sanitizeScholarshipProgramContent(program: ScholarshipProgram): 
   };
 }
 
+export interface FetchScholarshipProgramsOptions {
+  period_id?: number | string;
+  limit?: number;
+  category_id?: number | string;
+  categoryId?: number | string;
+}
+
 export async function fetchScholarshipCategories(): Promise<ScholarshipCategory[]> {
   const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-categories`);
   const json = await res.json();
   return json.data || [];
 }
 
-export async function fetchScholarshipPrograms(categoryId?: number): Promise<ScholarshipProgram[]> {
-  const url = categoryId
-    ? `${EDUCATION_API_BASE_URL}/scholarship-programs?category_id=${categoryId}`
-    : `${EDUCATION_API_BASE_URL}/scholarship-programs`;
-  const res = await fetch(url);
-  const json = await res.json();
-  const list: ScholarshipProgram[] = json.data || [];
-  return list.map(sanitizeScholarshipProgramContent);
+export async function fetchScholarshipPrograms(
+  optionsOrCategoryId?: FetchScholarshipProgramsOptions | number
+): Promise<ScholarshipProgram[]> {
+  let periodId: number | string | undefined;
+  let categoryId: number | string | undefined;
+  let limit: number | undefined;
+
+  if (typeof optionsOrCategoryId === 'number' || typeof optionsOrCategoryId === 'string') {
+    categoryId = optionsOrCategoryId;
+  } else if (optionsOrCategoryId && typeof optionsOrCategoryId === 'object') {
+    periodId = optionsOrCategoryId.period_id;
+    categoryId = optionsOrCategoryId.category_id ?? optionsOrCategoryId.categoryId;
+    limit = optionsOrCategoryId.limit;
+  }
+
+  const queryParts: string[] = [];
+  if (categoryId !== undefined && categoryId !== null && categoryId !== '') {
+    queryParts.push(`category_id=${encodeURIComponent(String(categoryId))}`);
+  }
+  if (periodId !== undefined && periodId !== null && periodId !== '') {
+    queryParts.push(`period_id=${encodeURIComponent(String(periodId))}`);
+  }
+  if (limit !== undefined && limit !== null && !isNaN(Number(limit))) {
+    queryParts.push(`limit=${encodeURIComponent(String(limit))}`);
+  }
+  const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+
+  // Support primary /education/programs and fallback /scholarship-programs routes
+  const candidateUrls = [
+    `${EDUCATION_API_BASE_URL}/scholarship-programs${queryString}`,
+    `${EDUCATION_API_BASE_URL}/education/programs${queryString}`,
+  ];
+
+  let lastRes: Response | null = null;
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        const list: ScholarshipProgram[] = Array.isArray(json.data)
+          ? json.data
+          : Array.isArray(json.data?.programs)
+            ? json.data.programs
+            : [];
+        return list.map(sanitizeScholarshipProgramContent);
+      }
+      lastRes = res;
+      if (res.status !== 404) {
+        break;
+      }
+    } catch (err) {
+      console.warn(`[ScholarshipProgramApi] fetch error from ${url}:`, err);
+    }
+  }
+
+  if (lastRes) {
+    try {
+      const json = await lastRes.json();
+      const list: ScholarshipProgram[] = Array.isArray(json.data)
+        ? json.data
+        : Array.isArray(json.data?.programs)
+          ? json.data.programs
+          : [];
+      return list.map(sanitizeScholarshipProgramContent);
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
 }
 
-export async function getScholarshipProgramDetails(programId: number): Promise<ScholarshipProgram | null> {
-  const url = `${EDUCATION_API_BASE_URL}/scholarship-programs/${programId}`;
-  console.log('[ScholarshipProgramApi] GET Program Detail URL =', url);
-  const res = await fetch(url);
-  if (res.status === 404) return null;
-  const json = await res.json();
-  const program: ScholarshipProgram | null = json.data || null;
-  return program ? sanitizeScholarshipProgramContent(program) : null;
+export async function getScholarshipProgramDetails(
+  programId: number,
+  options?: { period_id?: number | string } | number | string
+): Promise<ScholarshipProgram | null> {
+  let periodId: number | string | undefined;
+  if (typeof options === 'number' || typeof options === 'string') {
+    periodId = options;
+  } else if (options && typeof options === 'object') {
+    periodId = options.period_id;
+  }
+
+  const query = periodId !== undefined && periodId !== null && periodId !== ''
+    ? `?period_id=${encodeURIComponent(String(periodId))}`
+    : '';
+
+  const candidateUrls = [
+    `${EDUCATION_API_BASE_URL}/scholarship-programs/${programId}${query}`,
+    `${EDUCATION_API_BASE_URL}/education/programs/${programId}${query}`,
+  ];
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        const program: ScholarshipProgram | null = json.data || null;
+        return program ? sanitizeScholarshipProgramContent(program) : null;
+      }
+      if (res.status !== 404) {
+        break;
+      }
+    } catch (e) {
+      console.warn(`[ScholarshipProgramApi] GET Program Detail error from ${url}:`, e);
+    }
+  }
+  return null;
 }
 
-export async function fetchPublicMatchingQuestions(educationLevel: string): Promise<MatchingQuestion[]> {
+export async function fetchPublicMatchingQuestions(
+  educationLevel: string,
+  options?: { period_id?: number | string } | number | string
+): Promise<MatchingQuestion[]> {
   const encoded = encodeURIComponent(educationLevel);
-  const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-matching/questions?education_level=${encoded}`);
+  let periodId: number | string | undefined;
+  if (typeof options === 'number' || typeof options === 'string') {
+    periodId = options;
+  } else if (options && typeof options === 'object') {
+    periodId = options.period_id;
+  }
+  const periodParam = periodId !== undefined && periodId !== null && periodId !== ''
+    ? `&period_id=${encodeURIComponent(String(periodId))}`
+    : '';
+
+  const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-matching/questions?education_level=${encoded}${periodParam}`);
   const json = await res.json();
   return json.data || [];
 }
 
-export async function fetchMatchingEducationLevels(): Promise<string[]> {
+export interface FetchMatchingEducationLevelsOptions {
+  period_id?: number | string;
+}
+
+export async function fetchMatchingEducationLevels(
+  options?: FetchMatchingEducationLevelsOptions | number | string
+): Promise<string[]> {
   try {
-    const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-matching/programs`);
+    let periodId: number | string | undefined;
+    if (typeof options === 'number' || typeof options === 'string') {
+      periodId = options;
+    } else if (options && typeof options === 'object') {
+      periodId = options.period_id;
+    }
+
+    const query = periodId !== undefined && periodId !== null && periodId !== ''
+      ? `?period_id=${encodeURIComponent(String(periodId))}`
+      : '';
+
+    const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-matching/programs${query}`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data?.programs)) {
       const levelsSet = new Set<string>();
@@ -263,9 +396,6 @@ export async function fetchMatchingEducationLevels(): Promise<string[]> {
   return ['Senior High School', 'Tertiary', 'Continuing Education/Vocational', 'Postgraduate'];
 }
 
-import { getEducationAuthHeaders, handleEducationResponse, ApiValidationError } from '@/src/services/education-auth-helper';
-
-
 export interface DocumentValidationResult {
   result: 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE';
   expected_document_code: string;
@@ -291,12 +421,28 @@ export interface SubmitApplicationResult {
 
 export async function submitPreScreen(
   educationLevel: string,
-  answers: Record<string, string | null>
+  answers: Record<string, string | null>,
+  options?: { period_id?: number | string } | number | string
 ): Promise<PreScreenResponse> {
-  const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-matching/pre-screen`, {
+  let periodId: number | string | undefined;
+  if (typeof options === 'number' || typeof options === 'string') {
+    periodId = options;
+  } else if (options && typeof options === 'object') {
+    periodId = options.period_id;
+  }
+  const periodParam = periodId !== undefined && periodId !== null && periodId !== ''
+    ? `?period_id=${encodeURIComponent(String(periodId))}`
+    : '';
+
+  const payload: any = { education_level: educationLevel, answers };
+  if (periodId !== undefined && periodId !== null && periodId !== '') {
+    payload.period_id = periodId;
+  }
+
+  const res = await fetch(`${EDUCATION_API_BASE_URL}/scholarship-matching/pre-screen${periodParam}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ education_level: educationLevel, answers }),
+    body: JSON.stringify(payload),
   });
   const json = await res.json();
   return json.data;
@@ -366,7 +512,7 @@ export async function submitNewScholarshipApplication(
     let data: any = null;
     try {
       data = JSON.parse(responseText);
-    } catch (e) {
+    } catch {
       throw new Error(`Server returned non-JSON response (${res.status}).`);
     }
     if (res.status === 422 || (data && data.errors && res.status >= 400)) {

@@ -92,9 +92,10 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
 
 ## Priority 3: State Management & Academic Period Scoping
 
-- [ ] **[P3-PER-01] Parameterize Academic Period Lookups for Scholar Listings**
-  - **Location:** `src/features/education/new-applicant/api/ScholarshipProgramApi.ts`, `ScholarshipMatchingScreen.tsx`
-  - **Commit Tag:** `feat(scholarship): add period_id query support to program listing endpoints`
+- [x] **[P3-PER-01] Parameterize Academic Period Lookups for Scholar Listings**
+  - **Location:** `src/features/education/new-applicant/api/ScholarshipProgramApi.ts`, `ScholarshipMatchingScreen.tsx`, `BrowseScholarshipsScreen.tsx`
+  - **Commit Tag:** `P3-PER-01: academic period query support`
+  - **Status:** **Completed.** Added optional `period_id` query support across `fetchScholarshipPrograms()`, `fetchMatchingEducationLevels()`, `fetchPublicMatchingQuestions()`, `getScholarshipProgramDetails()`, and `submitPreScreen()`. Supported candidate endpoints `/education/programs` and `/scholarship-programs`. Added active academic period selector header to `BrowseScholarshipsScreen.tsx` and enabled route param parsing and propagation across matching, details, and application screens.
   - **Scope:**
     - Support optional `period_id` parameter in `fetchScholarshipPrograms()` and `fetchMatchingEducationLevels()` to align with backend `AcademicPeriodScope`.
     - Provide active period selector header on the mobile scholarship catalog screen.
