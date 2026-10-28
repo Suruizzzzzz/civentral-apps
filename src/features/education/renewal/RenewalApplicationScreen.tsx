@@ -159,6 +159,160 @@ function getRequirementLevel(doc: { code: string; requirement_level?: string }):
   return 'Required';
 }
 
+interface RenewalBackButtonProps {
+  onPress: () => void;
+  isDarkMode: boolean;
+}
+
+function RenewalBackButton({ onPress, isDarkMode }: RenewalBackButtonProps) {
+  return (
+    <TouchableOpacity
+      style={styles.backBtn}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <IconSymbol
+        name="chevron.left"
+        size={16}
+        color={isDarkMode ? '#4ADE80' : '#15803D'}
+      />
+      <Text style={[styles.backText, isDarkMode && { color: '#4ADE80' }]}>
+        Back to Scholarship Renewal
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+interface RenewalOcrFeedbackProps {
+  validation?: DocumentValidationState | null;
+  hasFile: boolean;
+  expectedLabel: string;
+  isDarkMode: boolean;
+}
+
+function RenewalOcrFeedback({
+  validation,
+  hasFile,
+  expectedLabel,
+  isDarkMode,
+}: RenewalOcrFeedbackProps) {
+  if (!hasFile || !validation || validation.status === 'idle') {
+    return null;
+  }
+
+  if (validation.status === 'checking') {
+    return (
+      <View
+        style={[
+          styles.ocrFeedbackBox,
+          styles.ocrCheckingBox,
+          isDarkMode && { backgroundColor: '#0F243A', borderColor: '#0369A1' },
+        ]}
+      >
+        <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#0284C7'} />
+        <Text style={[styles.ocrCheckingText, isDarkMode && { color: '#38BDF8' }]}>
+          Checking document type...
+        </Text>
+      </View>
+    );
+  }
+
+  if (validation.status === 'MATCH') {
+    const detectedText = getDocumentLabel(validation.detectedCode || validation.expectedCode);
+    return (
+      <View
+        style={[
+          styles.ocrFeedbackBox,
+          styles.ocrMatchBox,
+          isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' },
+        ]}
+      >
+        <View style={styles.ocrHeaderRow}>
+          <IconSymbol name="checkmark.circle.fill" size={14} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
+          <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
+            ✓ Document type appears correct
+          </Text>
+        </View>
+        <Text style={[styles.ocrMatchDetail, isDarkMode && { color: '#BBF7D0' }]}>
+          Detected: {detectedText}
+        </Text>
+      </View>
+    );
+  }
+
+  if (validation.status === 'MISMATCH') {
+    const detectedText = getDocumentLabel(validation.detectedCode);
+    return (
+      <View
+        style={[
+          styles.ocrFeedbackBox,
+          styles.ocrMismatchBox,
+          isDarkMode && { backgroundColor: '#451A03', borderColor: '#B45309' },
+        ]}
+      >
+        <View style={styles.ocrHeaderRow}>
+          <IconSymbol name="exclamationmark.triangle.fill" size={14} color={isDarkMode ? '#FBBF24' : '#D97706'} />
+          <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FDE68A' }]}>
+            ⚠ Document type may not match
+          </Text>
+        </View>
+        <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
+          Detected: {detectedText}
+        </Text>
+        <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
+          Expected: {expectedLabel}
+        </Text>
+      </View>
+    );
+  }
+
+  if (validation.status === 'INCONCLUSIVE') {
+    return (
+      <View
+        style={[
+          styles.ocrFeedbackBox,
+          styles.ocrInconclusiveBox,
+          isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
+        ]}
+      >
+        <View style={styles.ocrHeaderRow}>
+          <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+          <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
+            Automatic document check was inconclusive.
+          </Text>
+        </View>
+        <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
+          Your document can still be reviewed manually.
+        </Text>
+      </View>
+    );
+  }
+
+  if (validation.status === 'error') {
+    return (
+      <View
+        style={[
+          styles.ocrFeedbackBox,
+          styles.ocrInconclusiveBox,
+          isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
+        ]}
+      >
+        <View style={styles.ocrHeaderRow}>
+          <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+          <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
+            Automatic document check is unavailable.
+          </Text>
+        </View>
+        <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
+          You can still continue and the document can be reviewed manually.
+        </Text>
+      </View>
+    );
+  }
+
+  return null;
+}
+
 export function RenewalApplicationScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
@@ -523,126 +677,6 @@ export function RenewalApplicationScreen() {
     }
   };
 
-  const renderOcrFeedback = (docType: 'cor' | 'cog' | 'soa', expectedLabel: string) => {
-    const validation = docValidations[docType];
-    const selectedFile = files[docType];
-    if (!selectedFile || validation.status === 'idle') {
-      return null;
-    }
-
-    if (validation.status === 'checking') {
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrCheckingBox,
-            isDarkMode && { backgroundColor: '#0F243A', borderColor: '#0369A1' },
-          ]}
-        >
-          <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#0284C7'} />
-          <Text style={[styles.ocrCheckingText, isDarkMode && { color: '#38BDF8' }]}>
-            Checking document type...
-          </Text>
-        </View>
-      );
-    }
-
-    if (validation.status === 'MATCH') {
-      const detectedText = getDocumentLabel(validation.detectedCode || validation.expectedCode);
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrMatchBox,
-            isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' },
-          ]}
-        >
-          <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="checkmark.circle.fill" size={14} color={isDarkMode ? '#4ADE80' : '#16A34A'} />
-            <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
-              ✓ Document type appears correct
-            </Text>
-          </View>
-          <Text style={[styles.ocrMatchDetail, isDarkMode && { color: '#BBF7D0' }]}>
-            Detected: {detectedText}
-          </Text>
-        </View>
-      );
-    }
-
-    if (validation.status === 'MISMATCH') {
-      const detectedText = getDocumentLabel(validation.detectedCode);
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrMismatchBox,
-            isDarkMode && { backgroundColor: '#451A03', borderColor: '#B45309' },
-          ]}
-        >
-          <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="exclamationmark.triangle.fill" size={14} color={isDarkMode ? '#FBBF24' : '#D97706'} />
-            <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FDE68A' }]}>
-              ⚠ Document type may not match
-            </Text>
-          </View>
-          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
-            Detected: {detectedText}
-          </Text>
-          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FEF08A' }]}>
-            Expected: {expectedLabel}
-          </Text>
-        </View>
-      );
-    }
-
-    if (validation.status === 'INCONCLUSIVE') {
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrInconclusiveBox,
-            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
-          ]}
-        >
-          <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
-            <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
-              Automatic document check was inconclusive.
-            </Text>
-          </View>
-          <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
-            Your document can still be reviewed manually.
-          </Text>
-        </View>
-      );
-    }
-
-    if (validation.status === 'error') {
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrInconclusiveBox,
-            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
-          ]}
-        >
-          <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
-            <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
-              Automatic document check is unavailable.
-            </Text>
-          </View>
-          <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
-            You can still continue and the document can be reviewed manually.
-          </Text>
-        </View>
-      );
-    }
-
-    return null;
-  };
-
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '';
     const mb = bytes / (1024 * 1024);
@@ -660,23 +694,6 @@ export function RenewalApplicationScreen() {
       router.replace('/education/renewal' as any);
     }
   };
-
-  const renderBackButton = () => (
-    <TouchableOpacity
-      style={styles.backBtn}
-      onPress={handleGoBack}
-      activeOpacity={0.7}
-    >
-      <IconSymbol
-        name="chevron.left"
-        size={16}
-        color={isDarkMode ? '#4ADE80' : '#15803D'}
-      />
-      <Text style={[styles.backText, isDarkMode && { color: '#4ADE80' }]}>
-        Back to Scholarship Renewal
-      </Text>
-    </TouchableOpacity>
-  );
 
   const getStatusConfig = () => {
     const renewalStatus = overview?.renewal?.renewal_status;
@@ -865,7 +882,7 @@ export function RenewalApplicationScreen() {
         />
       }
     >
-      {renderBackButton()}
+      <RenewalBackButton onPress={handleGoBack} isDarkMode={isDarkMode} />
 
       {/* SKELETON OR CONTENT */}
       {loading ? (
@@ -1329,7 +1346,12 @@ export function RenewalApplicationScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  {renderOcrFeedback('cor', 'Proof of Enrollment (COR)')}
+                  <RenewalOcrFeedback
+                    validation={docValidations.cor}
+                    hasFile={Boolean(files.cor)}
+                    expectedLabel="Proof of Enrollment (COR)"
+                    isDarkMode={isDarkMode}
+                  />
                 </View>
 
                 {/* 2. ACADEMIC RECORD (COG) */}
@@ -1387,7 +1409,12 @@ export function RenewalApplicationScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  {renderOcrFeedback('cog', 'Academic Record (COG)')}
+                  <RenewalOcrFeedback
+                    validation={docValidations.cog}
+                    hasFile={Boolean(files.cog)}
+                    expectedLabel="Academic Record (COG)"
+                    isDarkMode={isDarkMode}
+                  />
                 </View>
 
                 {/* 3. STATEMENT OF ACCOUNT (OPTIONAL) */}
@@ -1445,7 +1472,12 @@ export function RenewalApplicationScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  {renderOcrFeedback('soa', 'Statement of Account (SOA)')}
+                  <RenewalOcrFeedback
+                    validation={docValidations.soa}
+                    hasFile={Boolean(files.soa)}
+                    expectedLabel="Statement of Account (SOA)"
+                    isDarkMode={isDarkMode}
+                  />
                 </View>
               </View>
 

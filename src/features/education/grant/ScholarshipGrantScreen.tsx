@@ -64,6 +64,59 @@ function getStatusBadgeVariant(
   }
 }
 
+interface GrantHubBackButtonProps {
+  onPress: () => void;
+  isDarkMode: boolean;
+}
+
+function GrantHubBackButton({ onPress, isDarkMode }: GrantHubBackButtonProps) {
+  return (
+    <TouchableOpacity
+      style={styles.backBtn}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Back to Education Hub"
+    >
+      <IconSymbol
+        name="chevron.left"
+        size={16}
+        color={isDarkMode ? "#FB923C" : "#EA580C"}
+      />
+      <Text
+        style={[styles.backText, { color: isDarkMode ? "#FB923C" : "#EA580C" }]}
+      >
+        Back to Education Hub
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+interface GrantHeaderSkeletonProps {
+  isDarkMode: boolean;
+  aspectRatio: number;
+}
+
+function GrantHeaderSkeleton({ isDarkMode, aspectRatio }: GrantHeaderSkeletonProps) {
+  return (
+    <View
+      style={[
+        styles.headerContainer,
+        isDarkMode && styles.headerContainerDark,
+        { aspectRatio },
+      ]}
+    >
+      <Skeleton
+        width="100%"
+        borderRadius={16}
+        style={{
+          height: "100%",
+        }}
+      />
+    </View>
+  );
+}
+
 export default function ScholarshipGrantScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
@@ -87,46 +140,7 @@ export default function ScholarshipGrantScreen() {
     }
   };
 
-  const renderBackButton = () => (
-    <TouchableOpacity
-      style={styles.backBtn}
-      onPress={handleGoBack}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel="Back to Education Hub"
-    >
-      <IconSymbol
-        name="chevron.left"
-        size={16}
-        color={isDarkMode ? "#FB923C" : "#EA580C"}
-      />
-      <Text
-        style={[styles.backText, { color: isDarkMode ? "#FB923C" : "#EA580C" }]}
-      >
-        Back to Education Hub
-      </Text>
-    </TouchableOpacity>
-  );
-
   const headerAspectRatio = isDarkMode ? 1852 / 560 : 1844 / 582;
-
-  const renderHeaderSkeleton = () => (
-    <View
-      style={[
-        styles.headerContainer,
-        isDarkMode && styles.headerContainerDark,
-        { aspectRatio: headerAspectRatio },
-      ]}
-    >
-      <Skeleton
-        width="100%"
-        borderRadius={16}
-        style={{
-          height: "100%",
-        }}
-      />
-    </View>
-  );
 
   const loadData = useCallback(async () => {
     try {
@@ -195,8 +209,8 @@ export default function ScholarshipGrantScreen() {
         style={[styles.container, isDarkMode && { backgroundColor: "#0F172A" }]}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {renderBackButton()}
-          {renderHeaderSkeleton()}
+          <GrantHubBackButton onPress={handleGoBack} isDarkMode={isDarkMode} />
+          <GrantHeaderSkeleton isDarkMode={isDarkMode} aspectRatio={headerAspectRatio} />
           <View style={{ height: 16 }} />
           <Skeleton height={160} borderRadius={16} />
           <View style={{ height: 16 }} />
@@ -368,7 +382,7 @@ export default function ScholarshipGrantScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {renderBackButton()}
+        <GrantHubBackButton onPress={handleGoBack} isDarkMode={isDarkMode} />
 
         {/* 1. SCHOLARSHIP GRANT HEADER IMAGE */}
         <View

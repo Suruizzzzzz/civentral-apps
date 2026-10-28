@@ -166,7 +166,7 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     - Replace scattered `formatDate` aliasings in `ScholarshipDashboardScreen.tsx` and `ScholarshipHistoryScreen.tsx` with standard `formatDate` from `src/utils/dateUtils.ts`.
     - Extract repeated `getStatusColor` resolvers from `HomeScreen.tsx` (L94) and `ApplicationStatusCard.tsx` into a central `statusTheme.ts` dictionary.
 
-- [ ] **[P5-CLN-05] Eliminate Nested Inline Renderers in Grant, Renewal, and Document Flows**
+- [x] **[P5-CLN-05] Eliminate Nested Inline Renderers in Grant, Renewal, and Document Flows**
   - **Location:** `GrantApplicationScreen.tsx`, `RenewalApplicationScreen.tsx`, `ScholarshipGrantScreen.tsx`, `CitizenScholarshipDetailScreen.tsx`
   - **Commit Tag:** `P5-CLN-05: eliminate nested inline renderers in grant and renewal flows`
   - **Scope:**

@@ -87,6 +87,119 @@ interface DocumentOcrValidation {
   clarity?: ClarityResult;
 }
 
+interface GrantScreenBackButtonProps {
+  onPress: () => void;
+  isDarkMode: boolean;
+}
+
+function GrantScreenBackButton({ onPress, isDarkMode }: GrantScreenBackButtonProps) {
+  return (
+    <TouchableOpacity
+      style={styles.backBtn}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <IconSymbol
+        name="chevron.left"
+        size={16}
+        color={isDarkMode ? '#FB923C' : '#EA580C'}
+      />
+      <Text style={[styles.backText, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
+        Back to Scholarship Grant
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+interface GrantOcrFeedbackBadgeProps {
+  validation?: DocumentOcrValidation | null;
+  label: string;
+  isDarkMode: boolean;
+}
+
+function GrantOcrFeedbackBadge({ validation, label, isDarkMode }: GrantOcrFeedbackBadgeProps) {
+  if (!validation || validation.status === 'idle') return null;
+
+  if (validation.status === 'checking') {
+    return (
+      <View style={[styles.ocrFeedbackBox, styles.ocrCheckingBox, { marginTop: 10 }]}>
+        <ActivityIndicator size="small" color="#EA580C" />
+        <Text style={[styles.ocrCheckingText, isDarkMode && { color: '#FB923C' }]}>
+          Verifying document type automatically...
+        </Text>
+      </View>
+    );
+  }
+
+  if (validation.status === 'MATCH') {
+    return (
+      <View
+        style={[
+          styles.ocrFeedbackBox,
+          styles.ocrMatchBox,
+          { marginTop: 10 },
+          isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' },
+        ]}
+      >
+        <View style={styles.ocrHeaderRow}>
+          <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
+          <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
+            Document verified as {label}.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (validation.status === 'MISMATCH') {
+    return (
+      <View
+        style={[
+          styles.ocrFeedbackBox,
+          styles.ocrMismatchBox,
+          { marginTop: 10 },
+          isDarkMode && { backgroundColor: '#450A0A', borderColor: '#DC2626' },
+        ]}
+      >
+        <View style={styles.ocrHeaderRow}>
+          <IconSymbol name="exclamationmark.triangle.fill" size={14} color="#DC2626" />
+          <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FCA5A5' }]}>
+            Possible Document Mismatch
+          </Text>
+        </View>
+        <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FECACA' }]}>
+          {validation.message || `Uploaded document does not appear to match ${label}. You can still submit, but manual review is required.`}
+        </Text>
+      </View>
+    );
+  }
+
+  if (validation.status === 'INCONCLUSIVE') {
+    return (
+      <View
+        style={[
+          styles.ocrFeedbackBox,
+          styles.ocrInconclusiveBox,
+          { marginTop: 10 },
+          isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
+        ]}
+      >
+        <View style={styles.ocrHeaderRow}>
+          <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+          <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
+            Automatic document check is unavailable.
+          </Text>
+        </View>
+        <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
+          You can still continue and the document can be reviewed manually.
+        </Text>
+      </View>
+    );
+  }
+
+  return null;
+}
+
 export function GrantApplicationScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
@@ -132,23 +245,6 @@ export function GrantApplicationScreen() {
       router.replace('/education/grant' as any);
     }
   };
-
-  const renderBackButton = () => (
-    <TouchableOpacity
-      style={styles.backBtn}
-      onPress={handleGoBack}
-      activeOpacity={0.7}
-    >
-      <IconSymbol
-        name="chevron.left"
-        size={16}
-        color={isDarkMode ? '#FB923C' : '#EA580C'}
-      />
-      <Text style={[styles.backText, { color: isDarkMode ? '#FB923C' : '#EA580C' }]}>
-        Back to Scholarship Grant
-      </Text>
-    </TouchableOpacity>
-  );
 
   const loadData = useCallback(async () => {
     try {
@@ -385,96 +481,11 @@ export function GrantApplicationScreen() {
     }
   };
 
-  // Render OCR feedback pill
-  const renderOcrFeedback = (docType: 'COR' | 'SOA', label: string) => {
-    const val = docValidations[docType];
-    if (!val || val.status === 'idle') return null;
-
-    if (val.status === 'checking') {
-      return (
-        <View style={[styles.ocrFeedbackBox, styles.ocrCheckingBox, { marginTop: 10 }]}>
-          <ActivityIndicator size="small" color="#EA580C" />
-          <Text style={[styles.ocrCheckingText, isDarkMode && { color: '#FB923C' }]}>
-            Verifying document type automatically...
-          </Text>
-        </View>
-      );
-    }
-
-    if (val.status === 'MATCH') {
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrMatchBox,
-            { marginTop: 10 },
-            isDarkMode && { backgroundColor: '#064E3B', borderColor: '#059669' },
-          ]}
-        >
-          <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="checkmark.circle.fill" size={14} color="#16A34A" />
-            <Text style={[styles.ocrMatchHeader, isDarkMode && { color: '#86EFAC' }]}>
-              Document verified as {label}.
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    if (val.status === 'MISMATCH') {
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrMismatchBox,
-            { marginTop: 10 },
-            isDarkMode && { backgroundColor: '#450A0A', borderColor: '#DC2626' },
-          ]}
-        >
-          <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="exclamationmark.triangle.fill" size={14} color="#DC2626" />
-            <Text style={[styles.ocrMismatchHeader, isDarkMode && { color: '#FCA5A5' }]}>
-              Possible Document Mismatch
-            </Text>
-          </View>
-          <Text style={[styles.ocrMismatchDetail, isDarkMode && { color: '#FECACA' }]}>
-            {val.message || `Uploaded document does not appear to match ${label}. You can still submit, but manual review is required.`}
-          </Text>
-        </View>
-      );
-    }
-
-    if (val.status === 'INCONCLUSIVE') {
-      return (
-        <View
-          style={[
-            styles.ocrFeedbackBox,
-            styles.ocrInconclusiveBox,
-            { marginTop: 10 },
-            isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
-          ]}
-        >
-          <View style={styles.ocrHeaderRow}>
-            <IconSymbol name="info.circle.fill" size={14} color={isDarkMode ? '#94A3B8' : '#64748B'} />
-            <Text style={[styles.ocrInconclusiveHeader, isDarkMode && { color: '#CBD5E1' }]}>
-              Automatic document check is unavailable.
-            </Text>
-          </View>
-          <Text style={[styles.ocrInconclusiveDetail, isDarkMode && { color: '#94A3B8' }]}>
-            You can still continue and the document can be reviewed manually.
-          </Text>
-        </View>
-      );
-    }
-
-    return null;
-  };
-
   if (loading) {
     return (
       <View style={[styles.container, isDarkMode && { backgroundColor: '#0F172A' }]}>
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 140 }]}>
-          {renderBackButton()}
+          <GrantScreenBackButton onPress={handleGoBack} isDarkMode={isDarkMode} />
           <Skeleton height={140} borderRadius={16} />
           <View style={{ height: 16 }} />
           <Skeleton height={100} borderRadius={16} />
@@ -719,7 +730,7 @@ export function GrantApplicationScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 140 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {renderBackButton()}
+        <GrantScreenBackButton onPress={handleGoBack} isDarkMode={isDarkMode} />
 
         {/* ============================================================== */}
         {/* 1. GRANT IDENTITY & CONTEXT HEADER                             */}
@@ -1072,7 +1083,11 @@ export function GrantApplicationScreen() {
                     )}
                   </TouchableOpacity>
                 )}
-                {renderOcrFeedback('COR', 'Certificate of Registration (COR)')}
+                <GrantOcrFeedbackBadge
+                  validation={docValidations.COR}
+                  label="Certificate of Registration (COR)"
+                  isDarkMode={isDarkMode}
+                />
                 {(fieldErrors.cor || fieldErrors.cor_document) ? (
                   <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>
                     {(fieldErrors.cor || fieldErrors.cor_document)?.[0]}
@@ -1130,7 +1145,11 @@ export function GrantApplicationScreen() {
                       )}
                     </TouchableOpacity>
                   )}
-                  {renderOcrFeedback('SOA', 'Statement of Account (SOA)')}
+                  <GrantOcrFeedbackBadge
+                    validation={docValidations.SOA}
+                    label="Statement of Account (SOA)"
+                    isDarkMode={isDarkMode}
+                  />
                 {(fieldErrors.soa || fieldErrors.soa_document) ? (
                   <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>
                     {(fieldErrors.soa || fieldErrors.soa_document)?.[0]}
