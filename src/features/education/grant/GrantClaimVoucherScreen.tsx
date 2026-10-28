@@ -18,6 +18,7 @@ import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
 import { formatCurrency, formatDateDisplay } from '@/src/utils';
+import { elevatedCard, statusBadgePill } from '@/src/styles';
 import { voucherStyles } from './styles/GrantClaimVoucher.styles';
 import {
   CitizenGrantReleaseComponent,
@@ -395,7 +396,7 @@ export default function GrantClaimVoucherScreen() {
                   {currentRelease.academic_year} • {currentRelease.academic_term}
                 </Text>
                 {currentRelease.release_code ? (
-                  <View style={[voucherStyles.relCodeBadge, isDarkMode && voucherStyles.relCodeBadgeDark]}>
+                  <View style={[statusBadgePill, voucherStyles.relCodeBadge, isDarkMode && voucherStyles.relCodeBadgeDark]}>
                     <Text style={[voucherStyles.relCodeBadgeText, isDarkMode && voucherStyles.relCodeBadgeTextDark]}>
                       {currentRelease.release_code}
                     </Text>
@@ -409,6 +410,7 @@ export default function GrantClaimVoucherScreen() {
           <View style={voucherStyles.qrSection}>
             <View
               style={[
+                elevatedCard,
                 voucherStyles.qrCardWrapper,
                 isDarkMode && voucherStyles.qrCardWrapperDark,
                 isReleased && { opacity: 0.65 },

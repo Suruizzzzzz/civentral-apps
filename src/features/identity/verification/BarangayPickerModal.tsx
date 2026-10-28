@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { modalBackdrop } from '@/src/styles';
 import { styles } from '../styles/VerifyCitizenScreen.styles';
 import { CaloocanDistrict } from './types';
 
@@ -43,7 +44,7 @@ export function BarangayPickerModal({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <View style={[modalBackdrop, styles.modalOverlay]}>
         <View style={[styles.modalContainer, isDarkMode && { backgroundColor: '#1C2541' }]}>
           <View style={[styles.modalHeader, isDarkMode && { borderBottomColor: '#3A506B' }]}>
             <View>

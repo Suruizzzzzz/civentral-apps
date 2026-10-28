@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 import { Badge } from "@/src/components/ui/Badge";
+import { elevatedCard } from "@/src/styles";
 import { styles } from "../styles/CitizenScholarshipDetail.styles";
 import { BadgeConfig } from "./detailHelpers";
 
@@ -26,6 +27,7 @@ export function HeaderContextCard({
   return (
     <View
       style={[
+        elevatedCard,
         styles.headerCard,
         isDarkMode && {
           backgroundColor: "#1C2541",

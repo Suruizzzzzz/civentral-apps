@@ -134,7 +134,7 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
 
 ## Priority 5: Spaghetti Code Reduction, Style Extraction & Component Hygiene
 
-- [ ] **[P5-STY-01] Extract Shared UI Design Tokens & Modal Primitives**
+- [x] **[P5-STY-01] Extract Shared UI Design Tokens & Modal Primitives**
   - **Location:** `src/components/ui/`, `src/styles/common.styles.ts`
   - **Commit Tag:** `P5-STY-01: extract shared design tokens and modal primitives`
   - **Scope:**

@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Badge } from "@/src/components/ui/Badge";
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { formatDate } from "@/src/utils";
+import { elevatedCard, modalBackdrop } from "@/src/styles";
 import { styles } from "../styles/CitizenScholarshipDetail.styles";
 
 export type ScholarshipStageState =
@@ -1412,16 +1413,17 @@ export function ApplicationStatusCard({
         onRequestClose={() => setWithdrawModalVisible(false)}
       >
         <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.6)",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 20,
-          }}
+          style={[
+            modalBackdrop,
+            {
+              backgroundColor: "rgba(0,0,0,0.6)",
+              padding: 20,
+            },
+          ]}
         >
           <View
             style={[
+              elevatedCard,
               styles.sectionCard,
               { width: "100%", maxWidth: 400 },
               isDarkMode && {

@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { modalBackdrop } from '@/src/styles';
 import { styles } from '../styles/VerifyCitizenScreen.styles';
 
 export type PhotoPickerTarget = 'id' | 'selfie' | 'photo1x1' | 'signature';
@@ -34,7 +35,7 @@ export function PhotoSourcePickerModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.pickerModalOverlay}>
+      <View style={[modalBackdrop, styles.pickerModalOverlay]}>
         <View style={[styles.pickerModalContent, isDarkMode && { backgroundColor: '#1C2541' }]}>
           <View style={styles.pickerModalHeader}>
             <Text style={[styles.pickerModalTitle, isDarkMode && { color: '#FFFFFF' }]}>
