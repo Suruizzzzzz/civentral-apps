@@ -972,7 +972,9 @@ export function ScholarshipDashboardScreen() {
     }
 
     for (const rel of grantReleases) {
+      const relIdentifier = rel.release_code || (rel.grant_release_id ? `REL-${rel.grant_release_id}` : null);
       if (rel.release_code && seenCodes.has(rel.release_code)) continue;
+      if (relIdentifier && seenCodes.has(relIdentifier)) continue;
 
       const rawRelPeriod = rel.academic_term
         ? `AY ${rel.academic_year} • ${rel.academic_term}`
@@ -984,6 +986,7 @@ export function ScholarshipDashboardScreen() {
       seenGrantPeriods.add(relPeriod);
 
       if (rel.release_code) seenCodes.add(rel.release_code);
+      if (relIdentifier) seenCodes.add(relIdentifier);
 
       const isCurrent =
         Boolean(currentPeriodString) &&
@@ -994,13 +997,13 @@ export function ScholarshipDashboardScreen() {
       const rawTime = releasedDate ? new Date(releasedDate).getTime() : 0;
 
       list.push({
-        id: `release-${rel.release_code}`,
+        id: `release-${rel.release_code || rel.grant_release_id}`,
         academicPeriod: relPeriod,
         isCurrent,
         recordType: 'Grant',
         status: rel.release_status,
         date: formatDate(releasedDate),
-        referenceCode: rel.release_code,
+        referenceCode: rel.release_code || (rel.grant_release_id ? `REL-${rel.grant_release_id}` : null),
         timestamp: isNaN(rawTime) ? 0 : rawTime,
       });
     }

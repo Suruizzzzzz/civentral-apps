@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
   RefreshControl,
@@ -70,13 +69,35 @@ function formatTimeWindow(startTime?: string | null, endTime?: string | null): s
 
 export default function GrantClaimVoucherScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ release_code?: string; component_id?: string }>();
+  const params = useLocalSearchParams<{
+    release_code?: string;
+    grant_release_id?: string;
+    release_id?: string;
+    recordId?: string;
+    code?: string;
+    id?: string;
+    component_id?: string;
+  }>();
   const { isDarkMode } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [releases, setReleases] = useState<CitizenGrantReleaseItem[]>([]);
-  const [selectedReleaseCode, setSelectedReleaseCode] = useState<string | null>(params.release_code || null);
+  const [selectedReleaseCode, setSelectedReleaseCode] = useState<string | null>(
+    params.release_code ||
+      params.code ||
+      (!params.grant_release_id && params.recordId ? params.recordId.replace(/^release-/, "") : null) ||
+      null
+  );
+  const [selectedGrantReleaseId, setSelectedGrantReleaseId] = useState<number | null>(
+    params.grant_release_id
+      ? parseInt(params.grant_release_id, 10)
+      : params.release_id
+      ? parseInt(params.release_id, 10)
+      : params.id && !isNaN(Number(params.id))
+      ? parseInt(params.id, 10)
+      : null
+  );
   const [selectedComponentId, setSelectedComponentId] = useState<number | null>(
     params.component_id ? parseInt(params.component_id, 10) : null
   );
@@ -98,8 +119,37 @@ export default function GrantClaimVoucherScreen() {
       // Auto-select release and component if not already chosen
       if (data.length > 0) {
         let targetRel = data[0];
-        if (selectedReleaseCode) {
-          const found = data.find((r) => r.release_code === selectedReleaseCode);
+        const searchCode =
+          selectedReleaseCode ||
+          params.release_code ||
+          params.code ||
+          (!params.grant_release_id && params.recordId ? params.recordId.replace(/^release-/, "") : null);
+        const searchId =
+          selectedGrantReleaseId ??
+          (params.grant_release_id
+            ? parseInt(params.grant_release_id, 10)
+            : params.release_id
+            ? parseInt(params.release_id, 10)
+            : params.id && !isNaN(Number(params.id))
+            ? parseInt(params.id, 10)
+            : null);
+
+        if (searchCode || searchId !== null) {
+          const found = data.find((r) => {
+            if (
+              searchCode &&
+              (r.release_code === searchCode || r.release_code.toLowerCase() === searchCode.toLowerCase())
+            ) {
+              return true;
+            }
+            if (searchId !== null && r.grant_release_id === searchId) {
+              return true;
+            }
+            if (searchCode && r.grant_release_id && String(r.grant_release_id) === searchCode) {
+              return true;
+            }
+            return false;
+          });
           if (found) targetRel = found;
         } else {
           // Prefer release with an active F2F claim
@@ -109,6 +159,9 @@ export default function GrantClaimVoucherScreen() {
           if (activeF2F) targetRel = activeF2F;
         }
         setSelectedReleaseCode(targetRel.release_code);
+        if (targetRel.grant_release_id !== undefined) {
+          setSelectedGrantReleaseId(targetRel.grant_release_id);
+        }
 
         // Find F2F component
         const f2fComponents = targetRel.components.filter(
@@ -132,16 +185,26 @@ export default function GrantClaimVoucherScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedReleaseCode, selectedComponentId]);
+  }, [
+    selectedReleaseCode,
+    selectedGrantReleaseId,
+    selectedComponentId,
+    params.release_code,
+    params.grant_release_id,
+    params.release_id,
+    params.recordId,
+    params.code,
+    params.id,
+  ]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, [loadData])
   );
 
   const onRefresh = useCallback(() => {
@@ -150,7 +213,14 @@ export default function GrantClaimVoucherScreen() {
   }, [loadData]);
 
   // Resolve current active release and component
-  const currentRelease = releases.find((r) => r.release_code === selectedReleaseCode) || releases[0] || null;
+  const currentRelease =
+    releases.find(
+      (r) =>
+        (selectedReleaseCode && r.release_code === selectedReleaseCode) ||
+        (selectedGrantReleaseId !== null && r.grant_release_id === selectedGrantReleaseId)
+    ) ||
+    releases[0] ||
+    null;
   const currentComponent: CitizenGrantReleaseComponent | null =
     currentRelease?.components.find((c) => c.component_id === selectedComponentId) ||
     currentRelease?.components.find((c) => c.release_method === 'Face-to-Face') ||
@@ -158,7 +228,6 @@ export default function GrantClaimVoucherScreen() {
     null;
 
   const f2fSchedule = currentComponent?.f2f_schedule || null;
-  const isFaceToFace = currentComponent?.release_method === 'Face-to-Face';
   const claimStatus = f2fSchedule?.claim_status || 'Scheduled';
   const claimReference = f2fSchedule?.claim_reference || null;
   const qrPayload = f2fSchedule?.qr_claim_payload || claimReference;
@@ -276,11 +345,13 @@ export default function GrantClaimVoucherScreen() {
           >
             {availableVouchers.map((item, idx) => {
               const isSelected =
-                item.release.release_code === selectedReleaseCode &&
+                ((item.release.release_code && item.release.release_code === selectedReleaseCode) ||
+                  (item.release.grant_release_id !== undefined && item.release.grant_release_id === selectedGrantReleaseId)) &&
                 item.component.component_id === selectedComponentId;
+              const pillKey = `${item.release.release_code || item.release.grant_release_id || idx}-${item.component.component_id}`;
               return (
                 <TouchableOpacity
-                  key={`${item.release.release_code}-${item.component.component_id}`}
+                  key={pillKey}
                   style={[
                     voucherStyles.switcherPill,
                     isSelected && voucherStyles.switcherPillActive,
@@ -289,6 +360,7 @@ export default function GrantClaimVoucherScreen() {
                   ]}
                   onPress={() => {
                     setSelectedReleaseCode(item.release.release_code);
+                    setSelectedGrantReleaseId(item.release.grant_release_id ?? null);
                     setSelectedComponentId(item.component.component_id);
                   }}
                   activeOpacity={0.8}
@@ -337,9 +409,18 @@ export default function GrantClaimVoucherScreen() {
               <Text style={[voucherStyles.programName, isDarkMode && { color: '#F8FAFC' }]}>
                 {currentRelease.program_name}
               </Text>
-              <Text style={[voucherStyles.termText, isDarkMode && { color: '#94A3B8' }]}>
-                {currentRelease.academic_year} • {currentRelease.academic_term}
-              </Text>
+              <View style={voucherStyles.termRow}>
+                <Text style={[voucherStyles.termText, isDarkMode && { color: '#94A3B8' }]}>
+                  {currentRelease.academic_year} • {currentRelease.academic_term}
+                </Text>
+                {currentRelease.release_code ? (
+                  <View style={[voucherStyles.relCodeBadge, isDarkMode && voucherStyles.relCodeBadgeDark]}>
+                    <Text style={[voucherStyles.relCodeBadgeText, isDarkMode && voucherStyles.relCodeBadgeTextDark]}>
+                      {currentRelease.release_code}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
           </View>
 
@@ -361,7 +442,7 @@ export default function GrantClaimVoucherScreen() {
                     color="#0F172A"
                     quietZone={14}
                   />
-                  {/* Subtle CivCentral Center Shield Stamp */}
+                  {/* Subtle Civentral Center Shield Stamp */}
                   <View style={voucherStyles.qrLogoCenter}>
                     <Ionicons name="shield-checkmark" size={18} color="#EA580C" />
                   </View>
@@ -500,7 +581,7 @@ export default function GrantClaimVoucherScreen() {
             </View>
 
             {f2fSchedule?.schedule_code && (
-              <View style={[voucherStyles.detailRow, { borderBottomWidth: 0 }]}>
+              <View style={[voucherStyles.detailRow, !currentRelease?.release_code && { borderBottomWidth: 0 }]}>
                 <View style={voucherStyles.detailIconBox}>
                   <Ionicons name="layers-outline" size={18} color="#EA580C" />
                 </View>
@@ -514,6 +595,23 @@ export default function GrantClaimVoucherScreen() {
                 </View>
               </View>
             )}
+
+            {currentRelease?.release_code ? (
+              <View style={[voucherStyles.detailRow, { borderBottomWidth: 0 }]}>
+                <View style={voucherStyles.detailIconBox}>
+                  <Ionicons name="pricetag-outline" size={18} color="#EA580C" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[voucherStyles.detailLabel, isDarkMode && { color: '#94A3B8' }]}>
+                    RELEASE IDENTIFIER
+                  </Text>
+                  <Text style={[voucherStyles.detailValue, isDarkMode && { color: '#F8FAFC' }]}>
+                    {currentRelease.release_code}
+                    {currentRelease.grant_release_id ? ` (ID: #${currentRelease.grant_release_id})` : ''}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -578,7 +676,7 @@ export default function GrantClaimVoucherScreen() {
         <View style={voucherStyles.securityFooter}>
           <Ionicons name="lock-closed" size={14} color="#94A3B8" />
           <Text style={voucherStyles.securityFooterText}>
-            Secured by CivCentral Cryptographic Engine • HMAC-SHA256 Signed
+            Secured by Civentral Cryptographic Engine • HMAC-SHA256 Signed
           </Text>
         </View>
       </ScrollView>
@@ -715,8 +813,35 @@ const voucherStyles = StyleSheet.create({
   termText: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 4,
     fontWeight: '500',
+  },
+  termRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  relCodeBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  relCodeBadgeDark: {
+    backgroundColor: '#1E293B',
+    borderColor: '#334155',
+  },
+  relCodeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#475569',
+    letterSpacing: 0.3,
+  },
+  relCodeBadgeTextDark: {
+    color: '#CBD5E1',
   },
   qrSection: {
     alignItems: 'center',

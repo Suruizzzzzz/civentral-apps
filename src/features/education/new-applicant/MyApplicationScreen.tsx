@@ -1176,7 +1176,7 @@ export function MyApplicationScreen() {
                           { color: isDarkMode ? '#FB923C' : '#EA580C', fontWeight: '800' },
                         ]}
                       >
-                        {grantReleases[0].release_code}
+                        {grantReleases[0].release_code || (grantReleases[0].grant_release_id ? `REL-${grantReleases[0].grant_release_id}` : '—')}
                       </Text>
                     </View>
 

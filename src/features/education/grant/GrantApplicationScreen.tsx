@@ -1287,7 +1287,7 @@ export function GrantApplicationScreen() {
                       />
                     </View>
                     <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B', marginBottom: 8 }}>
-                      Release Code: {rel.release_code}
+                      Release Code: {rel.release_code || (rel.grant_release_id ? `REL-${rel.grant_release_id}` : '—')}
                     </Text>
 
                     {/* Components Breakdown */}

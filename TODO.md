@@ -32,12 +32,14 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     - Catch `ApiValidationError` and bind field-level errors directly to UI input components (`errors.general_weighted_average`, `errors.course_program`, `errors.id_number`).
     - Prevent generic `[Backend 422] Validation failed` alerts from blocking submission recovery.
 
-- [ ] **[P1-REL-03] Align Alphanumeric Release References & Dual-Identifier Typing**
+- [x] **[P1-REL-03] Align Alphanumeric Release References & Dual-Identifier Typing**
   - **Location:** `src/features/education/grant/api/grantReleaseApi.ts`, `GrantClaimVoucherScreen.tsx`, `CitizenScholarshipDetailScreen.tsx`
-  - **Commit Tag:** `fix(grants): support alphanumeric release codes and integer ids in grant release types`
+  - **Commit Tag:** `P1-REL-03: alphanumeric release codes`
+  - **Status:** **Completed.** Updated `CitizenGrantReleaseItem` interface to support dual identifiers (`grant_release_id?: number` and `release_code: string`). Added `fetchCitizenGrantRelease` helper and normalized response mapping in `grantReleaseApi.ts`. Enhanced `CitizenScholarshipDetailScreen.tsx` navigation matchers to resolve both integer IDs and alphanumeric `REL-*` reference strings seamlessly, passing dual identifiers to `/education/grant/voucher`. Updated `GrantClaimVoucherScreen.tsx` to accept both identifiers, multi-voucher selector support, release reference details, and aligned system brand spelling to "Civentral".
   - **Scope:**
-    - Update `CitizenGrantReleaseItem` interface to include both `grant_release_id: number` and `release_code: string`.
+    - Update `CitizenGrantReleaseItem` interface to include both `grant_release_id?: number` and `release_code: string`.
     - Update `CitizenScholarshipDetailScreen.tsx` navigation matchers to resolve both integer IDs and `REL-*` reference strings seamlessly.
+    - Support dual identifier parsing and selection in `GrantClaimVoucherScreen.tsx` and enforce strict "Civentral" branding.
 
 ---
 

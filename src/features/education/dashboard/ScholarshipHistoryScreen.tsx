@@ -370,7 +370,9 @@ export function ScholarshipHistoryScreen() {
 
     // 2. Map grant releases
     for (const rel of grantReleases) {
+      const relIdentifier = rel.release_code || (rel.grant_release_id ? `REL-${rel.grant_release_id}` : null);
       if (rel.release_code && seenCodes.has(rel.release_code)) continue;
+      if (relIdentifier && seenCodes.has(relIdentifier)) continue;
 
       const rawRelPeriod = rel.academic_term
         ? `AY ${rel.academic_year} • ${rel.academic_term}`
@@ -382,6 +384,7 @@ export function ScholarshipHistoryScreen() {
       seenGrantPeriods.add(relPeriod);
 
       if (rel.release_code) seenCodes.add(rel.release_code);
+      if (relIdentifier) seenCodes.add(relIdentifier);
 
       const isCurrent =
         Boolean(currentPeriodString) &&
@@ -392,13 +395,13 @@ export function ScholarshipHistoryScreen() {
       const rawTime = releasedDate ? new Date(releasedDate).getTime() : 0;
 
       list.push({
-        id: `release-${rel.release_code}`,
+        id: `release-${rel.release_code || rel.grant_release_id}`,
         academicPeriod: relPeriod,
         isCurrent,
         recordType: 'Grant',
         status: rel.release_status,
         date: formatDate(releasedDate),
-        referenceCode: rel.release_code,
+        referenceCode: rel.release_code || (rel.grant_release_id ? `REL-${rel.grant_release_id}` : null),
         programTitle: 'Scholarship Grant Release',
         categorySubtitle: rel.academic_term
           ? `${rel.academic_term} Disbursement`

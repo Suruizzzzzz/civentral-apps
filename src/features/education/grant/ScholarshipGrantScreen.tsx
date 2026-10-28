@@ -326,10 +326,19 @@ export default function ScholarshipGrantScreen() {
     f2fItem?.component.component_status === "Released";
 
   const handleOpenVoucher = () => {
+    const navParams = f2fItem
+      ? {
+          release_code: f2fItem.release.release_code,
+          grant_release_id: f2fItem.release.grant_release_id
+            ? String(f2fItem.release.grant_release_id)
+            : undefined,
+          component_id: String(f2fItem.component.component_id),
+        }
+      : undefined;
     try {
-      router.push("/education/grant/voucher" as any);
+      router.push({ pathname: "/education/grant/voucher", params: navParams } as any);
     } catch {
-      router.navigate("/education/grant/voucher" as any);
+      router.navigate({ pathname: "/education/grant/voucher", params: navParams } as any);
     }
   };
 

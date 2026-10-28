@@ -232,7 +232,7 @@ export function DistributionScheduleScreen() {
         <View style={{ gap: 16, marginBottom: 16 }}>
           {grantReleases.map((rel, relIdx) => (
             <View
-              key={rel.release_code || relIdx}
+              key={rel.release_code || (rel.grant_release_id ? `rel-${rel.grant_release_id}` : relIdx)}
               style={[
                 styles.card,
                 isDarkMode && {

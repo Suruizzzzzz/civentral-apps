@@ -527,6 +527,8 @@ export function CitizenScholarshipDetailScreen() {
     recordId?: string;
     code?: string;
     id?: string;
+    release_code?: string;
+    grant_release_id?: string;
     academicPeriod?: string;
     status?: string;
   }>();
@@ -1227,24 +1229,56 @@ export function CitizenScholarshipDetailScreen() {
   const grantApp = grantOverview?.application;
 
   // Resolve specific grant record if navigating to historical/completed grant
-  const targetCode = (params.recordId || params.code || params.id || "").trim();
+  const targetCode = (params.release_code || params.recordId || params.code || params.id || "").trim();
   const targetCleanCode = targetCode.replace(/^release-|^tracked-|^grant-app-/, "");
+  const targetNumericId = params.grant_release_id
+    ? Number(params.grant_release_id)
+    : !isNaN(Number(targetCleanCode)) && targetCleanCode !== ""
+    ? Number(targetCleanCode)
+    : null;
 
-  const matchedRelease = grantReleases.find(
-    (r) =>
-      r.release_code === targetCode ||
-      r.release_code === targetCleanCode ||
-      (targetCleanCode.startsWith("REL-") && r.release_code.includes(targetCleanCode)) ||
-      (targetCode.startsWith("REL-") && r.release_code.includes(targetCode)),
-  ) || (targetCleanCode.startsWith("REL-") && params.academicPeriod
-    ? grantReleases.find((r) => {
-        const p1 = (params.academicPeriod || "").toLowerCase();
-        return p1.includes(r.academic_year.toLowerCase()) && (r.academic_term ? p1.includes(r.academic_term.toLowerCase()) : true);
-      })
-    : undefined);
+  const matchedRelease =
+    grantReleases.find((r) => {
+      // 1. Direct release_code match
+      if (r.release_code) {
+        if (
+          r.release_code === targetCode ||
+          r.release_code === targetCleanCode ||
+          (targetCleanCode.startsWith("REL-") && r.release_code.includes(targetCleanCode)) ||
+          (targetCode.startsWith("REL-") && r.release_code.includes(targetCode)) ||
+          (targetCleanCode && r.release_code.toLowerCase() === targetCleanCode.toLowerCase())
+        ) {
+          return true;
+        }
+      }
+      // 2. Direct grant_release_id match
+      if (r.grant_release_id !== undefined && r.grant_release_id !== null) {
+        if (targetNumericId !== null && Number(r.grant_release_id) === targetNumericId) {
+          return true;
+        }
+        if (
+          String(r.grant_release_id) === targetCode ||
+          String(r.grant_release_id) === targetCleanCode
+        ) {
+          return true;
+        }
+      }
+      return false;
+    }) ||
+    (targetCleanCode.startsWith("REL-") && params.academicPeriod
+      ? grantReleases.find((r) => {
+          const p1 = (params.academicPeriod || "").toLowerCase();
+          return (
+            p1.includes(r.academic_year.toLowerCase()) &&
+            (r.academic_term ? p1.includes(r.academic_term.toLowerCase()) : true)
+          );
+        })
+      : undefined);
 
   const isExplicitRelease =
     Boolean(matchedRelease) ||
+    Boolean(params.release_code) ||
+    Boolean(params.grant_release_id) ||
     targetCode.startsWith("REL-") ||
     targetCleanCode.startsWith("REL-") ||
     params.recordType === ("Release" as any);
@@ -1332,7 +1366,7 @@ export function CitizenScholarshipDetailScreen() {
     recordBadgeConfig = getGrantBadgeConfig(effectiveGrantStatus);
     recordReference =
       (isExplicitRelease
-        ? (matchedRelease?.release_code || targetCleanCode)
+        ? (matchedRelease?.release_code || (matchedRelease?.grant_release_id ? `REL-${matchedRelease.grant_release_id}` : targetCleanCode))
         : (grantApp?.grant_application_code || targetCleanCode)) ||
       params.recordId ||
       "—";
@@ -2018,7 +2052,8 @@ export function CitizenScholarshipDetailScreen() {
                         AY {matchedRelease.academic_year} • {matchedRelease.academic_term}
                       </Text>
                       <Text style={{ fontSize: 11, color: isDarkMode ? "#94A3B8" : "#64748B", marginTop: 2 }}>
-                        Release Code: {matchedRelease.release_code}
+                        Release Code: {matchedRelease.release_code || (matchedRelease.grant_release_id ? `REL-${matchedRelease.grant_release_id}` : "—")}
+                        {matchedRelease.grant_release_id ? ` (ID: #${matchedRelease.grant_release_id})` : ""}
                       </Text>
                     </View>
                   )}
@@ -2091,7 +2126,10 @@ export function CitizenScholarshipDetailScreen() {
                                   onPress={() =>
                                     router.push({
                                       pathname: "/education/grant/voucher",
-                                      params: { release_code: matchedRelease?.release_code },
+                                      params: {
+                                        release_code: matchedRelease?.release_code,
+                                        grant_release_id: matchedRelease?.grant_release_id ? String(matchedRelease.grant_release_id) : undefined,
+                                      },
                                     } as any)
                                   }
                                   activeOpacity={0.8}
@@ -4873,10 +4911,18 @@ export function CitizenScholarshipDetailScreen() {
                           gap: 8,
                         }}
                         onPress={() => {
+                          const navParams = matchedRelease
+                            ? {
+                                release_code: matchedRelease.release_code,
+                                grant_release_id: matchedRelease.grant_release_id
+                                  ? String(matchedRelease.grant_release_id)
+                                  : undefined,
+                              }
+                            : undefined;
                           try {
-                            router.push("/education/grant/voucher" as any);
+                            router.push({ pathname: "/education/grant/voucher", params: navParams } as any);
                           } catch {
-                            router.navigate("/education/grant/voucher" as any);
+                            router.navigate({ pathname: "/education/grant/voucher", params: navParams } as any);
                           }
                         }}
                         activeOpacity={0.8}

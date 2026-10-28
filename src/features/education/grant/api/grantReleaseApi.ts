@@ -38,6 +38,7 @@ export interface CitizenGrantReleaseComponent {
 }
 
 export interface CitizenGrantReleaseItem {
+  grant_release_id?: number;
   release_code: string;
   academic_period_id?: number | null;
   is_current_period?: boolean;
@@ -83,5 +84,37 @@ export async function fetchCitizenGrantReleases(): Promise<CitizenGrantReleaseIt
     throw new Error(json.message || "Unable to retrieve grant release schedule.");
   }
 
-  return json.data;
+  return (json.data || []).map((item: any) => ({
+    ...item,
+    grant_release_id:
+      item.grant_release_id ?? item.release_id ?? (typeof item.id === "number" ? item.id : undefined),
+    release_code:
+      item.release_code ||
+      (item.grant_release_id
+        ? `REL-${item.grant_release_id}`
+        : typeof item.id === "number"
+        ? `REL-${item.id}`
+        : ""),
+  }));
+}
+
+/**
+ * Fetch a single grant release by release_code or grant_release_id
+ */
+export async function fetchCitizenGrantRelease(
+  idOrCode: string | number
+): Promise<CitizenGrantReleaseItem | null> {
+  const releases = await fetchCitizenGrantReleases();
+  const searchStr = String(idOrCode).trim();
+  const searchNum = typeof idOrCode === "number" ? idOrCode : Number(idOrCode);
+
+  return (
+    releases.find((r) => {
+      if (r.release_code === searchStr) return true;
+      if (r.release_code && r.release_code.toLowerCase() === searchStr.toLowerCase()) return true;
+      if (!isNaN(searchNum) && r.grant_release_id === searchNum) return true;
+      if (r.grant_release_id && String(r.grant_release_id) === searchStr) return true;
+      return false;
+    }) || null
+  );
 }
