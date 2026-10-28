@@ -301,6 +301,21 @@ export const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  timelineCategory: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+
+  timelineDesc: {
+    fontSize: 12.5,
+    color: '#475569',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+
   /* DOCUMENT CARDS */
   docCard: {
     backgroundColor: '#F8FAFC',

@@ -45,16 +45,18 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
 
 ## Priority 2: Deconstruct God Screen Monoliths (> 2,500 LOC)
 
-- [ ] **[P2-MOD-01] Decompose `CitizenScholarshipDetailScreen.tsx` (5,406 LOC)**
+- [x] **[P2-MOD-01] Decompose `CitizenScholarshipDetailScreen.tsx` (5,406 LOC -> 437 LOC orchestrator)**
   - **Location:** `src/features/education/dashboard/details/`
-  - **Commit Tag:** `refactor(dashboard): decompose CitizenScholarshipDetailScreen into domain sub-tabs`
+  - **Commit Tag:** `P2-MOD-01: decompose scholarship detail screen`
   - **Target Modules:**
-    1. `ApplicationStatusCard.tsx` (Status pill, timeline milestones, cancellation handler)
+    1. `ApplicationStatusCard.tsx` (Status pill, timeline milestones, cancellation handler, lifecycle progress tracker)
     2. `ContractUndertakingTab.tsx` (Digital signature status, orientation schedule, PDF preview modal)
     3. `GrantPayoutTab.tsx` (Disbursement channels, payout claim QR voucher button, bank/F2F details)
     4. `RenewalHistoryTab.tsx` (Evaluation criteria, GWA records, term progression cards)
     5. `ComplianceReplacementTab.tsx` (Document deficiencies, re-upload triggers, reviewer notes)
-    6. Orchestrator reduced to < 400 lines.
+    6. `HeaderContextCard.tsx` (Standardized record context header card)
+    7. `detailHelpers.ts` & `useScholarshipDocumentViewer.tsx` & `useScholarshipDetailData.ts` (Modular domain hooks & utilities)
+    8. Orchestrator reduced to 437 lines (< 450 limit).
 
 - [ ] **[P2-MOD-02] Decompose `NewApplicantApplicationScreen.tsx` (3,214 LOC)**
   - **Location:** `src/features/education/new-applicant/steps/`
