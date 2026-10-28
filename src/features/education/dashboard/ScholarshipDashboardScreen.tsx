@@ -1,4 +1,4 @@
-import { formatDate as formatAppDate } from '@/utils/dateUtils';
+import { formatDateNullable as formatDate, getStatusColors } from '@/src/utils';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -75,86 +75,6 @@ interface ModalDocItem {
   date: string;
   documentNumber: string;
   rawDoc?: CitizenOfficialDocumentItem;
-}
-
-function formatDate(dateStr?: string | null): string | null {
-  if (!dateStr) return null;
-  const res = formatAppDate(dateStr, "—");
-  return res === "—" ? null : res;
-}
-
-function getStatusColors(status: string, isDarkMode: boolean) {
-  const s = status.toLowerCase();
-  if (
-    s.includes('disapprov') ||
-    s.includes('reject') ||
-    s.includes('withdraw') ||
-    s.includes('fail') ||
-    s.includes('cancel')
-  ) {
-    return {
-      dotColor: '#DC2626',
-      textColor: isDarkMode ? '#F87171' : '#DC2626',
-      badgeBg: isDarkMode ? '#3B1D28' : '#FEF2F2',
-      badgeBorder: isDarkMode ? '#991B1B' : '#FCA5A5',
-    };
-  }
-  if (
-    s.includes('complet') ||
-    (s.includes('approv') && !s.includes('disapprov')) ||
-    s.includes('disburs') ||
-    s.includes('releas') ||
-    s.includes('active')
-  ) {
-    return {
-      dotColor: '#16A34A',
-      textColor: isDarkMode ? '#4ADE80' : '#16A34A',
-      badgeBg: isDarkMode ? '#064E3B' : '#DCFCE7',
-      badgeBorder: isDarkMode ? '#059669' : '#86EFAC',
-    };
-  }
-  if (s === 'draft' || s.includes('draft')) {
-    return {
-      dotColor: '#D97706',
-      textColor: isDarkMode ? '#FBBF24' : '#B45309',
-      badgeBg: isDarkMode ? '#451A03' : '#FEF3C7',
-      badgeBorder: isDarkMode ? '#B45309' : '#FDE68A',
-    };
-  }
-  if (
-    s.includes('review') ||
-    s.includes('eval') ||
-    s.includes('ssc') ||
-    s.includes('process') ||
-    s.includes('schedul') ||
-    s.includes('payroll')
-  ) {
-    return {
-      dotColor: '#7E22CE',
-      textColor: isDarkMode ? '#C084FC' : '#7E22CE',
-      badgeBg: isDarkMode ? '#3B0764' : '#F3E8FF',
-      badgeBorder: isDarkMode ? '#7E22CE' : '#E9D5FF',
-    };
-  }
-  if (
-    s.includes('complian') ||
-    s.includes('action') ||
-    s.includes('return') ||
-    s.includes('pend')
-  ) {
-    return {
-      dotColor: '#D97706',
-      textColor: isDarkMode ? '#FBBF24' : '#D97706',
-      badgeBg: isDarkMode ? '#451A03' : '#FEF3C7',
-      badgeBorder: isDarkMode ? '#B45309' : '#FDE68A',
-    };
-  }
-  return {
-    dotColor: '#64748B',
-    textColor: isDarkMode ? '#94A3B8' : '#64748B',
-    badgeBg: isDarkMode ? '#1E293B' : '#F1F5F9',
-    badgeBorder: isDarkMode ? '#334155' : '#E2E8F0',
-  };
 }
 
 function getStageIcon(

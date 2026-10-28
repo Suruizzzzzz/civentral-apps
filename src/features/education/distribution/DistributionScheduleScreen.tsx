@@ -15,6 +15,7 @@ import { Badge } from "@/src/components/ui/Badge";
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { Skeleton } from "@/src/components/ui/Skeleton";
 import { useTheme } from "@/src/context/ThemeContext";
+import { formatCurrency } from "@/src/utils";
 import {
   CitizenGrantReleaseItem,
   fetchCitizenGrantReleases,
@@ -23,13 +24,6 @@ import QRCode from "react-native-qrcode-svg";
 import { styles } from "./styles/DistributionSchedule.styles";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-function formatCurrency(amount: number): string {
-  return `₱${(amount || 0).toLocaleString("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 function getF2FClaimBadgeVariant(
   claimStatus?: string

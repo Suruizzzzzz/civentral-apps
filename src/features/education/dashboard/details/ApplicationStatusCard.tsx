@@ -9,7 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Badge } from "@/src/components/ui/Badge";
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
-import { formatDate } from "@/utils/dateUtils";
+import { formatDate } from "@/src/utils";
 import { styles } from "../styles/CitizenScholarshipDetail.styles";
 
 export type ScholarshipStageState =

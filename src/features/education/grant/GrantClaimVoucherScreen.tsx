@@ -18,6 +18,7 @@ import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
+import { formatCurrency, formatDateDisplay } from '@/src/utils';
 import {
   CitizenGrantReleaseComponent,
   CitizenGrantReleaseItem,
@@ -25,26 +26,6 @@ import {
 } from './api/grantReleaseApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-function formatCurrency(amount: number): string {
-  return `₱${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatDateDisplay(dateStr?: string | null): string {
-  if (!dateStr) return 'Schedule TBA';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
-}
 
 function formatTimeWindow(startTime?: string | null, endTime?: string | null): string {
   if (!startTime && !endTime) return 'Time TBA';

@@ -8,21 +8,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Badge } from "@/src/components/ui/Badge";
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { Skeleton } from "@/src/components/ui/Skeleton";
-import { formatDate } from "@/utils/dateUtils";
+import { formatDate, formatCurrency } from "@/src/utils";
 import { CitizenGrantOverviewData } from "../../grant/api/grantApi";
 import {
   CitizenGrantReleaseComponent,
   CitizenGrantReleaseItem,
 } from "../../grant/api/grantReleaseApi";
 import { styles } from "../styles/CitizenScholarshipDetail.styles";
-
-function formatCurrency(amount?: number | null): string {
-  if (amount === undefined || amount === null) return "—";
-  return `₱${amount.toLocaleString("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 interface GrantTimelineStep {
   title: string;

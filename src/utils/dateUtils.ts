@@ -124,6 +124,38 @@ export function formatDate(dateStr?: string | Date | null, fallback = '—'): st
 }
 
 /**
+ * Nullable variant of formatDate: returns null if date input is empty or invalid.
+ */
+export function formatDateNullable(dateStr?: string | Date | null): string | null {
+  if (!dateStr) return null;
+  const res = formatDate(dateStr, '—');
+  return res === '—' ? null : res;
+}
+
+/**
+ * Long-format display date for claim schedules and receipts:
+ * e.g., "Monday, September 16, 2026"
+ */
+export function formatDateDisplay(
+  dateStr?: string | null,
+  fallback = 'Schedule TBA'
+): string {
+  if (!dateStr) return fallback;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+/**
  * Format value as Date + Time: MMM D, YYYY • h:mm A (e.g., Sep 16, 2026 • 2:30 PM)
  */
 export function formatDateTime(dateStr?: string | Date | null, fallback = '—'): string {

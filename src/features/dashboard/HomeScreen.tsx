@@ -1,6 +1,7 @@
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { Badge } from "@/src/components/ui/Badge";
 import { useTheme } from "@/src/context/ThemeContext";
+import { getStatusColor } from "@/src/utils";
 import { AuthService } from "@/src/services/auth-service";
 import {
     CitizenProfileData,
@@ -89,19 +90,6 @@ function getGreeting(): string {
   if (hour < 12) return "Good morning";
   if (hour < 18) return "Good afternoon";
   return "Good evening";
-}
-
-function getStatusColor(status: string): { bg: string; text: string } {
-  switch (status) {
-    case "Approved":
-      return { bg: "#DCFCE7", text: "#15803D" };
-    case "Completed":
-      return { bg: "#DBEAFE", text: "#1D4ED8" };
-    case "Processing":
-      return { bg: "#FEF3C7", text: "#B45309" };
-    default:
-      return { bg: "#F1F5F9", text: "#475569" };
-  }
 }
 
 function getActivityIcon(domainId: string): string {

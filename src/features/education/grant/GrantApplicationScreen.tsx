@@ -20,7 +20,7 @@ import {
   ClarityResult,
 } from '@/src/utils/imageCompression';
 import { sanitizeErrorMessage } from '@/src/utils/errorUtils';
-import { formatDate } from '@/src/utils/dateUtils';
+import { formatDate, formatCurrency, getStatusBadgeVariant } from '@/src/utils';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/src/components/ui/Badge';
@@ -46,42 +46,6 @@ import { styles } from './styles/ScholarshipGrant.styles';
 
 const scholarshipBg = require('@/assets/images/scholarship-bg.png');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-function formatCurrency(amount?: number | null): string {
-  if (amount === undefined || amount === null) return '—';
-  return `₱${amount.toLocaleString('en-PH', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function getStatusBadgeVariant(status?: string): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {
-  if (!status || status === '--') return 'neutral';
-  switch (status) {
-    case 'Draft':
-      return 'warning';
-    case 'Submitted':
-    case 'Approved for Payroll':
-    case 'Approved':
-    case 'Paid':
-    case 'Released':
-      return 'success';
-    case 'For Review':
-    case 'Under Review':
-    case 'Processing':
-    case 'Ready for Processing':
-      return 'info';
-    case 'For Compliance':
-    case 'On Hold — Institution Verification Required':
-    case 'Institution Verification Required':
-      return 'warning';
-    case 'Withdrawn':
-    case 'Invalid':
-      return 'danger';
-    default:
-      return 'neutral';
-  }
-}
 
 function getF2FClaimBadgeVariant(claimStatus?: string): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {
   switch (claimStatus) {

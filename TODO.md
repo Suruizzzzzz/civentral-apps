@@ -129,3 +129,53 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
   - **Scope:**
     - Remove hardcoded `192.168.1.5` and `10.0.2.2` private addresses in `getCandidateVerificationEndpoints()` and `getCandidateStatusEndpoints()`.
     - Rely strictly on environment variable `EXPO_PUBLIC_CITIZEN_API_URL` with defensive production fallback (`https://api-citizen.civentral.tech/api/citizen`).
+
+---
+
+## Priority 5: Spaghetti Code Reduction, Style Extraction & Component Hygiene
+
+- [ ] **[P5-STY-01] Extract Shared UI Design Tokens & Modal Primitives**
+  - **Location:** `src/components/ui/`, `src/styles/common.styles.ts`
+  - **Commit Tag:** `P5-STY-01: extract shared design tokens and modal primitives`
+  - **Scope:**
+    - Centralize duplicate modal backdrop/overlay rules (`rgba(0,0,0,0.5)`, flex centered) into a shared `ModalContainer` / `ModalBackdrop` primitive across 18+ modals.
+    - Consolidate repetitive card shadow/border styles, circular back-button definitions (`width: 40, height: 40, borderRadius: 20`), and status badge pill styles into shared design tokens without changing visual layouts or pixel dimensions.
+
+- [ ] **[P5-STY-02] Externalize Massive Inline StyleSheets from Grant Voucher & Document Modals**
+  - **Location:** `src/features/education/grant/GrantClaimVoucherScreen.tsx`, `src/features/education/compliance/NewApplicantComplianceScreen.tsx`, `src/components/document-viewer/InAppDocumentViewerModal.tsx`, `src/features/education/dashboard/details/useScholarshipDocumentViewer.tsx`
+  - **Commit Tag:** `P5-STY-02: externalize inline stylesheets from grant voucher and document modals`
+  - **Scope:**
+    - Extract 529 lines of inline `StyleSheet.create` from `GrantClaimVoucherScreen.tsx` into `styles/GrantClaimVoucher.styles.ts`.
+    - Extract 247 lines of inline `StyleSheet.create` from `NewApplicantComplianceScreen.tsx` into `styles/NewApplicantCompliance.styles.ts`.
+    - Extract 230 lines from `InAppDocumentViewerModal.tsx` and 261 lines from `useScholarshipDocumentViewer.tsx` into dedicated style sheets.
+    - Reduce screen orchestrators by up to 50% lines of code while maintaining 100% style fidelity.
+
+- [ ] **[P5-MOD-03] Decompose ProfileScreen Embedded Modals & Tangled Form State**
+  - **Location:** `src/features/identity/ProfileScreen.tsx`, `src/features/identity/profile/`
+  - **Commit Tag:** `P5-MOD-03: decompose profile screen modals and form state`
+  - **Scope:**
+    - Extract 6 monolithic inline `<Modal>` elements (Edit Profile, Change Password, Phone Verification, Email Verification, 2FA Modal, and QR Code Modal) into standalone sub-components under `src/features/identity/profile/modals/`.
+    - Replace 28 fragmented `useState` calls and inline regex checkers with a structured `useProfileForm` hook.
+    - Deconstruct the 2,564-line `ProfileScreen.tsx` orchestrator to under 450 lines.
+
+- [x] **[P5-UTL-04] Centralize Scattered Utility Functions (`formatCurrency`, `formatDate`, `getStatusColor`)**
+  - **Location:** `src/utils/currencyUtils.ts`, `src/utils/dateUtils.ts`, `src/utils/statusTheme.ts`
+  - **Commit Tag:** `P5-UTL-04: centralize scattered utility functions`
+  - **Scope:**
+    - Replace duplicate local `formatCurrency` implementations in `GrantApplicationScreen.tsx` (L50), `GrantClaimVoucherScreen.tsx` (L29), `GrantPayoutTab.tsx` (L19), and `DistributionScheduleScreen.tsx` (L27) with canonical `formatCurrency` from `src/utils/currencyUtils.ts`.
+    - Replace scattered `formatDate` aliasings in `ScholarshipDashboardScreen.tsx` and `ScholarshipHistoryScreen.tsx` with standard `formatDate` from `src/utils/dateUtils.ts`.
+    - Extract repeated `getStatusColor` resolvers from `HomeScreen.tsx` (L94) and `ApplicationStatusCard.tsx` into a central `statusTheme.ts` dictionary.
+
+- [ ] **[P5-CLN-05] Eliminate Nested Inline Renderers in Grant, Renewal, and Document Flows**
+  - **Location:** `GrantApplicationScreen.tsx`, `RenewalApplicationScreen.tsx`, `ScholarshipGrantScreen.tsx`, `CitizenScholarshipDetailScreen.tsx`
+  - **Commit Tag:** `P5-CLN-05: eliminate nested inline renderers in grant and renewal flows`
+  - **Scope:**
+    - Refactor nested helper functions (`renderBackButton()`, `renderOcrFeedback()`, `renderHeaderSkeleton()`, `renderGrantTab()`, `renderRenewalTab()`) defined inside component render bodies into standalone pure components or external helpers.
+    - Eliminate closure state leaks and unnecessary component re-mounts on state changes.
+
+- [ ] **[P5-FRM-06] Refactor Tangled Form State Machines into Dedicated Form Hooks**
+  - **Location:** `RegisterScreen.tsx`, `ForgotPasswordScreen.tsx`, `NewApplicantComplianceScreen.tsx`
+  - **Commit Tag:** `P5-FRM-06: extract dedicated auth and compliance form hooks`
+  - **Scope:**
+    - Decouple raw regex string testing, error object mappings, and keyboard avoiding scroll management from the JSX markup.
+    - Encapsulate auth validation into `useRegisterForm` and `useForgotPasswordForm` hooks, ensuring clean separation of presentation and business logic.
