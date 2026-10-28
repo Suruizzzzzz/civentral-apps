@@ -141,7 +141,7 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     - Centralize duplicate modal backdrop/overlay rules (`rgba(0,0,0,0.5)`, flex centered) into a shared `ModalContainer` / `ModalBackdrop` primitive across 18+ modals.
     - Consolidate repetitive card shadow/border styles, circular back-button definitions (`width: 40, height: 40, borderRadius: 20`), and status badge pill styles into shared design tokens without changing visual layouts or pixel dimensions.
 
-- [ ] **[P5-STY-02] Externalize Massive Inline StyleSheets from Grant Voucher & Document Modals**
+- [x] **[P5-STY-02] Externalize Massive Inline StyleSheets from Grant Voucher & Document Modals**
   - **Location:** `src/features/education/grant/GrantClaimVoucherScreen.tsx`, `src/features/education/compliance/NewApplicantComplianceScreen.tsx`, `src/components/document-viewer/InAppDocumentViewerModal.tsx`, `src/features/education/dashboard/details/useScholarshipDocumentViewer.tsx`
   - **Commit Tag:** `P5-STY-02: externalize inline stylesheets from grant voucher and document modals`
   - **Scope:**
