@@ -1,6 +1,6 @@
 # Civentral Mobile Application Modernization Roadmap
 
-> **ROADMAP STATUS: 100% COMPLETE — All Priorities (P1 - P4) Executed, Verified, and Modernized.**
+> **ROADMAP STATUS: 100% COMPLETE — All Priorities (P1 - P5) Executed, Verified, and Modernized.**
 
 ## Overview
 This roadmap establishes a prioritized refactoring and contract alignment plan for the Civentral citizen mobile application (`civentral-apps`). It resolves contract drift against the modernized `civentral-education-backend`, addresses monolithic screen bottlenecks, eliminates orphan shims, and establishes a unified network and state architecture.
@@ -173,7 +173,7 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     - Refactor nested helper functions (`renderBackButton()`, `renderOcrFeedback()`, `renderHeaderSkeleton()`, `renderGrantTab()`, `renderRenewalTab()`) defined inside component render bodies into standalone pure components or external helpers.
     - Eliminate closure state leaks and unnecessary component re-mounts on state changes.
 
-- [ ] **[P5-FRM-06] Refactor Tangled Form State Machines into Dedicated Form Hooks**
+- [x] **[P5-FRM-06] Refactor Tangled Form State Machines into Dedicated Form Hooks**
   - **Location:** `RegisterScreen.tsx`, `ForgotPasswordScreen.tsx`, `NewApplicantComplianceScreen.tsx`
   - **Commit Tag:** `P5-FRM-06: extract dedicated auth and compliance form hooks`
   - **Scope:**
