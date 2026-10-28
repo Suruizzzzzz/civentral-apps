@@ -58,17 +58,19 @@ This roadmap establishes a prioritized refactoring and contract alignment plan f
     7. `detailHelpers.ts` & `useScholarshipDocumentViewer.tsx` & `useScholarshipDetailData.ts` (Modular domain hooks & utilities)
     8. Orchestrator reduced to 437 lines (< 450 limit).
 
-- [ ] **[P2-MOD-02] Decompose `NewApplicantApplicationScreen.tsx` (3,214 LOC)**
+- [x] **[P2-MOD-02] Decompose `NewApplicantApplicationScreen.tsx` (3,214 LOC)**
   - **Location:** `src/features/education/new-applicant/steps/`
-  - **Commit Tag:** `refactor(scholarship): break NewApplicantApplicationScreen into step components`
+  - **Commit Tag:** `P2-MOD-02: decompose new applicant wizard`
   - **Target Modules:**
-    1. `Step1PersonalInfo.tsx`
-    2. `Step2FamilyGuardian.tsx`
-    3. `Step3AcademicBackground.tsx`
-    4. `Step4FinancialDetails.tsx`
-    5. `Step5DocumentUploads.tsx`
-    6. `Step6VideoDeclaration.tsx`
-    7. Shared step wizard orchestrator with `react-hook-form` or step state reducer.
+    1. `Step1PersonalInfo.tsx` (Personal information, contact details, residence)
+    2. `Step2FamilyGuardian.tsx` (Guardian info, family roster, emergency contact)
+    3. `Step3AcademicBackground.tsx` (School selector, course, year level, GWA inputs & grade scales)
+    4. `Step4FinancialDetails.tsx` (Income tiers, employment status, socioeconomic indicators)
+    5. `Step5DocumentUploads.tsx` (Requirement slots, file picker triggers, OCR scan feedback, 422 field errors)
+    6. `Step6VideoDeclaration.tsx` (Video confirmation, applicant declaration, final review summary)
+    7. `WizardModals.tsx` (ConfirmSubmitModal, FullVideoGuideModal, SchoolModal, CourseModal, SuffixModal)
+    8. `WizardStepperHeader.tsx` & `ApplicationSuccessView.tsx`
+    9. Orchestrator reduced to 328 lines (< 450 limit).
 
 - [ ] **[P2-MOD-03] Decompose `VerifyCitizenScreen.tsx` (2,943 LOC)**
   - **Location:** `src/features/identity/verification/`
