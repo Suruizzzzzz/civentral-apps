@@ -19,7 +19,7 @@ This roadmap outlines a strict, zero-regression condensation plan to de-bloat mo
 - [x] **[PH1-02] Shared OCR Feedback Component**
   - Target Files: `GrantApplicationScreen.tsx`, `RenewalApplicationScreen.tsx`, `Step5DocumentUploads.tsx`
   - Action: Create a single `<OcrValidationBadge />` component in `src/components/common/OcrValidationBadge.tsx` and replace ~210 duplicated lines of UI badge rendering.
-- [ ] **[PH1-03] Externalize Official Citizen Card HTML Template**
+- [x] **[PH1-03] Externalize Official Citizen Card HTML Template**
   - Target File: `OfficialCitizenCard.tsx`
   - Action: Move the 420-line static HTML/CSS template string from the React Native component file into `src/utils/citizenCardHtmlTemplate.ts`.
 
