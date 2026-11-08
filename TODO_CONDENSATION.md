@@ -39,7 +39,7 @@ This roadmap outlines a strict, zero-regression condensation plan to de-bloat mo
 - [x] **[PH3-01] Decouple Dashboard Modals**
   - Target File: `ScholarshipDashboardScreen.tsx`
   - Action: Extract the 3 self-contained modals (Progress Timeline, Record Documents, Document Action Feedback) from lines 1882–2856 into `src/features/education/dashboard/modals/` to reduce file weight by ~972 LOC.
-- [ ] **[PH3-02] Extract Withdrawal Modal**
+- [x] **[PH3-02] Extract Withdrawal Modal**
   - Target File: `MyApplicationScreen.tsx`
   - Action: Extract the 135-line embedded voluntary withdrawal confirmation modal into a dedicated modal component.
 
