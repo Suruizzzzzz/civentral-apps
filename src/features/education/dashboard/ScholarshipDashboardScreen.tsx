@@ -4,18 +4,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
-  Modal,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { InAppDocumentViewerModal } from '@/src/components/document-viewer/InAppDocumentViewerModal';
@@ -30,7 +26,6 @@ import { CitizenGrantOverviewData, fetchCitizenGrantOverview } from '../grant/ap
 import { CitizenGrantReleaseItem, fetchCitizenGrantReleases } from '../grant/api/grantReleaseApi';
 import { CitizenRenewalOverviewData, fetchCitizenRenewalOverview } from '../renewal/api/renewalApi';
 import {
-  CitizenOfficialDocumentItem,
   CitizenOfficialDocumentsData,
   downloadOrViewCitizenContract,
   downloadOrViewCitizenInitialCertificate,
@@ -44,6 +39,12 @@ import {
   ProgressStage,
   ScholarshipStageState,
 } from './details/detailHelpers';
+import {
+  ScholarshipProgressModal,
+  RecordOfficialDocumentsModal,
+  DocumentActionFeedbackModal,
+  ModalDocItem,
+} from './modals';
 
 const dashHeaderLight = require('@/assets/images/dash-header-light.png');
 const dashHeaderDark = require('@/assets/images/dash-header-dark.png');
@@ -60,15 +61,6 @@ interface HistoryItem {
   timestamp: number;
 }
 
-interface ModalDocItem {
-  key: string;
-  type: 'SCHOLARSHIP_CERTIFICATE' | 'SCHOLARSHIP_CONTRACT' | 'SWORN_UNDERTAKING' | 'RENEWAL_CERTIFICATE';
-  title: string;
-  status: string;
-  date: string;
-  documentNumber: string;
-  rawDoc?: CitizenOfficialDocumentItem;
-}
 
 function getStageIcon(
   id: number,
@@ -90,7 +82,6 @@ function getStageIcon(
 export function ScholarshipDashboardScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const headerAspectRatio = isDarkMode ? 1872 / 497 : 1868 / 483;
 
@@ -1665,707 +1656,28 @@ export function ScholarshipDashboardScreen() {
       )}
 
       {/* ============================================================== */}
-      {/* FULL PROGRESS DETAILED TIMELINE MODAL                          */}
+      {/* 1. FULL PROGRESS DETAILED TIMELINE MODAL                      */}
       {/* ============================================================== */}
-      <Modal
+      <ScholarshipProgressModal
         visible={progressModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setProgressModalVisible(false)}
-      >
-        <View style={styles.progressModalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setProgressModalVisible(false)}
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss modal backdrop"
-          />
-          <View
-            style={[
-              styles.progressModalSheet,
-              { paddingBottom: Math.max(insets.bottom, 24) },
-              isDarkMode && {
-                backgroundColor: '#1C2541',
-                borderColor: '#3A506B',
-              },
-            ]}
-          >
-            {/* Header */}
-            <View
-              style={[
-                styles.progressModalHeader,
-                isDarkMode && { borderBottomColor: '#293548' },
-              ]}
-            >
-              <View style={styles.progressModalHeaderTextCol}>
-                <Text
-                  style={[
-                    styles.progressModalTitle,
-                    isDarkMode && { color: '#C084FC' },
-                  ]}
-                >
-                  Scholarship Progress
-                </Text>
-                <Text
-                  style={[
-                    styles.progressModalSubtitle,
-                    isDarkMode && { color: '#94A3B8' },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {scholarship?.program_name || 'Academic Scholarship'}
-                  {scholarship?.category_name ? ` — ${scholarship.category_name}` : ' — Senior High School'}
-                </Text>
-                <Text
-                  style={[
-                    styles.progressModalSubtitle,
-                    { fontSize: 11, marginTop: 1 },
-                    isDarkMode && { color: '#64748B' },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {currentPeriodString || '2026–2027 • Whole Academic Year'}
-                </Text>
-              </View>
+        onClose={() => setProgressModalVisible(false)}
+        isDarkMode={isDarkMode}
+        stages={stages}
+        scholarship={scholarship}
+        currentPeriodString={currentPeriodString}
+        isWithdrawn={isWithdrawn}
+        isDisapproved={isDisapproved}
+        withdrawalDate={withdrawalDate}
+        withdrawalReason={withdrawalReason}
+        application={application}
+        disapprovalCategory={disapprovalCategory}
+        disapprovalRemarks={disapprovalRemarks}
+        disapprovalDate={disapprovalDate}
+      />
 
-              <TouchableOpacity
-                style={[
-                  styles.progressModalCloseBtn,
-                  isDarkMode && { backgroundColor: '#334155' },
-                ]}
-                onPress={() => setProgressModalVisible(false)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <IconSymbol
-                  name="xmark"
-                  size={20}
-                  color={isDarkMode ? '#F8FAFC' : '#0F172A'}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* Body */}
-            <ScrollView
-              style={styles.progressModalBody}
-              contentContainerStyle={{ paddingBottom: 24 }}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.verticalTimelineContainer}>
-                {isWithdrawn ? (
-                  /* ==================================================== */
-                  /* WITHDRAWAL TIMELINE TERMINATION                     */
-                  /* ==================================================== */
-                  <>
-                    {/* Render completed stages before withdrawal (e.g. Stage 1) */}
-                    <View style={styles.verticalTimelineRow}>
-                      <View style={styles.verticalTimelineLeftCol}>
-                        <View
-                          style={[
-                            styles.verticalTimelineDot,
-                            styles.verticalTimelineDotCompleted,
-                          ]}
-                        >
-                          <IconSymbol
-                            name="checkmark"
-                            size={13}
-                            color="#FFFFFF"
-                          />
-                        </View>
-                        <View style={[styles.verticalTimelineConnector, styles.verticalTimelineConnectorCompleted]} />
-                      </View>
-                      <View
-                        style={[
-                          styles.verticalTimelineContentCard,
-                          isDarkMode && {
-                            backgroundColor: '#1E293B',
-                            borderColor: '#334155',
-                          },
-                        ]}
-                      >
-                        <View style={styles.verticalTimelineHeaderRow}>
-                          <Text
-                            style={[
-                              styles.verticalTimelineTitle,
-                              isDarkMode && { color: '#F8FAFC' },
-                            ]}
-                          >
-                            Application Submitted
-                          </Text>
-                          <View
-                            style={[
-                              styles.verticalTimelineStatusPill,
-                              { backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7' },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.verticalTimelineStatusPillText,
-                                { color: isDarkMode ? '#4ADE80' : '#15803D' },
-                              ]}
-                            >
-                              COMPLETED
-                            </Text>
-                          </View>
-                        </View>
-                        {stages[0].date ? (
-                          <Text
-                            style={[
-                              styles.verticalTimelineDate,
-                              isDarkMode && { color: '#4ADE80' },
-                            ]}
-                          >
-                            {stages[0].date}
-                          </Text>
-                        ) : null}
-                        <Text
-                          style={[
-                            styles.verticalTimelineDesc,
-                            isDarkMode && { color: '#94A3B8' },
-                          ]}
-                        >
-                          Initial scholarship application and credentials submitted.
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Terminal Divider */}
-                    <View
-                      style={[
-                        styles.terminalDivider,
-                        isDarkMode && { backgroundColor: '#334155' },
-                      ]}
-                    />
-
-                    {/* TERMINAL WITHDRAWN CARD */}
-                    <View
-                      style={[
-                        styles.withdrawnTerminalCard,
-                        isDarkMode && {
-                          backgroundColor: '#3B1D28',
-                          borderColor: '#991B1B',
-                        },
-                      ]}
-                    >
-                      <View style={styles.withdrawnTerminalHeaderRow}>
-                        <Text
-                          style={[
-                            styles.withdrawnTerminalTitle,
-                            isDarkMode && { color: '#F87171' },
-                          ]}
-                        >
-                          APPLICATION WITHDRAWN
-                        </Text>
-                        <View
-                          style={[
-                            styles.withdrawnBadge,
-                            isDarkMode && {
-                              backgroundColor: '#4C1D24',
-                              borderColor: '#F87171',
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.withdrawnBadgeText,
-                              isDarkMode && { color: '#F87171' },
-                            ]}
-                          >
-                            TERMINATED
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.withdrawnMetaRow}>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaLabel,
-                            isDarkMode && { color: '#FCA5A5' },
-                          ]}
-                        >
-                          Withdrawn on:
-                        </Text>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaVal,
-                            isDarkMode && { color: '#F87171' },
-                          ]}
-                        >
-                          {withdrawalDate}
-                        </Text>
-                      </View>
-
-                      <View style={styles.withdrawnMetaRow}>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaLabel,
-                            isDarkMode && { color: '#FCA5A5' },
-                          ]}
-                        >
-                          Reason:
-                        </Text>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaVal,
-                            isDarkMode && { color: '#F87171' },
-                          ]}
-                        >
-                          {withdrawalReason}
-                        </Text>
-                      </View>
-
-                      {application?.application_code ? (
-                        <View style={styles.withdrawnMetaRow}>
-                          <Text
-                            style={[
-                              styles.withdrawnMetaLabel,
-                              isDarkMode && { color: '#FCA5A5' },
-                            ]}
-                          >
-                            Reference:
-                          </Text>
-                          <Text
-                            style={[
-                              styles.withdrawnMetaVal,
-                              isDarkMode && { color: '#F87171' },
-                            ]}
-                          >
-                            {application.application_code}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      <Text
-                        style={[
-                          styles.withdrawnNotice,
-                          isDarkMode && { color: '#CBD5E1' },
-                        ]}
-                      >
-                        This scholarship application has been permanently terminated. You are eligible to apply for another available scholarship program.
-                      </Text>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.withdrawnBrowseBtn,
-                          isDarkMode && { backgroundColor: '#7E22CE' },
-                        ]}
-                        onPress={() => {
-                          setProgressModalVisible(false);
-                          router.push('/education/new-applicant/browse-scholarships' as any);
-                        }}
-                        activeOpacity={0.8}
-                        accessibilityRole="button"
-                        accessibilityLabel="Browse available scholarships"
-                      >
-                        <Text style={styles.withdrawnBrowseBtnText}>
-                          Browse Available Scholarships
-                        </Text>
-                        <IconSymbol name="chevron.right" size={13} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                ) : isDisapproved ? (
-                  /* ==================================================== */
-                  /* DISAPPROVAL TIMELINE TERMINATION                    */
-                  /* ==================================================== */
-                  <>
-                    {/* Render completed stages before disapproval */}
-                    <View style={styles.verticalTimelineRow}>
-                      <View style={styles.verticalTimelineLeftCol}>
-                        <View
-                          style={[
-                            styles.verticalTimelineDot,
-                            styles.verticalTimelineDotCompleted,
-                          ]}
-                        >
-                          <IconSymbol
-                            name="checkmark"
-                            size={13}
-                            color="#FFFFFF"
-                          />
-                        </View>
-                        <View style={[styles.verticalTimelineConnector, styles.verticalTimelineConnectorCompleted]} />
-                      </View>
-                      <View
-                        style={[
-                          styles.verticalTimelineContentCard,
-                          isDarkMode && {
-                            backgroundColor: '#1E293B',
-                            borderColor: '#334155',
-                          },
-                        ]}
-                      >
-                        <View style={styles.verticalTimelineHeaderRow}>
-                          <Text
-                            style={[
-                              styles.verticalTimelineTitle,
-                              isDarkMode && { color: '#F8FAFC' },
-                            ]}
-                          >
-                            Application Submitted
-                          </Text>
-                          <View
-                            style={[
-                              styles.verticalTimelineStatusPill,
-                              { backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7' },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.verticalTimelineStatusPillText,
-                                { color: isDarkMode ? '#4ADE80' : '#15803D' },
-                              ]}
-                            >
-                              COMPLETED
-                            </Text>
-                          </View>
-                        </View>
-                        {stages[0].date ? (
-                          <Text
-                            style={[
-                              styles.verticalTimelineDate,
-                              isDarkMode && { color: '#4ADE80' },
-                            ]}
-                          >
-                            {stages[0].date}
-                          </Text>
-                        ) : null}
-                        <Text
-                          style={[
-                            styles.verticalTimelineDesc,
-                            isDarkMode && { color: '#94A3B8' },
-                          ]}
-                        >
-                          Initial scholarship application and credentials submitted.
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Terminal Divider */}
-                    <View
-                      style={[
-                        styles.terminalDivider,
-                        isDarkMode && { backgroundColor: '#334155' },
-                      ]}
-                    />
-
-                    {/* TERMINAL DISAPPROVED CARD */}
-                    <View
-                      style={[
-                        styles.withdrawnTerminalCard,
-                        isDarkMode && {
-                          backgroundColor: '#3B1D28',
-                          borderColor: '#991B1B',
-                        },
-                      ]}
-                    >
-                      <View style={styles.withdrawnTerminalHeaderRow}>
-                        <Text
-                          style={[
-                            styles.withdrawnTerminalTitle,
-                            isDarkMode && { color: '#F87171' },
-                          ]}
-                        >
-                          APPLICATION DISAPPROVED
-                        </Text>
-                        <View
-                          style={[
-                            styles.withdrawnBadge,
-                            isDarkMode && {
-                              backgroundColor: '#4C1D24',
-                              borderColor: '#F87171',
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.withdrawnBadgeText,
-                              isDarkMode && { color: '#F87171' },
-                            ]}
-                          >
-                            TERMINATED
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.withdrawnMetaRow}>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaLabel,
-                            isDarkMode && { color: '#FCA5A5' },
-                          ]}
-                        >
-                          Status:
-                        </Text>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaVal,
-                            isDarkMode && { color: '#F87171' },
-                          ]}
-                        >
-                          DISAPPROVED
-                        </Text>
-                      </View>
-
-                      <View style={styles.withdrawnMetaRow}>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaLabel,
-                            isDarkMode && { color: '#FCA5A5' },
-                          ]}
-                        >
-                          Reason:
-                        </Text>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaVal,
-                            isDarkMode && { color: '#F87171' },
-                          ]}
-                        >
-                          {disapprovalCategory}
-                        </Text>
-                      </View>
-
-                      {disapprovalRemarks ? (
-                        <View style={styles.withdrawnMetaRow}>
-                          <Text
-                            style={[
-                              styles.withdrawnMetaLabel,
-                              isDarkMode && { color: '#FCA5A5' },
-                            ]}
-                          >
-                            Remarks:
-                          </Text>
-                          <Text
-                            style={[
-                              styles.withdrawnMetaVal,
-                              isDarkMode && { color: '#F87171' },
-                            ]}
-                          >
-                            {disapprovalRemarks}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      <View style={styles.withdrawnMetaRow}>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaLabel,
-                            isDarkMode && { color: '#FCA5A5' },
-                          ]}
-                        >
-                          Decision Date:
-                        </Text>
-                        <Text
-                          style={[
-                            styles.withdrawnMetaVal,
-                            isDarkMode && { color: '#F87171' },
-                          ]}
-                        >
-                          {disapprovalDate}
-                        </Text>
-                      </View>
-
-                      {application?.application_code ? (
-                        <View style={styles.withdrawnMetaRow}>
-                          <Text
-                            style={[
-                              styles.withdrawnMetaLabel,
-                              isDarkMode && { color: '#FCA5A5' },
-                            ]}
-                          >
-                            Reference:
-                          </Text>
-                          <Text
-                            style={[
-                              styles.withdrawnMetaVal,
-                              isDarkMode && { color: '#F87171' },
-                            ]}
-                          >
-                            {application.application_code}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      <Text
-                        style={[
-                          styles.withdrawnNotice,
-                          isDarkMode && { color: '#CBD5E1' },
-                        ]}
-                      >
-                        This application is no longer under active review. The application remains available in your application history.
-                      </Text>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.withdrawnBrowseBtn,
-                          isDarkMode && { backgroundColor: '#7E22CE' },
-                        ]}
-                        onPress={() => {
-                          setProgressModalVisible(false);
-                          router.push('/education/new-applicant/browse-scholarships' as any);
-                        }}
-                        activeOpacity={0.8}
-                        accessibilityRole="button"
-                        accessibilityLabel="Browse available scholarships"
-                      >
-                        <Text style={styles.withdrawnBrowseBtnText}>
-                          Browse Available Scholarships
-                        </Text>
-                        <IconSymbol name="chevron.right" size={13} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                ) : (
-                  /* ==================================================== */
-                  /* NORMAL 5-STAGE PROGRESS TIMELINE                    */
-                  /* ==================================================== */
-                  stages.map((stg, idx) => {
-                    const isLast = idx === stages.length - 1;
-                    const isCompleted = stg.state === 'completed';
-                    const isCurrent = stg.state === 'current';
-                    const isUpcoming = stg.state === 'upcoming';
-
-                    return (
-                      <View key={stg.id} style={styles.verticalTimelineRow}>
-                        {/* Left column: Dot and vertical connector */}
-                        <View style={styles.verticalTimelineLeftCol}>
-                            <View
-                              style={[
-                                styles.verticalTimelineDot,
-                                isCompleted && styles.verticalTimelineDotCompleted,
-                                isCurrent && [
-                                  styles.verticalTimelineDotCurrent,
-                                  isDarkMode && { backgroundColor: '#2E1065', borderColor: '#C084FC' },
-                                ],
-                                isUpcoming && [
-                                  styles.verticalTimelineDotUpcoming,
-                                  isDarkMode && {
-                                    backgroundColor: '#1E293B',
-                                    borderColor: '#475569',
-                                  },
-                                ],
-                              ]}
-                            >
-                              {isCompleted ? (
-                                <IconSymbol
-                                  name="checkmark"
-                                  size={13}
-                                  color="#FFFFFF"
-                                />
-                              ) : isCurrent ? (
-                                <View
-                                  style={{
-                                    width: 10,
-                                    height: 10,
-                                    borderRadius: 5,
-                                    backgroundColor: isDarkMode ? '#C084FC' : '#7E22CE',
-                                  }}
-                                />
-                              ) : null}
-                            </View>
-
-                          {!isLast ? (
-                            <View
-                              style={[
-                                styles.verticalTimelineConnector,
-                                isCompleted && styles.verticalTimelineConnectorCompleted,
-                                isDarkMode && !isCompleted && { backgroundColor: '#334155' },
-                              ]}
-                            />
-                          ) : null}
-                        </View>
-
-                        {/* Content card */}
-                        <View
-                          style={[
-                            styles.verticalTimelineContentCard,
-                            isCurrent && styles.verticalTimelineContentCardActive,
-                            isDarkMode && {
-                              backgroundColor: '#1E293B',
-                              borderColor: isCurrent ? '#7E22CE' : '#334155',
-                            },
-                          ]}
-                        >
-                          <View style={styles.verticalTimelineHeaderRow}>
-                            <Text
-                              style={[
-                                styles.verticalTimelineTitle,
-                                isDarkMode && { color: '#F8FAFC' },
-                              ]}
-                            >
-                              {stg.title}
-                            </Text>
-
-                            <View
-                              style={[
-                                styles.verticalTimelineStatusPill,
-                                isCompleted
-                                  ? { backgroundColor: isDarkMode ? '#064E3B' : '#DCFCE7' }
-                                  : isCurrent
-                                  ? { backgroundColor: isDarkMode ? '#3B0764' : '#F3E8FF' }
-                                  : { backgroundColor: isDarkMode ? '#0F172A' : '#F1F5F9' },
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.verticalTimelineStatusPillText,
-                                  isCompleted
-                                    ? { color: isDarkMode ? '#4ADE80' : '#15803D' }
-                                    : isCurrent
-                                    ? { color: isDarkMode ? '#C084FC' : '#7E22CE' }
-                                    : { color: isDarkMode ? '#64748B' : '#94A3B8' },
-                                ]}
-                              >
-                                {isCompleted ? 'COMPLETED' : isCurrent ? 'IN PROGRESS' : 'UPCOMING'}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {stg.date ? (
-                            <Text
-                              style={[
-                                styles.verticalTimelineDate,
-                                isDarkMode && { color: '#4ADE80' },
-                              ]}
-                            >
-                              {stg.date}
-                            </Text>
-                          ) : null}
-
-                          {stg.evaluatorName ? (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
-                              <Ionicons name="person-circle-outline" size={13} color={isDarkMode ? '#C084FC' : '#7E22CE'} />
-                              <Text
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: '600',
-                                  color: isDarkMode ? '#C084FC' : '#7E22CE',
-                                }}
-                              >
-                                Evaluated by: {stg.evaluatorName}
-                              </Text>
-                            </View>
-                          ) : null}
-
-                          <Text
-                            style={[
-                              styles.verticalTimelineDesc,
-                              isDarkMode && { color: '#CBD5E1' },
-                            ]}
-                          >
-                            {stg.description}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
-              {/* IN-APP DOCUMENT VIEWER MODAL */}
+      {/* ============================================================== */}
+      {/* 2. IN-APP DOCUMENT VIEWER MODAL                                */}
+      {/* ============================================================== */}
       <InAppDocumentViewerModal
         visible={viewerModalVisible}
         onClose={() => setViewerModalVisible(false)}
@@ -2377,267 +1689,31 @@ export function ScholarshipDashboardScreen() {
         statusBadge={viewerStatus}
         date={viewerDate}
       />
-    </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* ============================================================== */}
-      {/* 5. PER-RECORD OFFICIAL DOCUMENTS MODAL                         */}
+      {/* 3. PER-RECORD OFFICIAL DOCUMENTS MODAL                         */}
       {/* ============================================================== */}
-      <Modal
+      <RecordOfficialDocumentsModal
         visible={docsModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDocsModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalContainer,
-              isDarkMode && {
-                backgroundColor: '#1C2541',
-                borderColor: '#3A506B',
-              },
-            ]}
-          >
-            {/* Modal Header identifying selected record */}
-            <View
-              style={[
-                styles.modalHeader,
-                isDarkMode && { borderBottomColor: '#293548' },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.modalTitle,
-                  isDarkMode && { color: '#C084FC' },
-                ]}
-              >
-                Official Documents
-              </Text>
-              {selectedRecordForDocs ? (
-                <View>
-                  <Text
-                    style={[
-                      styles.modalSubtitle,
-                      isDarkMode && { color: '#CBD5E1' },
-                    ]}
-                  >
-                    {selectedRecordForDocs.academicPeriod}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.modalRecordType,
-                      isDarkMode && { color: '#94A3B8' },
-                    ]}
-                  >
-                    {selectedRecordForDocs.recordType}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
+        onClose={() => setDocsModalVisible(false)}
+        isDarkMode={isDarkMode}
+        selectedRecord={selectedRecordForDocs}
+        officialDocs={modalDocsForSelectedRecord}
+        actionLoadingKey={actionLoadingKey}
+        onDocAction={handleOfficialDocAction}
+      />
 
-            {/* Modal Body: Documents list (ONLY official documents) */}
-            <ScrollView style={styles.modalBody}>
-              {modalDocsForSelectedRecord.map((doc, idx) => {
-                const isLast = idx === modalDocsForSelectedRecord.length - 1;
-                const isViewLoading = actionLoadingKey === `${doc.key}_view`;
-                const isDlLoading = actionLoadingKey === `${doc.key}_download`;
-
-                return (
-                  <View
-                    key={doc.key}
-                    style={[
-                      styles.modalDocItem,
-                      isLast && styles.modalDocItemLast,
-                      isDarkMode && { borderBottomColor: '#293548' },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.modalDocTitle,
-                        isDarkMode && { color: '#F8FAFC' },
-                      ]}
-                    >
-                      {doc.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.modalDocMeta,
-                        isDarkMode && { color: '#94A3B8' },
-                      ]}
-                    >
-                      {doc.status} • {doc.date}
-                    </Text>
-
-                    <View style={styles.modalDocActionsRow}>
-                      <TouchableOpacity
-                        style={[
-                          styles.modalBtnPrimary,
-                          isDarkMode && { backgroundColor: '#7E22CE' },
-                        ]}
-                        onPress={() => handleOfficialDocAction(doc, 'view')}
-                        disabled={Boolean(actionLoadingKey)}
-                        activeOpacity={0.8}
-                      >
-                        {isViewLoading ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <IconSymbol
-                            name="eye.fill"
-                            size={12}
-                            color="#FFFFFF"
-                          />
-                        )}
-                        <Text style={styles.modalBtnPrimaryText}>
-                          {isViewLoading ? 'Opening...' : 'View'}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.modalBtnOutline,
-                          isDarkMode && { borderColor: '#475569' },
-                        ]}
-                        onPress={() => handleOfficialDocAction(doc, 'download')}
-                        disabled={Boolean(actionLoadingKey)}
-                        activeOpacity={0.8}
-                      >
-                        {isDlLoading ? (
-                          <ActivityIndicator
-                            size="small"
-                            color={isDarkMode ? '#F8FAFC' : '#0F172A'}
-                          />
-                        ) : (
-                          <IconSymbol
-                            name="arrow.down.circle"
-                            size={12}
-                            color={isDarkMode ? '#F8FAFC' : '#0F172A'}
-                          />
-                        )}
-                        <Text
-                          style={[
-                            styles.modalBtnOutlineText,
-                            isDarkMode && { color: '#F8FAFC' },
-                          ]}
-                        >
-                          {isDlLoading ? 'Saving...' : 'Download'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
-
-            {/* Modal Footer */}
-            <View
-              style={[
-                styles.modalFooter,
-                isDarkMode && { borderTopColor: '#293548' },
-              ]}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.modalCloseBtn,
-                  isDarkMode && { backgroundColor: '#111827' },
-                ]}
-                onPress={() => setDocsModalVisible(false)}
-              >
-                <Text
-                  style={[
-                    styles.modalCloseBtnText,
-                    isDarkMode && { color: '#CBD5E1' },
-                  ]}
-                >
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* DOCUMENT ACTION FEEDBACK / PREVIEW MODAL */}
-      <Modal
+      {/* ============================================================== */}
+      {/* 4. DOCUMENT ACTION FEEDBACK / PREVIEW MODAL                    */}
+      {/* ============================================================== */}
+      <DocumentActionFeedbackModal
         visible={feedbackModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setFeedbackModalVisible(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(15, 23, 42, 0.75)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 24,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: isDarkMode ? '#1C2541' : '#FFFFFF',
-              borderRadius: 16,
-              padding: 20,
-              width: '100%',
-              maxWidth: 380,
-              borderWidth: 1,
-              borderColor: isDarkMode ? '#3A506B' : '#E2E8F0',
-            }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 10,
-              }}
-            >
-              <IconSymbol
-                name="doc.text.fill"
-                size={20}
-                color={isDarkMode ? '#C084FC' : '#7E22CE'}
-              />
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '800',
-                  color: isDarkMode ? '#F8FAFC' : '#0F172A',
-                  flex: 1,
-                }}
-              >
-                {feedbackTitle}
-              </Text>
-            </View>
-
-            <Text
-              style={{
-                fontSize: 13,
-                color: isDarkMode ? '#CBD5E1' : '#64748B',
-                lineHeight: 19,
-                marginBottom: 18,
-              }}
-            >
-              {feedbackBody}
-            </Text>
-
-            <TouchableOpacity
-              style={{
-                backgroundColor: '#7E22CE',
-                paddingVertical: 10,
-                borderRadius: 8,
-                alignItems: 'center',
-              }}
-              onPress={() => setFeedbackModalVisible(false)}
-            >
-              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>
-                Close
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setFeedbackModalVisible(false)}
+        isDarkMode={isDarkMode}
+        title={feedbackTitle}
+        body={feedbackBody}
+        feedbackData={{ title: feedbackTitle, body: feedbackBody }}
+      />
     </ScrollView>
   );
 }
