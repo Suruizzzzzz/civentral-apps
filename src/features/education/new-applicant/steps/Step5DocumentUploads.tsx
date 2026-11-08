@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  ActivityIndicator,
   Image,
   Text,
   TouchableOpacity,
@@ -9,6 +8,7 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import { Badge } from '@/src/components/ui/Badge';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
+import { OcrValidationBadge } from '@/src/components/common/OcrValidationBadge';
 import { ClarityResult } from '@/src/utils/imageCompression';
 import { ScholarshipRequiredDocument } from '../api/ScholarshipProgramApi';
 import { styles } from '../styles/NewApplicantApplication.styles';
@@ -203,99 +203,13 @@ export function Step5DocumentUploads({
             </TouchableOpacity>
 
             {/* OCR Document Validation Feedback (non-video documents only) */}
-            {!isVideoDoc && selectedFile && docValidations[key]?.status === 'validating' ? (
-              <View
-                style={[
-                  styles.ocrFeedbackBox,
-                  styles.ocrValidatingBox,
-                  isDarkMode && { backgroundColor: '#0F243A', borderColor: '#0369A1' },
-                ]}
-              >
-                <ActivityIndicator size="small" color={isDarkMode ? '#38BDF8' : '#0284C7'} />
-                <Text style={[styles.ocrValidatingText, isDarkMode && { color: '#38BDF8' }]}>
-                  Checking document with OCR pre-validation...
-                </Text>
-              </View>
-            ) : null}
-
-            {!isVideoDoc && selectedFile && docValidations[key]?.status === 'validated' && docValidations[key]?.result === 'MATCH' ? (
-              <View
-                style={[
-                  styles.ocrFeedbackBox,
-                  styles.ocrMatchBox,
-                  isDarkMode && { backgroundColor: '#052E16', borderColor: '#15803D' },
-                ]}
-              >
-                <IconSymbol
-                  name="checkmark.circle.fill"
-                  size={16}
-                  color={isDarkMode ? '#4ADE80' : '#16A34A'}
-                />
-                <Text style={[styles.ocrMatchText, isDarkMode && { color: '#86EFAC' }]}>
-                  {docValidations[key]?.message || `Document appears to be a ${doc.document_name}.`}
-                </Text>
-              </View>
-            ) : null}
-
-            {!isVideoDoc && selectedFile && docValidations[key]?.status === 'validated' && docValidations[key]?.result === 'MISMATCH' ? (
-              <View
-                style={[
-                  styles.ocrFeedbackBox,
-                  styles.ocrMismatchBox,
-                  isDarkMode && { backgroundColor: '#451A03', borderColor: '#B45309' },
-                ]}
-              >
-                <View style={styles.ocrMismatchContentRow}>
-                  <IconSymbol
-                    name="exclamationmark.triangle.fill"
-                    size={16}
-                    color={isDarkMode ? '#FBBF24' : '#D97706'}
-                  />
-                  <Text style={[styles.ocrMismatchText, isDarkMode && { color: '#FDE68A' }]}>
-                    {docValidations[key]?.message && docValidations[key]?.message?.includes('Please upload')
-                      ? docValidations[key]?.message
-                      : `${docValidations[key]?.message || 'This file does not appear to match the required document.'} Please upload the required ${doc.document_name}.`}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={[
-                    styles.ocrChangeFileBtn,
-                    isDarkMode && { backgroundColor: '#78350F', borderColor: '#B45309' },
-                  ]}
-                  onPress={() => onPickDocument(doc)}
-                  activeOpacity={0.8}
-                >
-                  <IconSymbol
-                    name="pencil"
-                    size={12}
-                    color={isDarkMode ? '#FDE68A' : '#92400E'}
-                  />
-                  <Text style={[styles.ocrChangeFileBtnText, isDarkMode && { color: '#FDE68A' }]}>
-                    Change File
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-
-            {!isVideoDoc && selectedFile && docValidations[key]?.status === 'validated' && docValidations[key]?.result === 'INCONCLUSIVE' ? (
-              <View
-                style={[
-                  styles.ocrFeedbackBox,
-                  styles.ocrInconclusiveBox,
-                  isDarkMode && { backgroundColor: '#1E293B', borderColor: '#475569' },
-                ]}
-              >
-                <IconSymbol
-                  name="info.circle.fill"
-                  size={16}
-                  color={isDarkMode ? '#94A3B8' : '#64748B'}
-                />
-                <Text style={[styles.ocrInconclusiveText, isDarkMode && { color: '#CBD5E1' }]}>
-                  {docValidations[key]?.message?.includes('unavailable') || docValidations[key]?.message?.includes('network')
-                    ? 'Automatic verification is unavailable. Your document can still be reviewed manually.'
-                    : 'Automatic identification was inconclusive. Your document can still be reviewed manually.'}
-                </Text>
-              </View>
+            {!isVideoDoc && selectedFile ? (
+              <OcrValidationBadge
+                validation={docValidations[key]}
+                label={doc.document_name}
+                isDarkMode={isDarkMode}
+                onPickDocument={() => onPickDocument(doc)}
+              />
             ) : null}
           </View>
         );
