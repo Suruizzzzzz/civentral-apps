@@ -26,7 +26,7 @@ This roadmap outlines a strict, zero-regression condensation plan to de-bloat mo
 ---
 
 ## Phase 2: Declarative Mapping & JSX De-Bloat
-- [ ] **[PH2-01] Array-Driven Info Row Mapping**
+- [x] **[PH2-01] Array-Driven Info Row Mapping**
   - Target File: `ApplicationStatusCard.tsx`
   - Action: Convert 8+ repeated `<View style={styles.infoRow}>` blocks into declarative field arrays mapped with `.map()`, saving ~280 LOC.
 - [ ] **[PH2-02] Centralize 5-Stage Stepper Calculation**

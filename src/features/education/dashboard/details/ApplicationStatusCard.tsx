@@ -37,6 +37,15 @@ export interface ScholarshipStatusStage {
   evaluatorName?: string | null;
 }
 
+interface InfoFieldItem {
+  label: string;
+  value?: string | number | null;
+  stacked?: boolean;
+  valueColor?: string;
+  isBold?: boolean;
+  valueWeight?: "600" | "700" | "800" | "bold";
+}
+
 export function computeScholarshipStages(
   scholar: any,
   application: any,
@@ -481,6 +490,160 @@ export function ApplicationStatusCard({
   const showOverview = viewMode === "overview" || viewMode === "full";
   const showStatus = viewMode === "status" || viewMode === "full";
 
+  const overviewFields: InfoFieldItem[] = [
+    {
+      label: "Program Name",
+      value: scholarship?.program_name || "Academic Scholarship",
+    },
+    {
+      label: "Program Code",
+      value: scholarship?.program_code || "—",
+    },
+    {
+      label: scholar ? "Scholar Status" : "Application Status",
+      value: isApplicationDisapproved
+        ? "Disapproved"
+        : scholar?.scholar_status ||
+          application?.application_status ||
+          "Active",
+      valueColor: isApplicationDisapproved
+        ? isDarkMode
+          ? "#F87171"
+          : "#DC2626"
+        : scholar
+          ? "#16A34A"
+          : "#7E22CE",
+      isBold: isApplicationDisapproved,
+      valueWeight: isApplicationDisapproved ? "700" : "600",
+    },
+    {
+      label: scholar ? "Scholar Code" : "Application Code",
+      value:
+        scholar?.scholar_code ||
+        application?.application_code ||
+        recordReference ||
+        "—",
+      valueColor: "#7E22CE",
+    },
+    {
+      label: "Academic Period",
+      value: `${academicPeriod?.academic_year || "AY 2026-2027"} (${academicPeriod?.term || "Whole Academic Year"})`,
+    },
+    {
+      label: "Education Category",
+      value:
+        scholarship?.category_name || "Senior High School / Tertiary",
+    },
+    {
+      label: "Date Admitted",
+      value: scholar?.admitted_at
+        ? formatDate(scholar.admitted_at, "—")
+        : isApplicationDisapproved
+          ? "Not Admitted (Disapproved)"
+          : "Pending Admission",
+    },
+  ];
+
+  const disapprovedFields: InfoFieldItem[] = [
+    {
+      label: "Status",
+      value: "Disapproved",
+      valueColor: isDarkMode ? "#F87171" : "#DC2626",
+      isBold: true,
+    },
+    {
+      label: "Category",
+      value: application?.disapproval_category,
+      stacked: true,
+      valueColor: isDarkMode ? "#FCA5A5" : "#991B1B",
+      isBold: true,
+    },
+    {
+      label: "Secretariat Remarks",
+      value: application?.decision_remarks,
+      stacked: true,
+    },
+  ].filter((f) => Boolean(f.value));
+
+  const interviewFields: InfoFieldItem[] = [
+    {
+      label: "Date",
+      value: application?.interview?.scheduled_date || "TBA",
+      valueColor: isDarkMode ? "#F8FAFC" : "#0F172A",
+      isBold: true,
+    },
+    {
+      label: "Time",
+      value: application?.interview?.scheduled_time || "TBA",
+      valueColor: isDarkMode ? "#F8FAFC" : "#0F172A",
+      isBold: true,
+    },
+    {
+      label: "Method",
+      value: application?.interview?.method || "Face-to-Face",
+    },
+    {
+      label: "Venue / Link",
+      value:
+        application?.interview?.venue_or_link ||
+        "Education & Scholarship Office",
+      valueColor: isDarkMode ? "#38BDF8" : "#0284C7",
+      valueWeight: "600",
+    },
+  ];
+
+  const renderInfoField = (f: InfoFieldItem, idx: number) => {
+    if (f.stacked) {
+      return (
+        <View key={`${f.label}-${idx}`} style={styles.infoRowStacked}>
+          <Text
+            style={[
+              styles.infoLabel,
+              isDarkMode && { color: "#94A3B8" },
+            ]}
+          >
+            {f.label}
+          </Text>
+          <Text
+            style={[
+              styles.infoValueStacked,
+              isDarkMode && { color: "#F8FAFC" },
+              f.valueColor ? { color: f.valueColor } : null,
+              f.isBold ? { fontWeight: "700" } : null,
+              f.valueWeight ? { fontWeight: f.valueWeight } : null,
+            ]}
+          >
+            {f.value}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View key={`${f.label}-${idx}`} style={styles.infoRow}>
+        <Text
+          style={[
+            styles.infoLabel,
+            isDarkMode && { color: "#94A3B8" },
+          ]}
+        >
+          {f.label}
+        </Text>
+        <Text
+          style={[
+            styles.infoValue,
+            isDarkMode && { color: "#F8FAFC" },
+            f.valueColor ? { color: f.valueColor } : null,
+            f.isBold ? { fontWeight: "700" } : null,
+            f.valueWeight ? { fontWeight: f.valueWeight } : null,
+          ]}
+        >
+          {f.value}
+        </Text>
+      </View>
+    );
+  };
+
   return (
     <>
       {/* SCHOLARSHIP OVERVIEW CARD */}
@@ -503,157 +666,7 @@ export function ApplicationStatusCard({
             SCHOLARSHIP OVERVIEW
           </Text>
           <View style={styles.infoGrid}>
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Program Name
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  isDarkMode && { color: "#F8FAFC" },
-                ]}
-              >
-                {scholarship?.program_name || "Academic Scholarship"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Program Code
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  isDarkMode && { color: "#F8FAFC" },
-                ]}
-              >
-                {scholarship?.program_code || "—"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                {scholar ? "Scholar Status" : "Application Status"}
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  {
-                    color: isApplicationDisapproved
-                      ? isDarkMode
-                        ? "#F87171"
-                        : "#DC2626"
-                      : scholar
-                        ? "#16A34A"
-                        : "#7E22CE",
-                    fontWeight: isApplicationDisapproved
-                      ? "700"
-                      : "600",
-                  },
-                ]}
-              >
-                {isApplicationDisapproved
-                  ? "Disapproved"
-                  : scholar?.scholar_status ||
-                    application?.application_status ||
-                    "Active"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                {scholar ? "Scholar Code" : "Application Code"}
-              </Text>
-              <Text style={[styles.infoValue, { color: "#7E22CE" }]}>
-                {scholar?.scholar_code ||
-                  application?.application_code ||
-                  recordReference ||
-                  "—"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Academic Period
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  isDarkMode && { color: "#F8FAFC" },
-                ]}
-              >
-                {academicPeriod?.academic_year || "AY 2026-2027"} (
-                {academicPeriod?.term || "Whole Academic Year"})
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Education Category
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  isDarkMode && { color: "#F8FAFC" },
-                ]}
-              >
-                {scholarship?.category_name ||
-                  "Senior High School / Tertiary"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Date Admitted
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  isDarkMode && { color: "#F8FAFC" },
-                ]}
-              >
-                {scholar?.admitted_at
-                  ? formatDate(scholar.admitted_at, "—")
-                  : isApplicationDisapproved
-                    ? "Not Admitted (Disapproved)"
-                    : "Pending Admission"}
-              </Text>
-            </View>
+            {overviewFields.map(renderInfoField)}
           </View>
         </View>
       )}
@@ -722,72 +735,7 @@ export function ApplicationStatusCard({
           </Text>
 
           <View style={styles.infoGrid}>
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Status
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  {
-                    fontWeight: "700",
-                    color: isDarkMode ? "#F87171" : "#DC2626",
-                  },
-                ]}
-              >
-                Disapproved
-              </Text>
-            </View>
-
-            {application?.disapproval_category ? (
-              <View style={styles.infoRowStacked}>
-                <Text
-                  style={[
-                    styles.infoLabel,
-                    isDarkMode && { color: "#94A3B8" },
-                  ]}
-                >
-                  Category
-                </Text>
-                <Text
-                  style={[
-                    styles.infoValueStacked,
-                    {
-                      color: isDarkMode ? "#FCA5A5" : "#991B1B",
-                      fontWeight: "700",
-                    },
-                  ]}
-                >
-                  {application.disapproval_category}
-                </Text>
-              </View>
-            ) : null}
-
-            {application?.decision_remarks ? (
-              <View style={styles.infoRowStacked}>
-                <Text
-                  style={[
-                    styles.infoLabel,
-                    isDarkMode && { color: "#94A3B8" },
-                  ]}
-                >
-                  Secretariat Remarks
-                </Text>
-                <Text
-                  style={[
-                    styles.infoValueStacked,
-                    isDarkMode && { color: "#F8FAFC" },
-                  ]}
-                >
-                  {application.decision_remarks}
-                </Text>
-              </View>
-            ) : null}
+            {disapprovedFields.map(renderInfoField)}
           </View>
         </View>
       ) : (showStatus && application?.interview) ? (
@@ -839,91 +787,7 @@ export function ApplicationStatusCard({
           </Text>
 
           <View style={styles.infoGrid}>
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Date
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  {
-                    fontWeight: "700",
-                    color: isDarkMode ? "#F8FAFC" : "#0F172A",
-                  },
-                ]}
-              >
-                {application.interview.scheduled_date || "TBA"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Time
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  {
-                    fontWeight: "700",
-                    color: isDarkMode ? "#F8FAFC" : "#0F172A",
-                  },
-                ]}
-              >
-                {application.interview.scheduled_time || "TBA"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Method
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  isDarkMode && { color: "#F8FAFC" },
-                ]}
-              >
-                {application.interview.method || "Face-to-Face"}
-              </Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <Text
-                style={[
-                  styles.infoLabel,
-                  isDarkMode && { color: "#94A3B8" },
-                ]}
-              >
-                Venue / Link
-              </Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  {
-                    color: isDarkMode ? "#38BDF8" : "#0284C7",
-                    fontWeight: "600",
-                  },
-                ]}
-              >
-                {application.interview.venue_or_link ||
-                  "Education & Scholarship Office"}
-              </Text>
-            </View>
+            {interviewFields.map(renderInfoField)}
           </View>
         </View>
       ) : null}
