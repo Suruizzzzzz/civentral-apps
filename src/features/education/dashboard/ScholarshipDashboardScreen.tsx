@@ -39,21 +39,14 @@ import {
   fetchCitizenOfficialDocuments,
 } from './api/citizenDocumentApi';
 import { styles } from './styles/ScholarshipDashboard.styles';
+import {
+  computeScholarshipStages,
+  ProgressStage,
+  ScholarshipStageState,
+} from './details/detailHelpers';
 
 const dashHeaderLight = require('@/assets/images/dash-header-light.png');
 const dashHeaderDark = require('@/assets/images/dash-header-dark.png');
-
-interface ProgressStage {
-  id: number;
-  label: string;
-  title: string;
-  description: string;
-  subLabel?: string;
-  date?: string | null;
-  state: 'completed' | 'current' | 'upcoming';
-  isActionable?: boolean;
-  evaluatorName?: string | null;
-}
 
 interface HistoryItem {
   id: string;
@@ -80,7 +73,7 @@ interface ModalDocItem {
 function getStageIcon(
   id: number,
   isRenewal: boolean,
-  state: 'completed' | 'current' | 'upcoming'
+  state: ScholarshipStageState | string
 ): string {
   const filled = state === 'completed';
   if (id === 1) return filled ? 'paper-plane'         : 'paper-plane-outline';
@@ -356,221 +349,16 @@ export function ScholarshipDashboardScreen() {
       ];
     }
 
-    // Stage 1: Application Submitted
-    const submittedItem = processTimeline.find(
-      (i) => i.key === 'submitted' || i.title.toLowerCase().includes('submitted')
+    return computeScholarshipStages(
+      scholar,
+      application,
+      processTimeline,
+      grantOverview,
+      dashboardData?.latest_update?.timestamp,
+      grantReleases,
+      dashboardData
     );
-    const stage1Completed = Boolean(
-      scholar ||
-        application?.submitted_at ||
-        submittedItem?.is_completed ||
-        processTimeline.length > 0
-    );
-    const stage1Current = !stage1Completed && application?.application_status === 'Draft';
-    const stage1Date = formatDate(
-      submittedItem?.date || application?.submitted_at || scholar?.admitted_at
-    );
-
-    // Stage 2: Under Review
-    const reviewItem = processTimeline.find(
-      (i) =>
-        i.key === 'review' ||
-        i.key === 'under_review' ||
-        i.title.toLowerCase().includes('review')
-    );
-    const stage2Completed = Boolean(
-      scholar ||
-        reviewItem?.is_completed ||
-        ['Ready for SSC', 'For Evaluation', 'Approved', 'Post-Approval', 'Completed'].includes(
-          application?.application_status || ''
-        )
-    );
-    const stage2Current =
-      !stage2Completed &&
-      (Boolean(reviewItem?.is_current) || application?.application_status === 'Under Review');
-    const stage2Date = formatDate(reviewItem?.date);
-    const reviewEvaluatorName =
-      (reviewItem as any)?.evaluator_name ||
-      (reviewItem as any)?.coordinator_name ||
-      (application as any)?.coordinator_name ||
-      (application as any)?.evaluator_name ||
-      null;
-
-    // Stage 3: SSC Evaluation
-    const sscItem = processTimeline.find(
-      (i) =>
-        i.key.toLowerCase().includes('ssc') ||
-        i.key.toLowerCase().includes('eval') ||
-        i.title.toLowerCase().includes('ssc') ||
-        i.title.toLowerCase().includes('eval')
-    );
-    const stage3Completed = Boolean(
-      scholar ||
-        sscItem?.is_completed ||
-        ['Approved', 'Post-Approval', 'Completed'].includes(
-          application?.application_status || ''
-        )
-    );
-    const stage3Current =
-      !stage3Completed &&
-      (Boolean(sscItem?.is_current) ||
-        ['Ready for SSC', 'For Evaluation', 'SSC Evaluation'].includes(
-          application?.application_status || ''
-        ));
-    const stage3Date = formatDate(sscItem?.date);
-    const sscEvaluatorName =
-      (sscItem as any)?.evaluator_name ||
-      (sscItem as any)?.coordinator_name ||
-      (application as any)?.evaluator_name ||
-      (application as any)?.coordinator_name ||
-      application?.decided_by?.full_name ||
-      (dashboardData as any)?.evaluator_name ||
-      null;
-
-    // Stage 4: Scholarship Approved
-    const approvedItem = processTimeline.find(
-      (i) => i.key === 'approved' || i.title.toLowerCase().includes('approved')
-    );
-    const stage4Completed = Boolean(
-      scholar?.scholar_status === 'Active' ||
-        ['Approved', 'Post-Approval', 'Completed'].includes(
-          application?.application_status || ''
-        ) ||
-        approvedItem?.is_completed
-    );
-    const stage4Date = formatDate(approvedItem?.date || scholar?.admitted_at);
-
-    // Stage 5: Grant
-    const activeGrantApp =
-      (grantOverview?.has_existing_application && grantOverview.application)
-        ? grantOverview.application
-        : dashboardData?.grant
-        ? (dashboardData.grant as any)
-        : null;
-
-    const activeGrantStatus = (activeGrantApp?.grant_status || activeGrantApp?.status || '') as string;
-    const isGrantActive = Boolean(
-      activeGrantApp &&
-        ['Draft', 'Submitted', 'For Review', 'Under Review', 'For Compliance', 'Approved for Payroll'].includes(
-          activeGrantStatus
-        )
-    );
-
-    const hasGrantDisbursed = !isGrantActive && grantReleases.some(
-      (r) => r.release_status === 'Completed' || r.release_status === 'Released'
-    );
-    const hasGrantProcessing = !isGrantActive && grantReleases.some((r) =>
-      ['Scheduled', 'Processing', 'Active', 'Pending'].includes(r.release_status)
-    );
-
-    let grantSubLabel = 'No Application';
-    let grantState: 'completed' | 'current' | 'upcoming' = 'upcoming';
-    let grantDate: string | null = null;
-    let grantDesc = 'Educational financial assistance and stipend release processing.';
-
-    if (isGrantActive) {
-      grantState = 'current';
-      grantSubLabel = activeGrantStatus || 'Under Review';
-      grantDate = formatDate(activeGrantApp?.submitted_at || (activeGrantApp as any)?.created_at) || 'In Progress';
-      if (activeGrantStatus === 'Approved for Payroll') {
-        grantDesc = 'Grant application validated and approved for municipal payroll processing.';
-      } else if (activeGrantStatus === 'For Compliance') {
-        grantDesc = 'Additional documentation required for grant compliance verification.';
-      } else if (activeGrantStatus === 'Under Review' || activeGrantStatus === 'For Review') {
-        grantDesc = 'Grant verification in progress by scholarship administrator.';
-      } else if (activeGrantStatus === 'Submitted') {
-        grantDesc = 'Grant application submitted and awaiting initial review.';
-      } else if (activeGrantStatus === 'Draft') {
-        grantDesc = 'Grant application drafted and awaiting final submission.';
-      } else {
-        grantDesc = `Grant status: ${activeGrantStatus}.`;
-      }
-    } else if (hasGrantDisbursed) {
-      grantSubLabel = 'Disbursed';
-      grantState = 'completed';
-      grantDesc = 'Scholarship grant successfully disbursed to scholar account.';
-      const releasedItem = grantReleases.find(
-        (r) => r.release_status === 'Completed' || r.release_status === 'Released'
-      );
-      grantDate = formatDate(releasedItem?.components?.[0]?.released_at);
-    } else if (hasGrantProcessing) {
-      grantSubLabel = 'Processing';
-      grantState = 'current';
-      grantDesc = 'Grant disbursement release is currently being scheduled and processed.';
-    } else {
-      if (scholar?.scholar_status === 'Active') {
-        grantSubLabel = 'No Application';
-        grantState = 'upcoming';
-        grantDesc = 'Grant application not yet submitted for this period.';
-      } else {
-        grantSubLabel = 'Pending';
-        grantState = 'upcoming';
-        grantDesc = 'Grant processing unlocks upon official scholarship admission.';
-      }
-    }
-
-    const stage4Current =
-      stage4Completed &&
-      grantState === 'upcoming' &&
-      grantSubLabel === 'No Application';
-
-    return [
-      {
-        id: 1,
-        label: 'Submitted',
-        title: 'Application Submitted',
-        description: 'Initial scholarship application and credentials submitted.',
-        date: stage1Date,
-        state: stage1Completed ? 'completed' : stage1Current ? 'current' : 'upcoming',
-      },
-      {
-        id: 2,
-        label: 'Review',
-        title: 'Document & Secretariat Review',
-        description: 'Secretariat verification of applicant credentials and eligibility.',
-        date: stage2Date,
-        state: stage2Completed ? 'completed' : stage2Current ? 'current' : 'upcoming',
-        evaluatorName: reviewEvaluatorName,
-      },
-      {
-        id: 3,
-        label: 'SSC Eval',
-        title: 'SSC Evaluation',
-        description: 'Scholarship Selection Committee review and continuation evaluation.',
-        date: stage3Date,
-        state: stage3Completed ? 'completed' : stage3Current ? 'current' : 'upcoming',
-        evaluatorName: sscEvaluatorName,
-      },
-      {
-        id: 4,
-        label: 'Approved',
-        title: 'Scholarship Approved',
-        description: 'Official municipal scholarship approval and scholar admission.',
-        date: stage4Date,
-        state: stage4Completed
-          ? stage4Current
-            ? 'current'
-            : 'completed'
-          : 'upcoming',
-        evaluatorName: sscEvaluatorName || reviewEvaluatorName,
-      },
-      {
-        id: 5,
-        label: 'Grant',
-        title: 'Scholarship Grant',
-        description: grantDesc,
-        subLabel: grantSubLabel,
-        date: grantDate,
-        state: grantState,
-        isActionable:
-          grantSubLabel !== 'Pending' &&
-          (Boolean(scholar?.scholar_status === 'Active') ||
-            Boolean(grantOverview?.has_existing_application) ||
-            hasGrantProcessing ||
-            hasGrantDisbursed),
-      },
-    ];
-  }, [isRenewalActive, activeRenewal, scholar, application, processTimeline, grantReleases, grantOverview]);
+  }, [isRenewalActive, activeRenewal, scholar, application, processTimeline, grantReleases, grantOverview, dashboardData]);
 
   // Withdrawal detection
   const isWithdrawn = Boolean(application?.application_status === 'Withdrawn');

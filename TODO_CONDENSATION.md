@@ -29,7 +29,7 @@ This roadmap outlines a strict, zero-regression condensation plan to de-bloat mo
 - [x] **[PH2-01] Array-Driven Info Row Mapping**
   - Target File: `ApplicationStatusCard.tsx`
   - Action: Convert 8+ repeated `<View style={styles.infoRow}>` blocks into declarative field arrays mapped with `.map()`, saving ~280 LOC.
-- [ ] **[PH2-02] Centralize 5-Stage Stepper Calculation**
+- [x] **[PH2-02] Centralize 5-Stage Stepper Calculation**
   - Target Files: `ApplicationStatusCard.tsx`, `ScholarshipDashboardScreen.tsx`
   - Action: Move duplicated `computeScholarshipStages` logic into a pure exported helper in `detailHelpers.ts` (-120 LOC).
 
