@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { commonEducationStyles } from "@/src/features/education/styles/common.styles";
 
 export const styles = StyleSheet.create({
   container: {
@@ -8,21 +9,17 @@ export const styles = StyleSheet.create({
   },
 
   backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
+    ...commonEducationStyles.backButton,
     marginBottom: 18,
     gap: 10,
   },
 
   backIconCircle: {
+    ...commonEducationStyles.backIconCircle,
     width: 38,
     height: 38,
     borderRadius: 19,
     backgroundColor: "#E0F2FE",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
     borderColor: "#BAE6FD",
   },
 
@@ -66,12 +63,7 @@ export const styles = StyleSheet.create({
   },
 
   sectionCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 16,
-    marginBottom: 14,
+    ...commonEducationStyles.card,
   },
 
   sectionTitle: {

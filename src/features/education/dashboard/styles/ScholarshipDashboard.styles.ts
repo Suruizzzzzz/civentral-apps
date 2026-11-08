@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native";
+import { commonEducationStyles } from "@/src/features/education/styles/common.styles";
 
 export const styles = StyleSheet.create({
   container: {
@@ -10,11 +11,7 @@ export const styles = StyleSheet.create({
 
   /* Back navigation */
   backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 8,
-    marginBottom: 14,
+    ...commonEducationStyles.backButton,
   },
 
   backIconCircle: {
@@ -865,11 +862,7 @@ export const styles = StyleSheet.create({
   /* 4. OFFICIAL DOCUMENTS MODAL (PER RECORD)                       */
   /* ============================================================== */
   modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.65)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
+    ...commonEducationStyles.modalOverlay,
   },
 
   modalContainer: {
@@ -1002,13 +995,7 @@ export const styles = StyleSheet.create({
 
   /* EMPTY SCHOLARSHIP STATE */
   emptyContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 24,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginTop: 12,
+    ...commonEducationStyles.emptyContainer,
   },
 
   emptyIconBox: {
@@ -1022,17 +1009,11 @@ export const styles = StyleSheet.create({
   },
 
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#0F172A",
-    marginBottom: 6,
-    textAlign: "center",
+    ...commonEducationStyles.emptyTitle,
   },
 
   emptySubtitle: {
-    fontSize: 13,
-    color: "#64748B",
-    textAlign: "center",
+    ...commonEducationStyles.emptySubtitle,
     lineHeight: 19,
     marginBottom: 18,
     maxWidth: 300,

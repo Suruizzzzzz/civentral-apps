@@ -46,7 +46,7 @@ This roadmap outlines a strict, zero-regression condensation plan to de-bloat mo
 ---
 
 ## Phase 4: Shared Style Tokens & Verification
-- [ ] **[PH4-01] Consolidate Shared Layout Styles**
+- [x] **[PH4-01] Consolidate Shared Layout Styles**
   - Target Files: `NewApplicantApplication.styles.ts`, `ScholarshipGrant.styles.ts`, `VerifyCitizenScreen.styles.ts`, `ScholarshipDashboard.styles.ts`
   - Action: Reference shared card, header, and back-button style tokens from `common.styles.ts`.
 - [ ] **[PH4-02] Final Clean Compile & Zero-Error Check**

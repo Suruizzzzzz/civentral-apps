@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { commonEducationStyles } from '@/src/features/education/styles/common.styles';
 
 export const styles = StyleSheet.create({
   container: {
@@ -61,17 +62,9 @@ export const styles = StyleSheet.create({
     color: '#0F172A',
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    ...commonEducationStyles.elevatedCard,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
   },
   cardTitle: {
     fontSize: 16,
@@ -88,22 +81,13 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    ...commonEducationStyles.infoRow,
   },
   infoLabel: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '500',
+    ...commonEducationStyles.infoLabel,
   },
   infoValue: {
-    fontSize: 13,
-    color: '#0F172A',
-    fontWeight: '600',
+    ...commonEducationStyles.infoValue,
     maxWidth: '60%',
     textAlign: 'right',
   },
@@ -337,10 +321,8 @@ export const styles = StyleSheet.create({
     color: '#EA580C',
   },
   modalOverlay: {
-    flex: 1,
+    ...commonEducationStyles.modalOverlay,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
   },
   modalContent: {
