@@ -15,7 +15,7 @@ import { Badge } from "@/src/components/ui/Badge";
 import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { Skeleton } from "@/src/components/ui/Skeleton";
 import { useTheme } from "@/src/context/ThemeContext";
-import { formatCurrency } from "@/src/utils";
+import { formatCurrency, getStatusBadgeVariant } from "@/src/utils";
 import {
   CitizenGrantReleaseItem,
   fetchCitizenGrantReleases,
@@ -24,45 +24,6 @@ import QRCode from "react-native-qrcode-svg";
 import { styles } from "./styles/DistributionSchedule.styles";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-function getF2FClaimBadgeVariant(
-  claimStatus?: string
-): "info" | "success" | "warning" | "danger" | "neutral" {
-  switch (claimStatus) {
-    case "Available for Processing":
-    case "Ready for Claim":
-    case "Released":
-      return "success";
-    case "Scheduled":
-    case "Processing":
-      return "info";
-    default:
-      return "neutral";
-  }
-}
-
-function getInstitutionalBadgeVariant(
-  instStatus?: string
-): "info" | "success" | "warning" | "danger" | "neutral" {
-  switch (instStatus) {
-    case "Released to Partner Institution":
-    case "Released":
-    case "Paid":
-    case "Verified / Linked":
-      return "success";
-    case "Partner School Notified":
-    case "Ready for Processing":
-      return "info";
-    case "Institutional Payment Processing":
-    case "On Hold — Institution Verification Required":
-    case "Institution Verification Required":
-      return "warning";
-    case "Preparing for Release":
-      return "neutral";
-    default:
-      return "neutral";
-  }
-}
 
 export function DistributionScheduleScreen() {
   const router = useRouter();
@@ -375,7 +336,7 @@ export function DistributionScheduleScreen() {
                             </Text>
                             <Badge
                               label={f2f?.claim_status || comp.component_status}
-                              variant={getF2FClaimBadgeVariant(f2f?.claim_status || comp.component_status)}
+                              variant={getStatusBadgeVariant(f2f?.claim_status || comp.component_status)}
                             />
                           </View>
 
@@ -557,7 +518,7 @@ export function DistributionScheduleScreen() {
                             </Text>
                             <Badge
                               label={inst.institutional_status}
-                              variant={getInstitutionalBadgeVariant(inst.institutional_status)}
+                              variant={getStatusBadgeVariant(inst.institutional_status)}
                             />
                           </View>
 

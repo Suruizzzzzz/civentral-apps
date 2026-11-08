@@ -185,6 +185,10 @@ export function getStatusBadgeVariant(status?: string | null): StatusBadgeVarian
     case 'In Progress':
     case 'Pending':
     case 'For Compliance':
+    case 'Returned':
+    case 'Returned to Applicant':
+    case 'Action Required':
+    case 'Institutional Payment Processing':
     case 'On Hold — Institution Verification Required':
     case 'Institution Verification Required':
       return 'warning';
@@ -194,6 +198,10 @@ export function getStatusBadgeVariant(status?: string | null): StatusBadgeVarian
     case 'Ready for Processing':
     case 'Endorsed to Mayor':
     case 'Ready for SSC':
+    case 'For Evaluation':
+    case 'Open for Application':
+    case 'Scheduled':
+    case 'Partner School Notified':
       return 'info';
     case 'Submitted':
     case 'Approved':
@@ -202,13 +210,27 @@ export function getStatusBadgeVariant(status?: string | null): StatusBadgeVarian
     case 'Paid':
     case 'Disbursed':
     case 'Released':
+    case 'Completed':
+    case 'Post-Approval':
+    case 'Issued':
+    case 'Signed':
+    case 'For Certificate':
+    case 'Recommended for Continuation':
+    case 'Ready for Claim':
+    case 'Available for Processing':
+    case 'Released to Partner Institution':
+    case 'Verified / Linked':
       return 'success';
     case 'Disapproved':
     case 'Rejected':
     case 'Withdrawn':
     case 'Cancelled':
     case 'Invalid':
+    case 'Inactive':
+    case 'Window Closed':
+    case 'Scholar Inactive':
       return 'danger';
+    case 'Preparing for Release':
     default:
       return 'neutral';
   }

@@ -47,37 +47,6 @@ import { styles } from './styles/ScholarshipGrant.styles';
 const scholarshipBg = require('@/assets/images/scholarship-bg.png');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-function getF2FClaimBadgeVariant(claimStatus?: string): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {
-  switch (claimStatus) {
-    case 'Ready for Claim':
-    case 'Released':
-      return 'success';
-    case 'Scheduled':
-      return 'info';
-    default:
-      return 'neutral';
-  }
-}
-
-function getInstitutionalBadgeVariant(instStatus?: string): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {
-  switch (instStatus) {
-    case 'Released to Partner Institution':
-    case 'Released':
-    case 'Paid':
-    case 'Verified / Linked':
-      return 'success';
-    case 'Partner School Notified':
-    case 'Ready for Processing':
-      return 'info';
-    case 'Institutional Payment Processing':
-    case 'On Hold — Institution Verification Required':
-    case 'Institution Verification Required':
-      return 'warning';
-    default:
-      return 'neutral';
-  }
-}
-
 interface DocumentOcrValidation {
   status: 'idle' | 'checking' | 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE' | 'error';
   result?: 'MATCH' | 'MISMATCH' | 'INCONCLUSIVE';
@@ -1333,7 +1302,7 @@ export function GrantApplicationScreen() {
                                   <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Claim Status</Text>
                                   <Badge
                                     label={f2f.claim_status || 'Scheduled'}
-                                    variant={getF2FClaimBadgeVariant(f2f.claim_status)}
+                                    variant={getStatusBadgeVariant(f2f.claim_status)}
                                   />
                                 </View>
 
@@ -1407,7 +1376,7 @@ export function GrantApplicationScreen() {
                                 <Text style={{ fontSize: 11, color: isDarkMode ? '#94A3B8' : '#64748B' }}>Payment Status</Text>
                                 <Badge
                                   label={inst.institutional_status || 'Processing'}
-                                  variant={getInstitutionalBadgeVariant(inst.institutional_status)}
+                                  variant={getStatusBadgeVariant(inst.institutional_status)}
                                 />
                               </View>
                             </View>

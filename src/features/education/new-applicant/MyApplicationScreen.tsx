@@ -31,59 +31,12 @@ import {
   fetchCitizenGrantReleases,
 } from '../grant/api/grantReleaseApi';
 import { styles } from './styles/MyApplication.styles';
+import { getStatusBadgeVariant, formatStatusLabel } from '@/src/utils/statusTheme';
 
-function getStatusBadgeConfig(
-  status: string
-): { label: string; variant: 'info' | 'success' | 'warning' | 'danger' | 'neutral' } {
-  switch (status) {
-    case 'Submitted':
-      return { label: 'SUBMITTED', variant: 'info' };
-    case 'Under Review':
-      return { label: 'UNDER REVIEW', variant: 'warning' };
-    case 'For Compliance':
-      return { label: 'FOR COMPLIANCE', variant: 'warning' };
-    case 'Ready for SSC':
-      return { label: 'READY FOR SSC', variant: 'info' };
-    case 'For Evaluation':
-      return { label: 'FOR EVALUATION', variant: 'info' };
-    case 'Returned':
-      return { label: 'RETURNED', variant: 'warning' };
-    case 'Approved':
-    case 'Post-Approval':
-    case 'Completed':
-      return { label: status === 'Completed' ? 'COMPLETED' : 'APPROVED', variant: 'success' };
-    case 'Disapproved':
-    case 'Rejected':
-      return { label: 'DISAPPROVED', variant: 'danger' };
-    case 'Withdrawn':
-      return { label: 'WITHDRAWN', variant: 'danger' };
-    default:
-      return { label: status ? status.toUpperCase() : 'UNKNOWN', variant: 'neutral' };
-  }
-}
-
-function getGrantBadgeConfig(
-  status?: string
-): { label: string; variant: 'info' | 'success' | 'warning' | 'danger' | 'neutral' } {
-  switch (status) {
-    case 'Draft':
-      return { label: 'DRAFT', variant: 'warning' };
-    case 'Submitted':
-      return { label: 'SUBMITTED', variant: 'success' };
-    case 'For Review':
-      return { label: 'FOR REVIEW', variant: 'info' };
-    case 'Under Review':
-      return { label: 'UNDER REVIEW', variant: 'info' };
-    case 'For Compliance':
-      return { label: 'FOR COMPLIANCE', variant: 'warning' };
-    case 'Approved for Payroll':
-      return { label: 'APPROVED FOR PAYROLL', variant: 'success' };
-    case 'Withdrawn':
-      return { label: 'WITHDRAWN', variant: 'danger' };
-    default:
-      return { label: status ? status.toUpperCase() : 'ACTIVE', variant: 'neutral' };
-  }
-}
+const getBadgeConfig = (status?: string | null) => ({
+  label: formatStatusLabel(status).toUpperCase(),
+  variant: getStatusBadgeVariant(status),
+});
 
 export function MyApplicationScreen() {
   const router = useRouter();
@@ -475,7 +428,7 @@ export function MyApplicationScreen() {
                 {scholarship?.category_name?.toUpperCase() || 'SCHOLARSHIP APPLICATION'}
               </Text>
               {(() => {
-                const badgeConfig = getStatusBadgeConfig(application.application_status);
+                const badgeConfig = getBadgeConfig(application.application_status);
                 return <Badge label={badgeConfig.label} variant={badgeConfig.variant} />;
               })()}
             </View>
@@ -961,7 +914,7 @@ export function MyApplicationScreen() {
                       </Text>
                     </View>
                     {(() => {
-                      const grantBadge = getGrantBadgeConfig(grantOverview.application?.grant_status);
+                      const grantBadge = getBadgeConfig(grantOverview.application?.grant_status);
                       return <Badge label={grantBadge.label} variant={grantBadge.variant} />;
                     })()}
                   </View>

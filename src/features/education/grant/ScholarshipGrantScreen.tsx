@@ -3,6 +3,7 @@ import { IconSymbol } from "@/src/components/ui/icon-symbol";
 import { Skeleton } from "@/src/components/ui/Skeleton";
 import { useTheme } from "@/src/context/ThemeContext";
 import { sanitizeErrorMessage } from "@/src/utils/errorUtils";
+import { getStatusBadgeVariant } from "@/src/utils/statusTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -33,36 +34,6 @@ const grantWhite = require("@/assets/images/grant-white.png");
 const grantDark = require("@/assets/images/grant-dark.png");
 const complianceLight = require("@/assets/images/compliance-light.png");
 const complianceDark = require("@/assets/images/compliance-dark.png");
-
-function getStatusBadgeVariant(
-  status?: string,
-): "info" | "success" | "warning" | "danger" | "neutral" {
-  if (!status || status === "--") return "neutral";
-  switch (status) {
-    case "Draft":
-      return "warning";
-    case "Submitted":
-    case "Approved for Payroll":
-    case "Approved":
-    case "Paid":
-    case "Released":
-      return "success";
-    case "For Review":
-    case "Under Review":
-    case "Processing":
-    case "Ready for Processing":
-      return "info";
-    case "For Compliance":
-    case "On Hold — Institution Verification Required":
-    case "Institution Verification Required":
-      return "warning";
-    case "Withdrawn":
-    case "Invalid":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
 
 interface GrantHubBackButtonProps {
   onPress: () => void;

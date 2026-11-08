@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 
 import { Badge } from '@/src/components/ui/Badge';
+import { getStatusBadgeVariant } from '@/src/utils/statusTheme';
 import { IconSymbol } from '@/src/components/ui/icon-symbol';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useTheme } from '@/src/context/ThemeContext';
@@ -39,36 +40,6 @@ import {
 import { styles } from './styles/RenewalApplication.styles';
 
 const scholarshipBg = require('@/assets/images/scholarship-bg.png');
-
-function getRenewalBadgeVariant(status?: string): 'info' | 'success' | 'warning' | 'danger' | 'neutral' {
-  if (!status) return 'neutral';
-  switch (status) {
-    case 'Completed':
-    case 'Issued':
-    case 'Signed':
-    case 'For Certificate':
-    case 'Recommended for Continuation':
-    case 'Active':
-      return 'success';
-    case 'Submitted':
-    case 'Under Review':
-    case 'For Evaluation':
-    case 'Open for Application':
-      return 'info';
-    case 'For Compliance':
-    case 'Returned':
-    case 'Action Required':
-      return 'warning';
-    case 'Rejected':
-    case 'Withdrawn':
-    case 'Inactive':
-    case 'Window Closed':
-    case 'Scholar Inactive':
-      return 'danger';
-    default:
-      return 'neutral';
-  }
-}
 
 export interface SelectedFileState {
   name: string;
@@ -961,7 +932,7 @@ export function RenewalApplicationScreen() {
                 <View style={styles.headerBadgeWrap}>
                   <Badge
                     label={getHeaderBadgeText()}
-                    variant={getRenewalBadgeVariant(getHeaderBadgeText())}
+                    variant={getStatusBadgeVariant(getHeaderBadgeText())}
                   />
                   {overview?.program?.category_name && (
                     <Badge variant="neutral" label={overview.program.category_name} />
